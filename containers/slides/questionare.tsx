@@ -154,7 +154,7 @@ export default function Questionnaire() {
       return;
     }
 
-   const countryCode = "91";
+    const countryCode = "91";
     const formattedPhoneNumber = phone.trim().startsWith("+")
       ? phone.trim()
       : `+${countryCode} ${phone.trim()}`;

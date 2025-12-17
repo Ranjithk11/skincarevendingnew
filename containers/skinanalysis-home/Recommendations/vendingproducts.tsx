@@ -24,6 +24,10 @@ export default function VendingProducts({ data }: Props) {
     ? activeCategory.products
     : [];
 
+  const visibleProducts = useMemo(() => {
+    return products.filter(Boolean);
+  }, [products]);
+
   return (
     <Box sx={{ width: "100%" }}>
       <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 2, mb: 2 }}>
@@ -36,6 +40,7 @@ export default function VendingProducts({ data }: Props) {
       <Box
         sx={{
           mt: 2,
+          mb :5,
           display: "flex",
           gap: { xs: 0, md: 0 },
           overflowX: { xs: "auto", md: "hidden" },
@@ -102,11 +107,15 @@ export default function VendingProducts({ data }: Props) {
         })}
       </Box>
 
-      <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 2}}>
-        {products
-          .filter((p: any) => p?.isShopifyAvailable)
-          .slice(0, 6)
-          .map((product: any) => (
+      <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 2 }}>
+        {visibleProducts.length === 0 ? (
+          <Grid item xs={12}>
+            <Typography sx={{ mt: 1.5, color: "#6b7280" }}>
+              No products available for this category.
+            </Typography>
+          </Grid>
+        ) : (
+          visibleProducts.map((product: any) => (
             <Grid
               item
               xs={6}
@@ -133,7 +142,8 @@ export default function VendingProducts({ data }: Props) {
                 }}
               />
             </Grid>
-          ))}
+          ))
+        )}
       </Grid>
     </Box>
   );
