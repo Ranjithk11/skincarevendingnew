@@ -182,45 +182,7 @@ export default function DietChart({ data }: DietChartProps) {
 
 
 
-        {/* DINNER OPTION 1 */}
-        {/* Breakfast */}
-        <SectionCard>
-          <Box display="flex" alignItems="center" mb={2}>
-            <Typography fontWeight={900} fontSize={18} color="primary">
-              {resolvedData.breakfast.title}
-            </Typography>
-          </Box>
-          <Grid container spacing={2}>
-            {resolvedData.breakfast.items.map((item, index) => (
-              <Grid item xs={6} sm={4} md={3} key={index}>
-                <Tile
-                  image={resolvedData.breakfast.image}
-                  label={item}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </SectionCard>
-
-        {/* Lunch */}
-        <SectionCard sx={{ mt: 3 }}>
-          <Box display="flex" alignItems="center" mb={2}>
-            <Typography fontWeight={900} fontSize={18} color="primary">
-              {resolvedData.lunch.title}
-            </Typography>
-          </Box>
-          <Grid container spacing={2}>
-            {resolvedData.lunch.items.map((item, index) => (
-              <Grid item xs={6} sm={4} md={3} key={index}>
-                <Tile
-                  image={resolvedData.lunch.image}
-                  label={item}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        </SectionCard>
-
+      
         {/* DINNER OPTION 1 */}
         <SectionCard sx={{ mt: 3 }}>
           <Box display="flex" alignItems="center" mb={0.5}>
@@ -246,10 +208,7 @@ export default function DietChart({ data }: DietChartProps) {
               <Tile image="/diet/grilledChicken.png" label="Grilled chicken" />
             </Grid>
           </Grid>
-        </SectionCard>
-
-        {/* DINNER OPTION 2 */}
-        <SectionCard sx={{ mt: 2 }}>
+            <SectionCard sx={{ mt: 2 }}>
           <Box display="flex" alignItems="center" mb={0.5}>
             <Typography fontWeight={900}>Dinner</Typography>
             <Box flex={1} />
@@ -274,6 +233,10 @@ export default function DietChart({ data }: DietChartProps) {
             </Grid>
           </Grid>
         </SectionCard>
+        </SectionCard>
+
+        {/* DINNER OPTION 2 */}
+      
       </Container>
     </PageBackground>
   );

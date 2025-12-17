@@ -20,13 +20,14 @@ export const loginUser = async (
   input: string,
   inputType: "phoneNumber" | "email"
 ) => {
+  const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || subDomain?._id;
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}${API_ROUTES.USER_LOGIN}`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // "x-db-token": subDomain._id,
+        ...(dbToken ? { "x-db-token": dbToken } : {}),
       },
       body: JSON.stringify({
         input: input,
@@ -39,13 +40,14 @@ export const loginUser = async (
 };
 
 export const saveUser = async (payload: UserLoginPayload) => {
+  const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || subDomain?._id;
   const response = await fetch(
     `${process.env.NEXT_PUBLIC_API_URL}${API_ROUTES.SAVE_USER}`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        // "x-db-token": subDomain._id,
+        ...(dbToken ? { "x-db-token": dbToken } : {}),
       },
       body: JSON.stringify({
         phoneNumber: payload.phoneNumber,
