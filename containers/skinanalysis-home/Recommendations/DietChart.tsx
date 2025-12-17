@@ -25,7 +25,7 @@ const Tile = ({ image, label }: { image: string; label: string }) => (
   <Box
     sx={{
       position: "relative",
-      height: { xs: 90, md: 220 }, 
+      height: { xs: 90, md: 220 },
       borderRadius: 2,
       overflow: "hidden",
       border: "1px solid #e5e7eb",
@@ -61,13 +61,36 @@ const Tile = ({ image, label }: { image: string; label: string }) => (
   </Box>
 );
 
-export default function DietChart() {
+interface DietPlanItem {
+  title: string;
+  items: string[];
+  image: string;
+}
+
+interface DietChartProps {
+  data?: {
+    breakfast: DietPlanItem;
+    lunch: DietPlanItem;
+    dinner: DietPlanItem;
+    snacks: DietPlanItem;
+  };
+}
+
+const DEFAULT_DIET_DATA: NonNullable<DietChartProps["data"]> = {
+  breakfast: { title: "Breakfast", items: [], image: "" },
+  lunch: { title: "Lunch", items: [], image: "" },
+  dinner: { title: "Dinner", items: [], image: "" },
+  snacks: { title: "Snacks", items: [], image: "" },
+};
+
+export default function DietChart({ data }: DietChartProps) {
+  const resolvedData = data ?? DEFAULT_DIET_DATA;
   return (
     <PageBackground>
       <Container maxWidth={false} sx={{ px: 2 }}>
         {/* HEADER */}
-        <Typography fontWeight={800} fontSize={22}>
-          My Diet
+        <Typography fontWeight={800} fontSize={22} mb={3}>
+          My Diet Plan
         </Typography>
         <Typography
           fontSize={11}
@@ -130,37 +153,76 @@ export default function DietChart() {
               <Tile image="/diet/grilledChicken.png" label="Grilled chicken" />
             </Grid>
           </Grid>
-          <SectionCard sx={{mt:2}}>
-          <Box display="flex" alignItems="center" mb={0.5}>
-            <Typography fontWeight={900}>Lunch</Typography>
-            <Box flex={1} />
-            <Typography fontSize={11} fontWeight={800} color="#22c55e">
-              Option 2 (vegetarian)
+          <SectionCard sx={{ mt: 2 }}>
+            <Box display="flex" alignItems="center" mb={0.5}>
+              <Typography fontWeight={900}>Lunch</Typography>
+              <Box flex={1} />
+              <Typography fontSize={11} fontWeight={800} color="#22c55e">
+                Option 2 (vegetarian)
+              </Typography>
+            </Box>
+
+            <Typography fontSize={12} color="#374151" mb={1.5}>
+              Whole grain, mixed vegetables, fruits and nuts
             </Typography>
-          </Box>
 
-          <Typography fontSize={12} color="#374151" mb={1.5}>
-            Whole grain, mixed vegetables, fruits and nuts
-          </Typography>
-
-          <Grid container spacing={1.25}>
-            <Grid item xs={4}>
-              <Tile image="/diet/grain.jpg" label="Whole grain" />
+            <Grid container spacing={1.25}>
+              <Grid item xs={4}>
+                <Tile image="/diet/grain.jpg" label="Whole grain" />
+              </Grid>
+              <Grid item xs={4}>
+                <Tile image="/diet/mixedVeggis.jpg" label="Mixed Veggies" />
+              </Grid>
+              <Grid item xs={4}>
+                <Tile image="/diet/mixednut.jpg" label="Mixed nuts" />
+              </Grid>
             </Grid>
-            <Grid item xs={4}>
-              <Tile image="/diet/mixedVeggis.jpg" label="Mixed Veggies" />
-            </Grid>
-            <Grid item xs={4}>
-              <Tile image="/diet/mixednut.jpg" label="Mixed nuts" />
-            </Grid>
-          </Grid>
-        </SectionCard>
+          </SectionCard>
         </SectionCard>
 
-        
+
 
         {/* DINNER OPTION 1 */}
+        {/* Breakfast */}
         <SectionCard>
+          <Box display="flex" alignItems="center" mb={2}>
+            <Typography fontWeight={900} fontSize={18} color="primary">
+              {resolvedData.breakfast.title}
+            </Typography>
+          </Box>
+          <Grid container spacing={2}>
+            {resolvedData.breakfast.items.map((item, index) => (
+              <Grid item xs={6} sm={4} md={3} key={index}>
+                <Tile
+                  image={resolvedData.breakfast.image}
+                  label={item}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </SectionCard>
+
+        {/* Lunch */}
+        <SectionCard sx={{ mt: 3 }}>
+          <Box display="flex" alignItems="center" mb={2}>
+            <Typography fontWeight={900} fontSize={18} color="primary">
+              {resolvedData.lunch.title}
+            </Typography>
+          </Box>
+          <Grid container spacing={2}>
+            {resolvedData.lunch.items.map((item, index) => (
+              <Grid item xs={6} sm={4} md={3} key={index}>
+                <Tile
+                  image={resolvedData.lunch.image}
+                  label={item}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </SectionCard>
+
+        {/* DINNER OPTION 1 */}
+        <SectionCard sx={{ mt: 3 }}>
           <Box display="flex" alignItems="center" mb={0.5}>
             <Typography fontWeight={900}>Dinner</Typography>
             <Box flex={1} />
@@ -184,9 +246,10 @@ export default function DietChart() {
               <Tile image="/diet/grilledChicken.png" label="Grilled chicken" />
             </Grid>
           </Grid>
-           {/* DINNER OPTION 2 */}
+        </SectionCard>
 
-           <SectionCard sx={{mt:2}}>
+        {/* DINNER OPTION 2 */}
+        <SectionCard sx={{ mt: 2 }}>
           <Box display="flex" alignItems="center" mb={0.5}>
             <Typography fontWeight={900}>Dinner</Typography>
             <Box flex={1} />
@@ -211,10 +274,6 @@ export default function DietChart() {
             </Grid>
           </Grid>
         </SectionCard>
-        </SectionCard>
-
-       
-       
       </Container>
     </PageBackground>
   );
