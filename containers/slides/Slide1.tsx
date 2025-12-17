@@ -153,7 +153,7 @@ export default function Slide1({
       </Box>
 
       {/* Custom Keyboard */}
-      <Box sx={{ bgcolor: "#d1d5db", px: 2, py: 10, mt: "auto", pb: 10 }}>
+      <Box sx={{ bgcolor: "#d1d5db", px: 2, py: 2, pb: 2 }}>
         {keys.map((row, rowIndex) => (
           <Box key={rowIndex} sx={{ display: "flex", justifyContent: "center", gap: 1, mb: 1 }}>
             {rowIndex === 2 && !isNumeric && (
@@ -267,5 +267,5 @@ export default function Slide1({
         </Box>
       </Box>
     </Box>
-  );
+  ); 
 }
