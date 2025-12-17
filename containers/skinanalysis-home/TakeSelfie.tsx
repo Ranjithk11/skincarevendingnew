@@ -301,6 +301,8 @@ const TakeSelfie = () => {
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [openCamera, setOpenCamera] = useState<boolean>(true);
   const [image, setImage] = useState<any>(null);
+  const [localUserId, setLocalUserId] = useState<string | null>(null);
+  const [localSelfyImage, setLocalSelfyImage] = useState<string | null>(null);
   const imageRef = useRef<any>();
   const canvasRef = useRef<any>();
   const theme = useTheme();
@@ -322,6 +324,16 @@ const TakeSelfie = () => {
   const [getSignedUploadUrl] = useGetSignedUploadUrlMutation();
   const { data: session, update } = useSession();
   useEffect(() => {}, []);
+
+  useEffect(() => {
+    try {
+      setLocalUserId(localStorage.getItem("leafwater_userId"));
+      setLocalSelfyImage(localStorage.getItem("leafwater_selfyImage"));
+    } catch {
+      setLocalUserId(null);
+      setLocalSelfyImage(null);
+    }
+  }, []);
 
   const extractFaceWithForehead = async (
     imageElement: any,
@@ -446,8 +458,9 @@ const TakeSelfie = () => {
   const handleSkinAnalysis = () => {
     const formValues = getValues();
     getRecommnedSkinAttributes({
-      userId: session?.user?.id as string,
-      fileName: session?.user?.selfyImage as string,
+      userId: (session?.user?.id as string) || (localUserId as string),
+      fileName:
+        (session?.user?.selfyImage as string) || (localSelfyImage as string),
       skinType: formValues?.skinType as string,
     })
       .then((response: any) => {
@@ -486,15 +499,23 @@ const TakeSelfie = () => {
   // handle captured Image
   const handleUploadToServer = async (base64String: string) => {
     try {
+      const resolvedUserId =
+        (session?.user?.id as string) || (localUserId as string) || "";
+      if (!resolvedUserId) {
+        console.error("Missing userId for upload (session/localStorage)");
+        setCroppedFace(null);
+        return;
+      }
       const getSignedUrl: any = await getSignedUploadUrl({
         fileName: `${Date.now()}.jpeg`,
         contentType: "image/jpeg",
-        userId: session?.user?.id as string,
+        userId: resolvedUserId,
       });
       if (getSignedUrl?.data?.data) {
+        const fileName = getSignedUrl?.data?.data?.fileName as string;
         const file = await handleConvertBase64toJpeg(
           base64String,
-          getSignedUrl?.data?.data?.fileName
+          fileName
         );
         const axiosResponse = axios.put(getSignedUrl?.data?.data?.url, file, {
           headers: {
@@ -515,6 +536,9 @@ const TakeSelfie = () => {
         if (_res) {
           setCroppedFace(null);
           setIsImageUploading(false);
+          try {
+            if (fileName) localStorage.setItem("leafwater_selfyImage", fileName);
+          } catch {}
           update({
             ...session,
             user: {
@@ -545,13 +569,16 @@ const TakeSelfie = () => {
   }, []);
 
   useEffect(() => {
-    if (session?.user?.selfyImage) {
+    const resolvedUserId = (session?.user?.id as string) || (localUserId as string);
+    const resolvedFileName =
+      (session?.user?.selfyImage as string) || (localSelfyImage as string);
+    if (resolvedUserId && resolvedFileName) {
       getUploadImageInfo({
-        fileName: session?.user?.selfyImage as string,
-        userId: session?.user?.id as string,
+        fileName: resolvedFileName,
+        userId: resolvedUserId,
       });
     }
-  }, [session?.user?.selfyImage]);
+  }, [session?.user?.selfyImage, session?.user?.id, localUserId, localSelfyImage]);
 
   useEffect(() => {
     if (croppedFace) {
