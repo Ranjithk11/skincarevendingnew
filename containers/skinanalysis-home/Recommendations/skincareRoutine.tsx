@@ -114,10 +114,14 @@ const HowToUseCard = ({
       }}
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: { xs: 12, md: 16 }, fontWeight: 900 }}>
+        <Typography sx={{
+                fontSize: { xs: 14, sm: 24 },
+                fontWeight: 600,
+                color: "#000",
+              }}>
           {title}
         </Typography>
-        <Typography sx={{ mt: 0.75, fontSize: { xs: 11, md: 13 }, color: "#374151" }}>
+        <Typography sx={{ mt: 0.75, fontSize: { xs: 14, md: 16 }, color: "#000" }}>
           {body}
         </Typography>
       </Box>
@@ -127,10 +131,11 @@ const HowToUseCard = ({
           component="img"
           src={image}
           sx={{
-            width: { xs: 70, md: 140 },
-            height: { xs: 70, md: 140 },
+            width: { xs: 160, md: 198 },
+            height: { xs: 160, md: 244 },
             objectFit: "contain",
             flexShrink: 0,
+            alignSelf: "flex-start",
           }}
         />
       )}
@@ -156,23 +161,25 @@ const ProductCard = ({
   return (
     <Card
       sx={{
-        p: { xs: 1.5, md: 2 },
-        borderRadius: 2,
+        p: 2,
+        width: { xs: "100%", md: 307 },
+        height: { xs: "auto", md: 422 },
+        borderRadius: "13px",
         border: "1px solid #e5e7eb",
         boxShadow: "none",
-        height: "100%",
-        display: isDesktop ? "flex" : "block",
-        alignItems: isDesktop ? "center" : undefined,
-        gap: isDesktop ? 2 : undefined,
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 2,
       }}
     >
       <Box
         sx={{
-          height: { xs: 100, md: 140 },
-          width: isDesktop ? 140 : "100%",
-          minWidth: isDesktop ? 140 : undefined,
-          bgcolor: "#f3f4f6",
-          borderRadius: 2,
+          height: { xs: 160, md: 250 },
+          width: { xs: 120, md: 130 },
+          minWidth: { xs: 120, md: 130 },
+          bgcolor: "#ffffff",
+          borderRadius: "13px",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -181,45 +188,75 @@ const ProductCard = ({
         <img src={image} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
       </Box>
 
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ mt: isDesktop ? 0 : 1, fontSize: { xs: 11, md: 13 }, fontWeight: 700 }}>
+      <Box
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          height: "100%",
+        }}
+      >
+        <Typography
+          sx={{
+            fontSize: { xs: 14, md: 16 },
+            fontWeight: 700,
+            color: "#111827",
+            lineHeight: 1.2,
+          }}
+        >
           {title}
         </Typography>
 
-        <Typography sx={{ fontSize: { xs: 11, md: 13 }, fontWeight: 800, color: "#0f766e" }}>
+        <Typography
+          sx={{
+            mt: 1,
+            fontSize: { xs: 14, md: 16 },
+            fontWeight: 700,
+            color: "#d12b2b",
+          }}
+        >
           {price}
         </Typography>
 
-        <Box sx={{ mt: 1, display: "flex", gap: 1, justifyContent: isDesktop ? "flex-start" : "flex-start" }}>
+        <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
           <Box
             sx={{
-              flex: isDesktop ? "0 0 auto" : 1,
               px: 2,
-              py: 0.7,
-              border: "1px solid #e5e7eb",
+              py: 0.8,
               borderRadius: 999,
-              fontSize: 10,
-              fontWeight: 700,
-              textAlign: "center",
-              minWidth: isDesktop ? 96 : undefined,
+              bgcolor: "#2d5a3d",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 600,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 1,
+              whiteSpace: "nowrap",
             }}
           >
             Buy Now
+            <Box component="span" sx={{ display: "inline-flex", alignItems: "center" }}>
+              <img src="/icons/cart.svg" style={{ width: 16, height: 16 }} />
+            </Box>
           </Box>
+        </Box>
+
+        <Box sx={{ mt: 1.5, display: "flex" }}>
           <Box
             sx={{
-              px: 1.5,
-              py: 0.7,
+              px: 2,
+              py: 0.8,
+              border: "1px solid #2d5a3d",
               borderRadius: 999,
-              bgcolor: "#0f766e",
-              color: "#fff",
-              fontSize: 10,
-              fontWeight: 800,
-              minWidth: isDesktop ? 64 : undefined,
-              textAlign: "center",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#2d5a3d",
+              whiteSpace: "nowrap",
             }}
           >
-            Try
+            UNEVEN SKIN
           </Box>
         </Box>
       </Box>
@@ -237,7 +274,7 @@ export default function SkincareRoutinePage() {
     ? [
       {
         title: "Cleanser",
-        subtitle: "Removes dirt and impurities.",
+        subtitle: "A cleanser gently removes dirt, oil, and impurities, leaving your skin fresh and clean. It’s the first step to a clear, healthy, and glowing complexion.",
         howTitle: "How to Use Your Cleanser",
         howBody: "Wet your face with lukewarm water and apply a small amount of cleanser to your fingertips. Gently massage it onto your skin in circular motions for 20–30 seconds, focusing on areas with excess oil or buildup. Rinse thoroughly and pat your skin dry with a clean towel. Use twice daily for best results.",
         howImg: "/products/ceta1.svg",
@@ -248,9 +285,9 @@ export default function SkincareRoutinePage() {
       },
       {
         title: "Face Serum",
-        subtitle: "Delivers active ingredients.",
+        subtitle: "A face serum is a lightweight, fast-absorbing treatment designed to deliver concentrated active ingredients deep into the skin. It helps target specific concerns such as dullness, uneven tone, fine lines, or dehydration.",
         howTitle: "How to Use Serum",
-        howBody: "Apply 2–3 drops at night.",
+        howBody: "After cleansing, apply 2–3 drops of serum to your face and neck. Gently press or massage it into the skin until fully absorbed. Allow it to settle for a minute before applying moisturizer. Use once or twice daily depending on your skin’s needs and the serum’s instructions.",
         howImg: "/products/pilgram.svg",
         products: [
           { title: "Pilgrim Niacinamide Serum", price: "Rs. 590/-", image: "/products/pilgram.svg" },
@@ -260,9 +297,9 @@ export default function SkincareRoutinePage() {
     : [
       {
         title: "Cleanser",
-        subtitle: "Removes dirt, oil and impurities.",
+        subtitle: "A cleanser gently removes dirt, oil, and impurities, leaving your skin fresh and clean. It’s the first step to a clear, healthy, and glowing complexion.",
         howTitle: "How to Use Your Cleanser",
-        howBody: "Wet your face with lukewarm water and apply a small amount of cleanser to your fingertips.",
+        howBody: "Wet your face with lukewarm water and apply a small amount of cleanser to your fingertips. Gently massage it onto your skin in circular motions for 20–30 seconds, focusing on areas with excess oil or buildup. Rinse thoroughly and pat your skin dry with a clean towel. Use twice daily for best results.",
         howImg: "/products/ceta1.svg",
         products: [
           { title: "Cetaphil Creamy Cleanser", price: "Rs. 599/-", image: "/products/cetaPink.png" },
@@ -271,9 +308,9 @@ export default function SkincareRoutinePage() {
       },
       {
         title: "Daycream",
-        subtitle: "Hydrates and protects skin.",
+        subtitle: "Day cream provides essential hydration and protection, shielding your skin from environmental damage. It keeps your complexion smooth, radiant, and ready to face the day.",
         howTitle: "How to Use Daycream",
-        howBody: "After cleansing, apply a small amount of day cream to your face and neck. Gently massage it in using upward, circular motions until fully absorbed.",
+        howBody: "After cleansing, apply a small amount of day cream to your face and neck. Gently massage it in using upward, circular motions until fully absorbed. Allow it to settle for a minute before applying sunscreen or makeup. Use every morning for optimal hydration and protection.",
         howImg: "/products/cetapik.svg",
         products: [
           { title: "Cetaphil Brightening Day Cream", price: "Rs. 1019/-", image: "/products/cetapik.svg" },
@@ -281,9 +318,9 @@ export default function SkincareRoutinePage() {
       },
       {
         title: "Sunscreen",
-        subtitle: "Protects from UV rays.",
+        subtitle: "Sunscreen protects your skin from harmful UV rays, preventing sunburn and premature aging. It's an essential daily step for healthy, radiant, and safeguarded skin.",
         howTitle: "How to Use Sunscreen",
-        howBody: "Apply sunscreen as the final step in your morning routine. Use a generous amount and spread it evenly over your face and neck.",
+        howBody: "Apply sunscreen as the final step in your morning routine. Use a generous amount and spread it evenly over your face and neck. Let it absorb for a minute before heading outdoors. Reapply every 2–3 hours, especially after sweating or sun exposure, for consistent protection.",
         howImg: "/products/cetayellow.svg",
         products: [
           { title: "Pilgrim SPF 50", price: "Rs. 599/-", image: "/products/ultrasun.png" },
@@ -297,10 +334,24 @@ export default function SkincareRoutinePage() {
         {/* HEADER */}
         <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
           <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontWeight: 800 }}>
+            <Typography sx={{
+              mt: 2.5,
+              mb: 0.75,
+              fontFamily: '"SF Pro Display", "SF Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+              fontWeight: 510,
+              fontSize: "40px",
+              lineHeight: "100%",
+              letterSpacing: "0%",
+            }}>
               My Skincare Routine – {night ? "Night" : "Day"}
             </Typography>
-            <Typography sx={{ fontSize: 10, color: "#6b7280" }}>
+            <Typography sx={{
+              mt: 2,
+              mb: 2.5,
+              fontSize: { xs: 18, sm: 24 },
+              color: "#6b7280",
+              letterSpacing: 1.2,
+            }}>
               {night ? "NIGHTTIME ROUTINE" : "DAYTIME ROUTINE"}
             </Typography>
           </Box>
@@ -312,8 +363,19 @@ export default function SkincareRoutinePage() {
           <Box key={i} sx={{ display: "flex", gap: 2, mb: 3 }}>
             <StepRail index={i} total={steps.length} />
             <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontWeight: 900 }}>{s.title}</Typography>
-              <Typography sx={{ fontSize: 11, color: "#374151" }}>
+              <Typography sx={{
+                fontSize: { xs: 20, sm: 24 },
+                fontWeight: 800,
+                color: "#000",
+                letterSpacing: 1.2,
+              }}>{s.title}</Typography>
+              <Typography sx={{
+                            mt: 2,
+                            mb: 2.5,
+                            fontSize: { xs: 12, sm: 16 },
+                            fontStyle:"SF Pro Display",
+                            color: "#000",
+                        }}>
                 {s.subtitle}
               </Typography>
 

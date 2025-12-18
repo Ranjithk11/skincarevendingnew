@@ -33,6 +33,7 @@ interface ProductCardProps {
   discount?: any;
   compact?: boolean;
   cardSx?: any;
+  horizontalLayout?: boolean;
 }
 
 const StyledProductCard = styled(Card, {
@@ -180,12 +181,13 @@ const ProductCard = ({
   discount,
   compact,
   cardSx,
+  horizontalLayout,
 }: ProductCardProps) => {
   const { data: session } = useSession();
   const pathName = usePathname();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
-  const showHorizontal = isDesktop && !compact && !minWidth;
+  const showHorizontal = (horizontalLayout || (isDesktop && !compact)) && !minWidth;
   const [openCTA, setOpenCTA] = useState<boolean>(false);
   const handleAddToCart = () => {
     window.open(shopifyUrl);
@@ -233,9 +235,9 @@ const ProductCard = ({
               alignItems: "center",
               gap: 2,
               "& .product_image": {
-                width: 160,
-                minWidth: 160,
-                height: 160,
+                width: 120,
+                minWidth: 120,
+                height: 350,
                 marginBottom: 0,
                 padding: 8,
                 borderRadius: 12,
@@ -245,10 +247,14 @@ const ProductCard = ({
                 textAlign: "left",
                 WebkitLineClamp: "2",
               },
-              "& .MuiTypography-body1": {
-                textAlign: "left",
-                WebkitLineClamp: "2",
-              },
+              "& .MuiTypography-body1": horizontalLayout
+                ? {
+                    display: "none",
+                  }
+                : {
+                    textAlign: "left",
+                    WebkitLineClamp: "2",
+                  },
             }
           : null),
         ...(compact

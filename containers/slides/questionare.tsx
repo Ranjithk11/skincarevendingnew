@@ -243,7 +243,7 @@ export default function Questionnaire() {
   };
 
   return (
-    <PageBackground>
+    
       <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%" }}>
         {/* Header */}
         <Box
@@ -252,20 +252,34 @@ export default function Questionnaire() {
             justifyContent: "space-between",
             alignItems: "center",
             px: 2,
-            pt: 2,
+          
           }}
         >
           <IconButton onClick={handleBack} sx={{ color: "#1a1a1a" }}>
             <ArrowBack />
           </IconButton>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0}}>
-            <Image src="/wending/goldlogo.svg" alt="Leaf Water Logo" width={40} height={50} />
-            <Image src="/wending/logo.svg" alt="Leaf Water" width={70} height={50} style={{ objectFit: "contain" }} />
+          <Box
+            sx={{
+              position: "relative",
+              width: 140,
+              height: 140,
+              flexShrink: 0,
+            }}
+          >
+            <Image
+              src="/wending/goldlog.svg"
+              alt="Leaf Water Logo"
+              fill
+              priority
+              style={{
+                objectFit: "contain",
+              }}
+            />
           </Box>
         </Box>
 
         {/* Progress Bar */}
-        <Box sx={{ display: "flex", gap: 1, px: 3, pt: 2 }}>
+        <Box sx={{ display: "flex", gap: 1, px: 3,}}>
           {Array.from({ length: totalSlides }).map((_, index) => (
             <Box
               key={index}
@@ -307,6 +321,5 @@ export default function Questionnaire() {
           />
         </Box>
       </Box>
-    </PageBackground>
   );
 }

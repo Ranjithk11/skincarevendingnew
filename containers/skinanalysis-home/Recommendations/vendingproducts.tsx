@@ -33,7 +33,7 @@ export default function VendingProducts({ data }: Props) {
       <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 2, mb: 2 }}>
         My Skincare Products
       </Typography>
-      <Typography sx={{ fontSize: 18, letterSpacing: 1.6, color: "#6b7280" }}>
+      <Typography sx={{ fontSize: 18, letterSpacing: 1.6, color: "#000",mb:2 }}>
         WHAT WE RECOMMEND
       </Typography>
 
@@ -127,7 +127,8 @@ export default function VendingProducts({ data }: Props) {
                 {...product}
                 category={activeCategory?.productCategory?.title}
                 enabledMask={false}
-                compact={!isDesktop}
+                compact={false}
+                horizontalLayout={true}
                 cardSx={{
                   width: "100%",
                   ...(isDesktop
@@ -136,8 +137,8 @@ export default function VendingProducts({ data }: Props) {
                       height: "auto",
                     }
                     : {
-                      maxWidth: 307,
-                      height: 486,
+                      maxWidth: 500,
+                      height: 300,
                     }),
                 }}
               />

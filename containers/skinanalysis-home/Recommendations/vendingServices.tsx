@@ -14,22 +14,22 @@ const ServiceCard = ({ item }: { item: any }) => {
   return (
     <Box
       sx={{
+        width: { xs: "100%", md: 486 },
+        height: { xs: "auto", md: 307 },
         border: "1px solid #e5e7eb",
-        borderRadius: 2,
+        borderRadius: "10px",
         bgcolor: "white",
         overflow: "hidden",
-        display: { md: "flex" },
-        flexDirection: { md: "row" },
-        alignItems: { md: "stretch" },
-        minHeight: { xs: 420, md: 220 },
-        m: { xs: 0.5, md: 1 },
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "stretch",
       }}
     >
       <Box
         sx={{
-          width: { xs: "100%", md: 170 },
-          minWidth: { md: 170 },
-          height: { xs: 200, md: 200 },
+          width: { xs: 140, md: 200 },
+          minWidth: { xs: 140, md: 200 },
+          height: { xs: 220, md: "100%" },
           backgroundColor: "#f3f4f6",
           backgroundImage: img ? `url(${img})` : "none",
           backgroundRepeat: "no-repeat",
@@ -37,41 +37,50 @@ const ServiceCard = ({ item }: { item: any }) => {
           backgroundPosition: "center",
         }}
       />
-      <Box sx={{ p: 1.5, flex: 1, display: "flex", flexDirection: "column" }}>
-        <Typography sx={{ fontWeight: 800, fontSize: { xs: 13, md: 15 }, color: "#0f766e" }}>
-          {item?.name}
-        </Typography>
-        <Typography
-          sx={{
-            mt: 0.5,
-            fontSize: { xs: 11, md: 12 },
-            color: "#4b5563",
-            minHeight: 32,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            display: "-webkit-box",
-            WebkitLineClamp: { xs: "2", md: "3" },
-            WebkitBoxOrient: "vertical",
-          }}
-        >
-          {item?.description || ""}
-        </Typography>
-        <Typography sx={{ mt: 1, fontWeight: 900, fontSize: { xs: 12, md: 14 } }}>
-          INR. {item?.price}/-
-        </Typography>
-        <Box sx={{ flexGrow: 1 }} />
+      <Box
+        sx={{
+          p: 2,
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          minWidth: 0,
+        }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 800, fontSize: { xs: 14, md: 16 }, color: "#111827" }}>
+            {item?.name}
+          </Typography>
+          <Typography
+            sx={{
+              mt: 0.75,
+              fontSize: { xs: 12, md: 12 },
+              color: "#6b7280",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {item?.description || ""}
+          </Typography>
+
+          <Typography sx={{ mt: 1.25, fontWeight: 900, fontSize: { xs: 12, md: 14 }, color: "#111827" }}>
+            INR. {item?.price}/-
+          </Typography>
+        </Box>
+
         <Button
           variant="contained"
           color="primary"
           endIcon={<CallIcon sx={{ color: "white" }} />}
           sx={{
-            mt: 1.25,
-            borderRadius: 2,
+            mt: 1.5,
+            borderRadius: "8px",
             textTransform: "none",
-            px: 2,
             py: 0.75,
-            fontWeight: 700,
-            alignSelf: { md: "flex-start" },
+            alignSelf: "flex-start",
           }}
           onClick={() => {
             window.open("tel:08977016605");
@@ -95,14 +104,14 @@ export default function VendingServices({ salonServices, cosmeticServices }: Pro
 
   return (
     <Box sx={{ width: "100%" }}>
-      <Typography sx={{ fontWeight: 800, fontSize: 35, mt: 2,mb:2 }}>
+      <Typography sx={{ fontWeight: 800, fontSize: 35, mt: 4, mb: 2 }}>
         My Skincare Services
       </Typography>
-      <Typography sx={{ fontSize: 24, letterSpacing: 1.6, color: "#6b7280" }}>
+      <Typography sx={{ fontSize: 18, color: "#000" }}>
         WHAT WE RECOMMEND
       </Typography>
 
-      <Box sx={{ mt: 2, display: "flex", gap: 1.5 }}>
+      <Box sx={{ mt: 2, display: "flex", gap: 1.5 ,mb:2}}>
         <Box
           onClick={() => setServiceTab("salon")}
           sx={{
@@ -178,7 +187,7 @@ export default function VendingServices({ salonServices, cosmeticServices }: Pro
         </Box>
       </Box>
 
-      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt: 2 }}>
+      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt:2}}>
         {active.slice(0, 6).map((item: any) => (
           <Grid item xs={6} md={4} key={item?._id || item?.name}>
             <ServiceCard item={item} />

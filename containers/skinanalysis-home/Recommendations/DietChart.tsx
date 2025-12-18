@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Card, Container, Grid, Typography, styled } from "@mui/material";
+import { Box, Card, Container, Divider, Grid, Typography, styled } from "@mui/material";
 
 const PageBackground = styled(Box)(() => ({
   width: "100%",
@@ -14,8 +14,9 @@ const PageBackground = styled(Box)(() => ({
 }));
 
 const SectionCard = styled(Card)(() => ({
+  width: "80%",
   padding: 16,
-  borderRadius: 16,
+  borderRadius: 24,
   border: "1px solid #e5e7eb",
   boxShadow: "none",
   marginBottom: 16,
@@ -25,8 +26,9 @@ const Tile = ({ image, label }: { image: string; label: string }) => (
   <Box
     sx={{
       position: "relative",
-      height: { xs: 90, md: 220 },
-      borderRadius: 2,
+      width: 180,
+      height: 220,
+      borderRadius: "8px",
       overflow: "hidden",
       border: "1px solid #e5e7eb",
     }}
@@ -46,15 +48,20 @@ const Tile = ({ image, label }: { image: string; label: string }) => (
     <Box
       sx={{
         position: "absolute",
-        inset: 0,
-        background:
-          "linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.7) 100%)",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: 70,
         display: "flex",
         alignItems: "flex-end",
-        p: 0.75,
+        px: 2,
+        pb: 2,
+        backgroundColor: "rgba(0,0,0,0.25)",
+        backdropFilter: "blur(5px)",
+        WebkitBackdropFilter: "blur(5px)",
       }}
     >
-      <Typography fontSize={11} fontWeight={800} color="#fff">
+      <Typography fontSize={20} fontWeight={800} color="#fff" sx={{ lineHeight: 1 }}>
         {label}
       </Typography>
     </Box>
@@ -89,33 +96,51 @@ export default function DietChart({ data }: DietChartProps) {
     <PageBackground>
       <Container maxWidth={false} sx={{ px: 2 }}>
         {/* HEADER */}
-        <Typography fontWeight={800} fontSize={22} mb={3}>
-          My Diet Plan
+        <Typography sx={{
+          mt: 2.5,
+          mb: 0.75,
+          fontFamily: '"SF Pro Display", "SF Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+          fontWeight: 510,
+          fontSize: "40px",
+          lineHeight: "100%",
+          letterSpacing: "0%",
+        }}>
+          My Diet
         </Typography>
         <Typography
-          fontSize={11}
-          letterSpacing={1.6}
-          color="#6b7280"
-          mb={2}
+          sx={{
+            mt: 2,
+            mb: 2.5,
+            fontSize: { xs: 18, sm: 24 },
+            color: "#6b7280",
+            letterSpacing: 1.2,
+          }}
         >
           WHAT WE RECOMMEND
         </Typography>
 
         {/* BREAKFAST */}
-        <SectionCard>
+        <SectionCard sx={{ width: { xs: "100%", md: 977 }, height: { xs: "auto", md: 475 } }}>
           <Box display="flex" alignItems="center" mb={0.5}>
-            <Typography fontWeight={900}>Breakfast</Typography>
-            <Box flex={1} />
-            <Typography fontSize={11} fontWeight={800} color="#f97316">
+            <Typography sx={{
+              mb: 0.75,
+              fontFamily: '"SF Pro Display", "SF Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+              fontWeight: 700,
+              fontSize: "20px",
+              lineHeight: "100%",
+              letterSpacing: "0%",
+            }}>Breakfast</Typography>
+            <Box sx={{ flex: 1 }} />
+            <Typography fontSize={14} fontWeight={800} color="#f97316">
               Option 1
             </Typography>
           </Box>
 
-          <Typography fontSize={12} color="#374151" mb={1.5}>
+          <Typography fontSize={14} color="#000" mb={1.5}>
             Any fresh smoothie, green tea or some nuts
           </Typography>
 
-          <Grid container spacing={1.25}>
+          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
               <Tile image="/diet/smoothies.jpg" label="Smoothie" />
             </Grid>
@@ -129,20 +154,27 @@ export default function DietChart({ data }: DietChartProps) {
         </SectionCard>
 
         {/* LUNCH OPTION 1 */}
-        <SectionCard>
+        <SectionCard sx={{ width: { xs: "100%", md: 977 }, height: { xs: "auto", md: 475 } }}>
           <Box display="flex" alignItems="center" mb={0.5}>
-            <Typography fontWeight={900}>Lunch</Typography>
+            <Typography sx={{
+              mb: 0.75,
+              fontFamily: '"SF Pro Display", "SF Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+              fontWeight: 700,
+              fontSize: "20px",
+              lineHeight: "100%",
+              letterSpacing: "0%",
+            }} >Lunch</Typography>
             <Box flex={1} />
             <Typography fontSize={11} fontWeight={800} color="#f97316">
               Option 1
             </Typography>
           </Box>
 
-          <Typography fontSize={12} color="#374151" mb={1.5}>
+          <Typography fontSize={14} color="#000" mb={1.5}>
             Salmon, Broccoli / Grilled fish or chicken
           </Typography>
 
-          <Grid container spacing={1.25}>
+          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
               <Tile image="/diet/bakedSalmon.jpg" label="Baked salmon" />
             </Grid>
@@ -153,38 +185,46 @@ export default function DietChart({ data }: DietChartProps) {
               <Tile image="/diet/grilledChicken.png" label="Grilled chicken" />
             </Grid>
           </Grid>
-          <SectionCard sx={{ mt: 2 }}>
-            <Box display="flex" alignItems="center" mb={0.5}>
-              <Typography fontWeight={900}>Lunch</Typography>
-              <Box flex={1} />
-              <Typography fontSize={11} fontWeight={800} color="#22c55e">
-                Option 2 (vegetarian)
-              </Typography>
-            </Box>
 
-            <Typography fontSize={12} color="#374151" mb={1.5}>
-              Whole grain, mixed vegetables, fruits and nuts
+          <Divider sx={{ my: 2, borderColor: "#e5e7eb" }} />
+
+          <Box display="flex" alignItems="center" mb={0.5}>
+            <Typography sx={{
+              mb: 0.75,
+              fontFamily: '"SF Pro Display", "SF Pro", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
+              fontWeight: 700,
+              fontSize: "20px",
+              lineHeight: "100%",
+              letterSpacing: "0%",
+            }}>Lunch</Typography>
+            <Box flex={1} />
+            <Typography fontSize={11} fontWeight={800} color="#22c55e">
+              Option 2 (vegetarian)
             </Typography>
+          </Box>
 
-            <Grid container spacing={1.25}>
-              <Grid item xs={4}>
-                <Tile image="/diet/grain.jpg" label="Whole grain" />
-              </Grid>
-              <Grid item xs={4}>
-                <Tile image="/diet/mixedVeggis.jpg" label="Mixed Veggies" />
-              </Grid>
-              <Grid item xs={4}>
-                <Tile image="/diet/mixednut.jpg" label="Mixed nuts" />
-              </Grid>
+          <Typography fontSize={14} color="#000" mb={1.5}>
+            Whole grain, mixed vegetables, fruits and nuts
+          </Typography>
+
+          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
+            <Grid item xs={4}>
+              <Tile image="/diet/grain.jpg" label="Whole grain" />
             </Grid>
-          </SectionCard>
+            <Grid item xs={4}>
+              <Tile image="/diet/mixedVeggis.jpg" label="Mixed Veggies" />
+            </Grid>
+            <Grid item xs={4}>
+              <Tile image="/diet/mixednut.jpg" label="Mixed nuts" />
+            </Grid>
+          </Grid>
         </SectionCard>
 
 
 
-      
+
         {/* DINNER OPTION 1 */}
-        <SectionCard sx={{ mt: 3 }}>
+        <SectionCard sx={{ mt: 3, width: { xs: "100%", md: 977 }, height: { xs: "auto", md: 475 } }}>
           <Box display="flex" alignItems="center" mb={0.5}>
             <Typography fontWeight={900}>Dinner</Typography>
             <Box flex={1} />
@@ -197,7 +237,7 @@ export default function DietChart({ data }: DietChartProps) {
             Salmon, Broccoli / Grilled fish or chicken
           </Typography>
 
-          <Grid container spacing={1.25}>
+          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
               <Tile image="/diet/bakedSalmon.jpg" label="Baked salmon" />
             </Grid>
@@ -208,7 +248,9 @@ export default function DietChart({ data }: DietChartProps) {
               <Tile image="/diet/grilledChicken.png" label="Grilled chicken" />
             </Grid>
           </Grid>
-          <SectionCard sx={{ mt: 2 }}>
+
+          <Divider sx={{ my: 2, borderColor: "#e5e7eb" }} />
+
           <Box display="flex" alignItems="center" mb={0.5}>
             <Typography fontWeight={900}>Dinner</Typography>
             <Box flex={1} />
@@ -221,7 +263,7 @@ export default function DietChart({ data }: DietChartProps) {
             Whole grain, mixed vegetables, fruits and nuts
           </Typography>
 
-          <Grid container spacing={1.25}>
+          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
               <Tile image="/diet/grain.jpg" label="Whole grain" />
             </Grid>
@@ -232,7 +274,6 @@ export default function DietChart({ data }: DietChartProps) {
               <Tile image="/diet/mixednut.jpg" label="Mixed nuts" />
             </Grid>
           </Grid>
-        </SectionCard>
         </SectionCard>
 
       </Container>

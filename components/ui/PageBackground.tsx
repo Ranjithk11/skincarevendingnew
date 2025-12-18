@@ -7,16 +7,19 @@ import { ReactNode } from "react";
 interface PageBackgroundProps {
   children: ReactNode;
   showGreenCurve?: boolean;
+  fitParent?: boolean;
 }
 
 export default function PageBackground({
   children,
   showGreenCurve = false,
+  fitParent = false,
 }: PageBackgroundProps) {
   return (
     <Box
       sx={{
-        minHeight: "100dvh",
+        minHeight: fitParent ? "100%" : "100dvh",
+        height: fitParent ? "100%" : undefined,
         bgcolor: "#F9F9F9",
         position: "relative",
         overflow: "visible",
