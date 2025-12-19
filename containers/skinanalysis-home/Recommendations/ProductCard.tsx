@@ -17,9 +17,11 @@ import { useSession } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { url } from "inspector";
 import { useMediaQuery, useTheme } from "@mui/material";
+import BuyNowDialog from "./BuyNowDialog";
 
 interface ProductCardProps {
   ribbenColor?: string;
+  _id?: string;
   productBenefits: string;
   name: string;
   productUse: string;
@@ -168,6 +170,7 @@ const YellowButton = styled(Button)({
 });
 
 const ProductCard = ({
+  _id,
   name,
   productBenefits,
   productUse,
@@ -189,8 +192,14 @@ const ProductCard = ({
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const showHorizontal = (horizontalLayout || (isDesktop && !compact)) && !minWidth;
   const [openCTA, setOpenCTA] = useState<boolean>(false);
+  const [openBuyNow, setOpenBuyNow] = useState<boolean>(false);
   const handleAddToCart = () => {
     window.open(shopifyUrl);
+  };
+
+  const handleOpenBuyNow = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenBuyNow(true);
   };
 
   const handlePostHogEvent = (eventName: string) => {
@@ -372,7 +381,7 @@ const ProductCard = ({
               <Button
                 variant="contained"
                 color="primary"
-                onClick={handleAddToCart}
+                onClick={handleOpenBuyNow}
                 size="small"
                 startIcon={<Icon icon="uil:cart" />}
                 sx={{
@@ -393,7 +402,7 @@ const ProductCard = ({
         <Button
           variant="contained"
           color="primary"
-          onClick={handleAddToCart}
+          onClick={handleOpenBuyNow}
           size="small"
           startIcon={<Icon icon="uil:cart" />}
           sx={{
@@ -407,6 +416,16 @@ const ProductCard = ({
           Buy Now
         </Button>
       )}
+
+      <BuyNowDialog
+        open={openBuyNow}
+        onClose={() => setOpenBuyNow(false)}
+        imageUrl={images?.[0]?.url}
+        id={_id}
+        name={name}
+        priceText={`INR.${calculateDiscount(retailPrice, discount?.value)}/-`}
+      />
+
       {!enabledMask && !shopifyUrl && (
         <Button
           variant="contained"

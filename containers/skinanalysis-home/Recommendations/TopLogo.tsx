@@ -1,4 +1,4 @@
-import { Box, Button } from "@mui/material";
+import { Badge, Box, Button } from "@mui/material";
 import Image from "next/image";
 import React from "react";
 
@@ -6,12 +6,14 @@ interface TopLogoProps {
   isKiosk: boolean;
   onCartClick: () => void;
   onScanAgainClick: () => void;
+  cartCount?: number;
 }
 
 const TopLogo: React.FC<TopLogoProps> = ({
   isKiosk,
   onCartClick,
   onScanAgainClick,
+  cartCount = 0,
 }) => {
   return (
     <Box
@@ -86,7 +88,19 @@ const TopLogo: React.FC<TopLogoProps> = ({
             }}
             onClick={onCartClick}
           >
-            <Image src="/icons/cart.svg" width={18} height={18} alt="" />
+            <Badge
+              badgeContent={cartCount}
+              color="primary"
+              invisible={!cartCount}
+              sx={{
+                "& .MuiBadge-badge": {
+                  fontSize: 12,
+                  fontWeight: 700,
+                },
+              }}
+            >
+              <Image src="/icons/cart.svg" width={18} height={18} alt="" />
+            </Badge>
             &nbsp;My cart
           </Button>
 

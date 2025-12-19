@@ -15,6 +15,8 @@ import DietChart from "./DietChart";
 import SkincareRoutine from "./skincareRoutine";
 import CoverBottomHalf from "./CoverBottomHalf";
 import TopLogo from "./TopLogo";
+import { CartProvider, useCart } from "./CartContext";
+import CartProduct from "./cartProduct";
 
 const StyledCoverWrapper = styled(Box)(({ theme }) => ({
   width: "100%",
@@ -291,6 +293,165 @@ const CoverPage: React.FC<CoverPageProps> = ({
   ];
 
   return (
+    <CartProvider>
+      <CoverInner
+        useData={useData}
+        dataFUQR={dataFUQR}
+        publicUserProfile={publicUserProfile}
+        analysisData={analysisData}
+      />
+    </CartProvider>
+  );
+};
+
+const CoverInner: React.FC<CoverPageProps> = ({
+  useData,
+  dataFUQR,
+  publicUserProfile,
+  analysisData,
+}) => {
+  const { data: session } = useSession();
+  const theme = useTheme();
+  const [showUserInfo, setShowUserInfo] = useState<boolean>(false);
+  const router = useRouter();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isKiosk = useMediaQuery(theme.breakpoints.up("md"));
+  const [tab, setTab] = useState(0);
+  const [recTab, setRecTab] = useState<"products" | "services" | "diet">(
+    "products"
+  );
+  const { count: cartCount } = useCart();
+  const [openCart, setOpenCart] = useState(false);
+
+  const reportSource =
+    analysisData?.data?.[0] ||
+    analysisData?.data ||
+    analysisData?.productRecommendation ||
+    analysisData ||
+    null;
+
+  const getIn = (obj: any, path: string) => {
+    if (!obj || !path) return undefined;
+    return path.split(".").reduce((acc: any, key: string) => {
+      if (acc == null) return undefined;
+      return acc[key];
+    }, obj);
+  };
+
+  const asNumber = (v: any, fallback: number) => {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string") {
+      const cleaned = v.trim().replace(/[^0-9.+-]/g, "");
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : fallback;
+    }
+    return fallback;
+  };
+
+  const pickNumber = (paths: string[], fallback: number) => {
+    for (const p of paths) {
+      const raw = getIn(reportSource, p);
+      const parsed = asNumber(raw, NaN as any);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return fallback;
+  };
+
+  const overallScore = pickNumber(
+    [
+      "skinHealthScore",
+      "overallScore",
+      "score",
+      "skincareHealthScore",
+      "skinHealth.score",
+      "skinHealth.overallScore",
+      "skinSummary.score",
+      "skinSummary.overallScore",
+      "analysis.overallScore",
+      "analysis.score",
+    ],
+    85
+  );
+
+  const metrics = [
+    {
+      label: "Moisture",
+      value: pickNumber(
+        [
+          "moisture",
+          "moistureScore",
+          "skinHealth.moisture",
+          "skinHealth.moistureScore",
+          "skinSummary.moisture",
+          "skinSummary.moistureScore",
+        ],
+        63
+      ),
+    },
+    {
+      label: "Wrinkles",
+      value: pickNumber(
+        [
+          "wrinkles",
+          "wrinklesScore",
+          "skinHealth.wrinkles",
+          "skinHealth.wrinklesScore",
+          "skinSummary.wrinkles",
+          "skinSummary.wrinklesScore",
+        ],
+        25
+      ),
+    },
+    {
+      label: "Dark Spots",
+      value: pickNumber(
+        [
+          "darkSpots",
+          "darkSpotsScore",
+          "skinHealth.darkSpots",
+          "skinHealth.darkSpotsScore",
+          "skinSummary.darkSpots",
+          "skinSummary.darkSpotsScore",
+        ],
+        46
+      ),
+    },
+  ];
+
+  const recTabs = [
+    {
+      key: "products" as const,
+      label: "Products",
+      imageSrc: "/products/product.svg",
+    },
+    {
+      key: "services" as const,
+      label: "Services",
+      imageSrc: "/products/service.svg",
+    },
+    {
+      key: "diet" as const,
+      label: "Diet",
+      imageSrc: "/products/diet.svg",
+    },
+  ];
+
+  const keyConcerns = [
+    {
+      title: "Acne",
+      imageSrc: "/wending/acne.svg",
+    },
+    {
+      title: "Open Pores",
+      imageSrc: "/wending/open.svg",
+    },
+    {
+      title: "Uneven Skin",
+      imageSrc: "/wending/uneven.svg",
+    },
+  ];
+
+  return (
     <>
       <Box
         sx={{
@@ -329,9 +490,12 @@ const CoverPage: React.FC<CoverPageProps> = ({
         >
           <TopLogo
             isKiosk={isKiosk}
-            onCartClick={() => setShowUserInfo(true)}
+            cartCount={cartCount}
+            onCartClick={() => setOpenCart(true)}
             onScanAgainClick={() => router.push(APP_ROUTES.SELFIE)}
           />
+
+          <CartProduct open={openCart} onClose={() => setOpenCart(false)} />
 
           <Box
             sx={{
@@ -400,8 +564,6 @@ const CoverPage: React.FC<CoverPageProps> = ({
           </Box>
 
         </Box>
-
-
       </Box>
     </>
   );

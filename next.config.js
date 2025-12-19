@@ -13,6 +13,10 @@ const nextConfig = {
         protocol: "https",
         hostname: "skin-care-recommendation.s3.eu-north-1.amazonaws.com",
       },
+      {
+        protocol: "https",
+        hostname: "skinskaproducts.s3.eu-north-1.amazonaws.com",
+      },
     ],
   },
 };

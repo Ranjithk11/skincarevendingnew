@@ -139,7 +139,7 @@ export default function VendingServices({ salonServices, cosmeticServices }: Pro
           >
             <Box
               component="img"
-              src="/images/recommendations.png"
+              src="/products/salon.svg"
               alt="Salon"
               sx={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
@@ -176,7 +176,7 @@ export default function VendingServices({ salonServices, cosmeticServices }: Pro
           >
             <Box
               component="img"
-              src="/images/recommendations.png"
+              src="/products/cosmotic.svg"
               alt="Cosmetic"
               sx={{ width: "100%", height: "100%", objectFit: "cover" }}
             />
