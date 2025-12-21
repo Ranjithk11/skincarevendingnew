@@ -49,7 +49,7 @@ export default function Questionnaire() {
   const [activeField, setActiveField] = useState<"name" | "phone" | "email">("name");
   const [isShift, setIsShift] = useState(true);
   const [isNumeric, setIsNumeric] = useState(false);
-  const [selectedSkinType, setSelectedSkinType] = useState<string>("normal");
+  const [selectedSkinType, setSelectedSkinType] = useState<string>("");
 
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);

@@ -47,8 +47,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
 
     "& .selfy_image": {
       overflow: "hidden",
-      width: 280,
-      height: 330,
+      width: "clamp(360px, 70vw, 720px)",
+      height: "clamp(440px, 70vh, 780px)",
       borderRadius: "10px",
       backgroundRepeat: "no-repeat",
       backgroundSize: "cover",
@@ -58,8 +58,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
         position: "absolute",
         right: 20,
         bottom: 20,
-        width: 40,
-        height: 40,
+        width: 90,
+        height: 90,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -131,8 +131,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
     },
     "& .selfy_image": {
       overflow: "hidden",
-      width: 280,
-      height: 330,
+      width: "clamp(360px, 70vw, 720px)",
+      height: "clamp(440px, 70vh, 780px)",
       borderRadius: "10px",
       backgroundRepeat: "no-repeat",
       backgroundSize: "cover",
@@ -142,8 +142,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
         position: "absolute",
         right: 20,
         bottom: 20,
-        width: 40,
-        height: 40,
+        width: 90,
+        height: 90,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -222,8 +222,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
     flexDirection: "column",
     "& .selfy_image": {
       overflow: "hidden",
-      width: 280,
-      height: 330,
+      width: "clamp(360px, 70vw, 720px)",
+      height: "clamp(440px, 70vh, 780px)",
       borderRadius: "10px",
       backgroundRepeat: "no-repeat",
       backgroundSize: "cover",
@@ -233,8 +233,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
         position: "absolute",
         right: 20,
         bottom: 20,
-        width: 40,
-        height: 40,
+        width: 120,
+        height: 120,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -669,7 +669,13 @@ const TakeSelfie = () => {
                   )}
                 </Box>
                 {!isLoadingSkinAttributes && (
-                  <Box mt={3}>
+                  <Box
+                    mt={3}
+                    sx={{
+                      width: "clamp(360px, 70vw, 720px)",
+                      mx: "auto",
+                    }}
+                  >
                     <Box mb={2}>
                       <SelectInputFieldComponent
                         id="skintype"
@@ -688,6 +694,7 @@ const TakeSelfie = () => {
                           ? "primary"
                           : "secondary"
                       }
+                      fullWidth
                       onClick={() => {
                         if (skinAttributeStatus?.type === "SUCCESS") {
                           handleGetSkinRecommendations();

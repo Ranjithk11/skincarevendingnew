@@ -24,6 +24,16 @@ export default function Slide2({
   handleNext,
   skinTypeOptions,
 }: Slide2Props) {
+  const handleOptionClick = (optionId: string) => {
+    setSelectedSkinType(optionId);
+
+    if (currentSlide !== 1) return;
+
+    window.setTimeout(() => {
+      handleNext();
+    }, 250);
+  };
+
   return (
     <Box
       sx={{
@@ -85,7 +95,7 @@ export default function Slide2({
             {skinTypeOptions.map((option) => (
               <Box
                 key={option.id}
-                onClick={() => setSelectedSkinType(option.id)}
+                onClick={() => handleOptionClick(option.id)}
                 sx={{
                   bgcolor: "white",
                   width: "100%",
@@ -150,22 +160,6 @@ export default function Slide2({
               </Box>
             ))}
           </Box>
-        </Box>
-
-        {/* Submit Button */}
-        <Box
-          sx={{
-            bgcolor: "#2d5a3d",
-            py: 3,
-            mx: 3,
-            mb: 10,
-            borderRadius: 2,
-            textAlign: "center",
-            cursor: "pointer",
-          }}
-          onClick={handleNext}
-        >
-          <Typography sx={{ color: "white", fontWeight: 600, fontSize: "30px" }}>Continue</Typography>
         </Box>
       </PageBackground>
     </Box>
