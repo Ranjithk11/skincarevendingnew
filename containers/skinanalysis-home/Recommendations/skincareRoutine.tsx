@@ -115,10 +115,10 @@ const HowToUseCard = ({
     >
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography sx={{
-                fontSize: { xs: 14, sm: 24 },
-                fontWeight: 600,
-                color: "#000",
-              }}>
+          fontSize: { xs: 14, sm: 24 },
+          fontWeight: 600,
+          color: "#000",
+        }}>
           {title}
         </Typography>
         <Typography sx={{ mt: 0.75, fontSize: { xs: 14, md: 16 }, color: "#000" }}>
@@ -237,9 +237,12 @@ const ProductCard = ({
             }}
           >
             Buy Now
-            <Box component="span" sx={{ display: "inline-flex", alignItems: "center" }}>
-              <img src="/icons/cart.svg" style={{ width: 16, height: 16 }} />
-            </Box>
+            <Box
+              component="img"
+              src="/icons/buy.svg"
+              alt="Buy"
+              sx={{ width: 18, height: 18, objectFit: "contain", display: "block" }}
+            />
           </Box>
         </Box>
 
@@ -355,7 +358,40 @@ export default function SkincareRoutinePage() {
               {night ? "NIGHTTIME ROUTINE" : "DAYTIME ROUTINE"}
             </Typography>
           </Box>
-          <Switch checked={night} onChange={(e) => setNight(e.target.checked)} />
+          <Switch
+            checked={night}
+            onChange={(e) => setNight(e.target.checked)}
+            sx={{
+              width: 56,
+              height: 30,
+              p: 0,
+              "& .MuiSwitch-switchBase": {
+                p: 0.5,
+                "&.Mui-checked": {
+                  transform: "translateX(26px)",
+                  color: "#ffffff",
+                  "& + .MuiSwitch-track": {
+                    opacity: 1,
+                    backgroundImage: "linear-gradient(90deg, #1DC9A0 0%, #FFDD1B 100%)",
+                  },
+                },
+              },
+              "& .MuiSwitch-thumb": {
+                width: 24,
+                height: 24,
+                backgroundColor: "#FFDD1B",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+              },
+              "& .MuiSwitch-track": {
+                borderRadius: 999,
+                opacity: 1,
+                backgroundImage: "linear-gradient(90deg, #FFDD1B 0%, #1DC9A0 100%)",
+              },
+              "& .MuiSwitch-switchBase.Mui-checked .MuiSwitch-thumb": {
+                backgroundColor: "#1DC9A0",
+              },
+            }}
+          />
         </Box>
 
         {/* STEPS */}
@@ -370,12 +406,12 @@ export default function SkincareRoutinePage() {
                 letterSpacing: 1.2,
               }}>{s.title}</Typography>
               <Typography sx={{
-                            mt: 2,
-                            mb: 2.5,
-                            fontSize: { xs: 12, sm: 16 },
-                            fontStyle:"SF Pro Display",
-                            color: "#000",
-                        }}>
+                mt: 2,
+                mb: 2.5,
+                fontSize: { xs: 12, sm: 16 },
+                fontStyle: "SF Pro Display",
+                color: "#000",
+              }}>
                 {s.subtitle}
               </Typography>
 

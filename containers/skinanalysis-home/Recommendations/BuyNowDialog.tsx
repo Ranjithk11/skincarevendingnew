@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Dialog, IconButton, Typography, useTheme } from "@mui/material";
+import { Box, Button, Chip, Dialog, IconButton, Typography, useTheme } from "@mui/material";
 import { Icon } from "@iconify/react";
 import { capitalizeWords } from "@/utils/func";
 import { useCart } from "./CartContext";
@@ -11,9 +11,34 @@ interface BuyNowDialogProps {
   id?: string;
   name: string;
   priceText: string;
+  matchLabel?: string;
+  productUse?: string;
+  productBenefits?: string;
+  retailPrice?: number;
+  discountValue?: number;
 }
 
-const BuyNowDialog = ({ open, onClose, imageUrl, id, name, priceText }: BuyNowDialogProps) => {
+const calculateDiscount = (originalPrice?: number, discountAmount?: number) => {
+  if (!Number.isFinite(originalPrice as number)) return undefined;
+  if (!Number.isFinite(discountAmount as number)) return originalPrice;
+  const discountedPrice =
+    (originalPrice as number) - (originalPrice as number) * ((discountAmount as number) / 100);
+  return Number(discountedPrice.toFixed(0));
+};
+
+const BuyNowDialog = ({
+  open,
+  onClose,
+  imageUrl,
+  id,
+  name,
+  priceText,
+  matchLabel,
+  productUse,
+  productBenefits,
+  retailPrice,
+  discountValue,
+}: BuyNowDialogProps) => {
   const theme = useTheme();
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState<number>(1);
@@ -42,7 +67,7 @@ const BuyNowDialog = ({ open, onClose, imageUrl, id, name, priceText }: BuyNowDi
       PaperProps={{
         sx: {
           width: "70%",
-          height: "485.99996948242233px",
+          height: "550px",
           borderRadius: "13px",
           border: "1px solid rgba(0,0,0,0.12)",
           opacity: 1,
@@ -65,6 +90,7 @@ const BuyNowDialog = ({ open, onClose, imageUrl, id, name, priceText }: BuyNowDi
           alignItems: "center",
           justifyContent: "center",
           gap: 1.5,
+          padding:2,
           backgroundColor: "#fff",
         }}
         onClick={(e) => e.stopPropagation()}
@@ -81,17 +107,105 @@ const BuyNowDialog = ({ open, onClose, imageUrl, id, name, priceText }: BuyNowDi
             width: 140,
             height: 250,
             objectFit: "contain",
+            mt:4,
+            
           }}
         />
 
         <Box sx={{ width: "100%", maxWidth: 520 }}>
+          {matchLabel ? (
+            <Box sx={{ display: "flex", justifyContent: "center", mb: 1 }}>
+              <Chip
+                variant="outlined"
+                color="primary"
+                size="small"
+                label={matchLabel}
+                sx={{ borderRadius: 1 }}
+              />
+            </Box>
+          ) : null}
+
           <Typography variant="subtitle1" sx={{ textAlign: "center", fontWeight: 800 }}>
             {capitalizeWords(name)}
           </Typography>
 
-          <Typography variant="subtitle1" color="primary" sx={{ textAlign: "center", mt: 2 }}>
-            {priceText}
-          </Typography>
+          {productUse ? (
+            <Typography
+              variant="body2"
+              sx={{
+                textAlign: "center",
+                mt: 0.75,
+                color: "text.secondary",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+              }}
+            >
+              {productUse
+                .split(" ")
+                .map(
+                  (word) =>
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                )
+                .join(" ")}
+            </Typography>
+          ) : null}
+
+          {productBenefits ? (
+            <Box sx={{ mt: 1.25 }}>
+              <Typography variant="subtitle1" sx={{ textAlign: "center", fontWeight: 800 }}>
+                Benefits
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  textAlign: "center",
+                  color: "text.secondary",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                }}
+              >
+                {productBenefits
+                  .split(" ")
+                  .map(
+                    (word) =>
+                      word.charAt(0).toUpperCase() +
+                      word.slice(1).toLowerCase()
+                  )
+                  .join(" ")}
+              </Typography>
+            </Box>
+          ) : null}
+
+          <Box sx={{ mt: 2, textAlign: "center" }}>
+            {Number.isFinite(retailPrice as number) &&
+            Number.isFinite(discountValue as number) &&
+            calculateDiscount(retailPrice, discountValue) !== retailPrice ? (
+              <Box sx={{ display: "flex", justifyContent: "center", gap: 1.5, alignItems: "baseline" }}>
+                <Typography sx={{ textDecoration: "line-through" }} variant="subtitle2">
+                  INR.{retailPrice}/-
+                </Typography>
+                <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 800 }}>
+                  INR.{calculateDiscount(retailPrice, discountValue)}/-
+                </Typography>
+              </Box>
+            ) : (
+              <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 800 }}>
+                {priceText}
+              </Typography>
+            )}
+
+            {discountValue ? (
+              <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary" }}>
+                Discount: Flat {discountValue}%
+              </Typography>
+            ) : null}
+          </Box>
 
           <Box
             sx={{
@@ -146,7 +260,7 @@ const BuyNowDialog = ({ open, onClose, imageUrl, id, name, priceText }: BuyNowDi
             </IconButton>
           </Box>
 
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", mt: 2,mb:2 ,gap:1}}>
             <Button
               variant="contained"
               color="primary"
@@ -155,7 +269,7 @@ const BuyNowDialog = ({ open, onClose, imageUrl, id, name, priceText }: BuyNowDi
                 handleAddToCart(quantity);
               }}
               size="small"
-              startIcon={<Icon icon="uil:cart" />}
+             
               sx={{
                 padding: "6px 12px",
                 typography: "body1",
@@ -163,7 +277,15 @@ const BuyNowDialog = ({ open, onClose, imageUrl, id, name, priceText }: BuyNowDi
                 minWidth: 140,
               }}
             >
-              Add To Cart
+              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+                <Box component="span">Add To Cart</Box>
+                <Box
+                  component="img"
+                  src="/icons/buy.svg"
+                  alt="Buy"
+                  sx={{ width: 18, height: 18, objectFit: "contain", display: "block" }}
+                />
+              </Box>
             </Button>
           </Box>
         </Box>

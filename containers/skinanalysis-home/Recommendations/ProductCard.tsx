@@ -146,7 +146,7 @@ const StyledProductCard = styled(Card, {
 );
 
 const StyledCtaDialogModel = styled(Box)(({ theme }) => ({
-  width: 650,
+  width: 750,
   height: 350,
   position: "relative",
   display: "flex",
@@ -242,56 +242,58 @@ const ProductCard = ({
         cursor: "default",
         ...(showHorizontal
           ? {
-              p: 2,
-              borderRadius: 2,
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 2,
-              "& .product_image": {
-                width: 80,
-                minWidth: 80,
-                height: 350,
-                marginBottom: 0,
-                padding: 8,
-                borderRadius: 12,
-                backgroundColor: "#fff",
-              },
-              "& .MuiTypography-subtitle1": {
+            p: 2,
+            borderRadius: 2,
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 2,
+            "& .product_image": {
+              width: 80,
+              minWidth: 80,
+              height: 350,
+              marginBottom: 0,
+              padding: 8,
+              borderRadius: 12,
+              backgroundColor: "#fff",
+            },
+            "& .MuiTypography-subtitle1": {
+              textAlign: "left",
+              WebkitLineClamp: "2",
+            },
+            "& .MuiTypography-body1": horizontalLayout
+              ? {
+                display: "none",
+              }
+              : {
                 textAlign: "left",
                 WebkitLineClamp: "2",
               },
-              "& .MuiTypography-body1": horizontalLayout
-                ? {
-                    display: "none",
-                  }
-                : {
-                    textAlign: "left",
-                    WebkitLineClamp: "2",
-                  },
-            }
+          }
           : null),
         ...(compact
           ? {
-              p: "16px",
-              borderRadius: 2,
-              minHeight: 300,
-              "& .product_image": {
-                height: 150,
-                marginBottom: 8,
-                padding: 8,
-              },
-              "& .MuiTypography-subtitle1": {
-                fontSize: 13,
-                WebkitLineClamp: "1",
-                textAlign: "center",
-              },
-              "& .MuiTypography-body1": {
-                fontSize: 12,
-                WebkitLineClamp: "1",
-                textAlign: "center",
-              },
-            }
+            p: "16px",
+            borderRadius: 2,
+            minHeight: 300,
+            "& .product_image": {
+              height: 150,
+              marginBottom: 8,
+              padding: 8,
+            },
+            "& .MuiTypography-subtitle1": {
+              fontSize: 13,
+              WebkitLineClamp: "1",
+              textAlign: "center",
+              mr: 12
+            },
+            "& .MuiTypography-body1": {
+              fontSize: 12,
+              WebkitLineClamp: "1",
+              textAlign: "center",
+              mr: 2
+            },
+          }
           : null),
         ...(!showHorizontal && !compact ? { borderRadius: 2, minHeight: 400 } : null),
         ...(cardSx || {}),
@@ -304,7 +306,7 @@ const ProductCard = ({
           backgroundImage: `url(${images?.[0]?.url})`,
         }}
       ></Box>
-      <Box flexGrow={1} width={showHorizontal ? "auto" : "100%"}>
+      <Box flexGrow={1} width="100%" sx={{ minWidth: 0, mr: 2 }}>
         <Grid container spacing={compact ? 1 : 2}>
           <Grid item xs={12}>
             <Box mb={1}>
@@ -320,13 +322,13 @@ const ProductCard = ({
             <Typography
               color="primary"
               sx={() => ({
-                fontWeight: 600,
+                fontWeight: 500,
               })}
               variant="subtitle1"
             >
               {capitalizeWords(name)}
             </Typography>
-            <Typography variant="body1">
+            {/* <Typography variant="body2">
               {productUse
                 .split(" ")
                 .map(
@@ -334,8 +336,8 @@ const ProductCard = ({
                     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
                 )
                 .join(" ")}
-            </Typography>
-            {productBenefits && (
+            </Typography> */}
+            {/* {productBenefits && (
               <Box mt={1}>
                 <Typography variant="subtitle1">Benefits</Typography>
                 <Typography variant="body1">
@@ -349,35 +351,36 @@ const ProductCard = ({
                     .join(" ")}
                 </Typography>
               </Box>
-            )}
+            )} */}
             <Box mt={1}>
               {calculateDiscount(retailPrice, discount?.value) ===
                 retailPrice && (
-                <Typography color="primary" variant="subtitle1">
-                  INR.{retailPrice}/-
-                </Typography>
-              )}
-              {calculateDiscount(retailPrice, discount?.value) !==
-                retailPrice && (
-                <Box display="flex" gap={2}>
-                  <Typography
-                    style={{ textDecoration: "line-through" }}
-                    variant="subtitle2"
-                  >
+                  <Typography color="primary" variant="subtitle1" sx={{ fontSize: 14 }}>
                     INR.{retailPrice}/-
                   </Typography>
-                  <Typography variant="subtitle1" color="primary">
-                    INR.{calculateDiscount(retailPrice, discount?.value)}/-
-                  </Typography>
-                </Box>
-              )}
+                )}
+              {calculateDiscount(retailPrice, discount?.value) !==
+                retailPrice && (
+                  <Box display="flex">
+                    <Typography
+                      style={{ textDecoration: "line-through" }}
+                      variant="subtitle2"
+                      sx={{ fontSize: 12 }}
+                    >
+                      INR.{retailPrice}/-
+                    </Typography>
+                    <Typography variant="subtitle2" color="primary" sx={{ fontSize: 16 }}>
+                      INR.{calculateDiscount(retailPrice, discount?.value)}/-
+                    </Typography>
+                  </Box>
+                )}
             </Box>
 
             {discount?.value && (
               <Box mt={1}>
-                <Typography variant="subtitle1">
+                <Typography variant="subtitle1" sx={{ fontSize: 12 }}>
                   Discount: Flat{" "}
-                  <span> {discount?.value ? `${discount.value}%` : " "}</span>
+                 {discount?.value ? `${discount.value}%` : " "}
                 </Typography>
               </Box>
             )}
@@ -388,17 +391,24 @@ const ProductCard = ({
                 color="primary"
                 onClick={handleOpenBuyNow}
                 size="small"
-                startIcon={<Icon icon="uil:cart" />}
                 sx={{
                   marginTop: 1.5,
                   padding: "6px 12px",
                   typography: "body1",
                   whiteSpace: "nowrap",
                   alignSelf: "flex-start",
+                  gap:1
                 }}
               >
                 Buy Now
+                <Box
+                  component="img"
+                  src="/icons/buy.svg"
+                  alt="Buy"
+                  sx={{ width: 18, height: 18, objectFit: "contain", display: "block" }}
+                />
               </Button>
+
             )}
           </Grid>
         </Grid>
@@ -429,6 +439,11 @@ const ProductCard = ({
         id={_id}
         name={name}
         priceText={`INR.${calculateDiscount(retailPrice, discount?.value)}/-`}
+        matchLabel={matches?.[0]?.name?.replace("_", " ")}
+        productUse={productUse}
+        productBenefits={productBenefits}
+        retailPrice={retailPrice}
+        discountValue={discount?.value}
       />
 
       {!enabledMask && !shopifyUrl && (

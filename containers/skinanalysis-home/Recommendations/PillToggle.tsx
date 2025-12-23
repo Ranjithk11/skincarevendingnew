@@ -34,7 +34,7 @@ const PillToggle = <T extends string | number>({
               key={String(opt.value)}
               onClick={() => onChange(opt.value)}
               sx={{
-                width: 230,
+                width: 250,
                 height: 80,
                 display: "flex",
                 alignItems: "center",
