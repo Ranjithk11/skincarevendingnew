@@ -3,11 +3,11 @@ import {
   createTheme,
   PaletteOptions,
 } from "@mui/material/styles";
-import { Open_Sans, Dancing_Script } from "next/font/google";
+import { Roboto, Dancing_Script } from "next/font/google";
 import { APP_COLORS } from "../colors/colors";
 
-const openSans = Open_Sans({
-  weight: ["400", "700", "800", "300", "600", "500"],
+const roboto = Roboto({
+  weight: ["300", "400", "500", "700", "900"],
   style: ["normal", "italic"],
   subsets: ["latin"],
   display: "swap",
@@ -59,7 +59,7 @@ export const lightTheme = createTheme({
     google: createColor(APP_COLORS.GOOGLE),
   },
   typography: {
-    fontFamily: [openSans.style.fontFamily].join(","),
+    fontFamily: [roboto.style.fontFamily].join(","),
     h1: {
       fontSize: 30,
       fontWeight: 700,
@@ -72,9 +72,9 @@ export const lightTheme = createTheme({
     },
 
     subtitle1: {
-      fontSize: 22,
+      fontSize: 24,
       lineHeight: "28px",
-      fontWeight: 600,
+      fontWeight: 500,
     },
     subtitle2: {
       fontSize: 18,

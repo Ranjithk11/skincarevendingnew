@@ -114,7 +114,7 @@ const BuyNowDialog = ({
 
         <Box sx={{ width: "100%", maxWidth: 520 }}>
           {matchLabel ? (
-            <Box sx={{ display: "flex", justifyContent: "center", mb: 1 }}>
+            <Box sx={{ display: "flex", justifyContent: "flex-start", mb: 1 }}>
               <Chip
                 variant="outlined"
                 color="primary"
@@ -125,7 +125,7 @@ const BuyNowDialog = ({
             </Box>
           ) : null}
 
-          <Typography variant="subtitle1" sx={{ textAlign: "center", fontWeight: 800 }}>
+          <Typography variant="subtitle1" sx={{ textAlign: "left", fontWeight: 800 }}>
             {capitalizeWords(name)}
           </Typography>
 
@@ -133,7 +133,7 @@ const BuyNowDialog = ({
             <Typography
               variant="body2"
               sx={{
-                textAlign: "center",
+                textAlign: "left",
                 mt: 0.75,
                 color: "text.secondary",
                 overflow: "hidden",
@@ -155,13 +155,13 @@ const BuyNowDialog = ({
 
           {productBenefits ? (
             <Box sx={{ mt: 1.25 }}>
-              <Typography variant="subtitle1" sx={{ textAlign: "center", fontWeight: 800 }}>
+              <Typography variant="subtitle1" sx={{ textAlign: "left", fontWeight: 800 }}>
                 Benefits
               </Typography>
               <Typography
                 variant="body2"
                 sx={{
-                  textAlign: "center",
+                  textAlign: "left",
                   color: "text.secondary",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -182,11 +182,11 @@ const BuyNowDialog = ({
             </Box>
           ) : null}
 
-          <Box sx={{ mt: 2, textAlign: "center" }}>
+          <Box sx={{ mt: 2, textAlign: "left" }}>
             {Number.isFinite(retailPrice as number) &&
             Number.isFinite(discountValue as number) &&
             calculateDiscount(retailPrice, discountValue) !== retailPrice ? (
-              <Box sx={{ display: "flex", justifyContent: "center", gap: 1.5, alignItems: "baseline" }}>
+              <Box sx={{ display: "flex", justifyContent: "flex-start", gap: 1.5, alignItems: "baseline" }}>
                 <Typography sx={{ textDecoration: "line-through" }} variant="subtitle2">
                   INR.{retailPrice}/-
                 </Typography>
@@ -195,13 +195,13 @@ const BuyNowDialog = ({
                 </Typography>
               </Box>
             ) : (
-              <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 800 }}>
+              <Typography variant="subtitle1" color="primary" sx={{ fontWeight: 800, textAlign: "left" }}>
                 {priceText}
               </Typography>
             )}
 
             {discountValue ? (
-              <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary" }}>
+              <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary", textAlign: "left" }}>
                 Discount: Flat {discountValue}%
               </Typography>
             ) : null}
@@ -260,7 +260,7 @@ const BuyNowDialog = ({
             </IconButton>
           </Box>
 
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 2,mb:2 ,gap:1}}>
+          <Box sx={{ display: "flex", justifyContent: "flex-start", mt: 2, mb: 2, gap: 1 }}>
             <Button
               variant="contained"
               color="primary"
@@ -271,7 +271,7 @@ const BuyNowDialog = ({
               size="small"
              
               sx={{
-                padding: "6px 12px",
+                padding: "12px 12px",
                 typography: "body1",
                 whiteSpace: "nowrap",
                 minWidth: 140,

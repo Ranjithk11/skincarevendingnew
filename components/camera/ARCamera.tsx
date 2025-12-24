@@ -120,6 +120,22 @@ const ARCameraComponent = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const isCapturingRef = useRef(false);
 
+  useEffect(() => {
+    return () => {
+      try {
+        if (faceDetectionIntervalRef.current !== null) {
+          window.clearInterval(faceDetectionIntervalRef.current);
+          faceDetectionIntervalRef.current = null;
+        }
+        if (countdownIntervalRef.current !== null) {
+          window.clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+      } catch {}
+      stopCamera();
+    };
+  }, []);
+
   const stopCamera = () => {
     try {
       streamRef.current?.getTracks()?.forEach((t) => t.stop());
@@ -284,6 +300,7 @@ const ARCameraComponent = ({
         if (!ctx) return;
         ctx.drawImage(video, 0, 0, width, height);
         const base64 = canvas.toDataURL("image/jpeg", 0.92);
+        stopCamera();
         onCaptured(base64 as any);
         setIsCamOpen(false);
       } finally {
@@ -410,6 +427,38 @@ const ARCameraComponent = ({
                 backgroundColor: "black",
               }}
             />
+
+            <Box
+              sx={{
+                position: "absolute",
+                top: 16,
+                left: 0,
+                right: 0,
+                display: "flex",
+                justifyContent: "center",
+                pointerEvents: "none",
+                zIndex: 3,
+                px: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  maxWidth: 520,
+                  width: "100%",
+                  borderRadius: 999,
+                  bgcolor: "rgba(0,0,0,0.55)",
+                  color: "#66eb13ff",
+                  textAlign: "center",
+                  py: 2,
+                  px: 2,
+                  boxShadow: "0 8px 18px rgba(0,0,0,0.18)",
+                }}
+              >
+                <Typography sx={{ fontSize: 28, fontWeight: 400, lineHeight: 1.2 }}>
+                  Please keep your face straight and look directly at the camera.
+                </Typography>
+              </Box>
+            </Box>
           </Box>
           {countdownSeconds !== null && countdownSeconds > 0 && (
             <Box

@@ -29,7 +29,13 @@ export default function VendingProducts({ data }: Props) {
   }, [products]);
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box
+      sx={{
+        width: "100%",
+        fontFamily:
+          'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+      }}
+    >
       <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 2, mb: 2 }}>
         My Skincare Products
       </Typography>
@@ -85,19 +91,20 @@ export default function VendingProducts({ data }: Props) {
                     component="img"
                     src={firstImg}
                     alt={c?.productCategory?.title || "category"}
-                    sx={{ width: "100%", height: "100%", objectFit: "contain" }}
+                    sx={{ width: "122px", height: "122px", objectFit: "contain" }}
                   />
                 ) : null}
               </Box>
               <Typography
                 sx={{
                   mt: 0.75,
-                  fontSize: { xs: 10, md: 12 },
-                  color: "#111827",
-                  fontWeight: 600,
+                  fontSize: "16px",
+                  color: "#000",
+                  fontWeight: 400,
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
+                  fontFamily: "Roboto, system-ui, -apple-system",
                 }}
               >
                 {c?.productCategory?.title || "Category"}

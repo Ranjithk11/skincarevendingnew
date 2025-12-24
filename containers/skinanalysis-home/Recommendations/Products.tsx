@@ -19,6 +19,7 @@ const StyledProductsWrapper = styled(Box)(({ theme }) => ({
   width: "100%",
   paddingTop: 75,
   paddingBottom: 75,
+  fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
   position: "relative",
   minHeight: 400,
   display: "flex",

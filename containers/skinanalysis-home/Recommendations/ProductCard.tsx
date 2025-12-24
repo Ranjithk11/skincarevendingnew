@@ -47,6 +47,7 @@ const StyledProductCard = styled(Card, {
 })<{ enabledMask?: boolean; minWidth?: number }>(
   ({ theme, enabledMask, minWidth }) => ({
     height: "100%",
+    fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
 
     ...(minWidth && {
       minWidth: minWidth,
@@ -69,8 +70,6 @@ const StyledProductCard = styled(Card, {
       height: 300,
     },
     "& .MuiTypography-subtitle1": {
-      fontWeight: 800,
-      fontSize: 18,
       overflow: "hidden",
       textOverflow: "ellipsis",
       display: "-webkit-box",
@@ -80,14 +79,13 @@ const StyledProductCard = styled(Card, {
         filter: "blur(1rem)",
       }),
       [theme.breakpoints.only("xs")]: {
-        fontSize: 16,
         lineHeight: 1,
         marginBottom: 10,
       },
     },
     "& .MuiTypography-body1": {
       fontWeight: 500,
-      fontSize: 16,
+      fontSize: 24,
       color: theme.palette.text.secondary,
       overflow: "hidden",
       textOverflow: "ellipsis",
@@ -320,10 +318,16 @@ const ProductCard = ({
               />
             </Box>
             <Typography
-              color="primary"
-              sx={() => ({
+              sx={{
+                fontFamily:
+                  'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                 fontWeight: 500,
-              })}
+                fontStyle: "normal",
+                fontSize: "24px",
+                lineHeight: "100%",
+                letterSpacing: "0%",
+                color: "#000",
+              }}
               variant="subtitle1"
             >
               {capitalizeWords(name)}
@@ -355,7 +359,7 @@ const ProductCard = ({
             <Box mt={1}>
               {calculateDiscount(retailPrice, discount?.value) ===
                 retailPrice && (
-                  <Typography color="primary" variant="subtitle1" sx={{ fontSize: 14 }}>
+                  <Typography color="primary" variant="subtitle1" sx={{ fontSize: "24px" }}>
                     INR.{retailPrice}/-
                   </Typography>
                 )}
@@ -365,12 +369,12 @@ const ProductCard = ({
                     <Typography
                       style={{ textDecoration: "line-through" }}
                       variant="subtitle2"
-                      sx={{ fontSize: 12 }}
+                      sx={{ fontSize: "12px" }}
                     >
-                      INR.{retailPrice}/-
+                      RS.{retailPrice}/-
                     </Typography>
-                    <Typography variant="subtitle2" color="primary" sx={{ fontSize: 16 }}>
-                      INR.{calculateDiscount(retailPrice, discount?.value)}/-
+                    <Typography variant="subtitle2" color="#872121" sx={{ fontSize: "24px" }}>
+                      {calculateDiscount(retailPrice, discount?.value)}/-
                     </Typography>
                   </Box>
                 )}
@@ -378,7 +382,7 @@ const ProductCard = ({
 
             {discount?.value && (
               <Box mt={1}>
-                <Typography variant="subtitle1" sx={{ fontSize: 12 }}>
+                <Typography variant="subtitle1" sx={{ fontSize: "24px" }}>
                   Discount: Flat{" "}
                  {discount?.value ? `${discount.value}%` : " "}
                 </Typography>
