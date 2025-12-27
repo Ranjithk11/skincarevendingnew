@@ -79,11 +79,11 @@ const CoverBottomHalf: React.FC<CoverBottomHalfProps> = ({
 
             <Typography
                 sx={{
-                    mt: 2.5,
+                    mt: 5,
                     mb: 0.75,
                     fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                     fontWeight: 510,
-                    fontSize: "40px",
+                    fontSize: "32px",
                     lineHeight: "100%",
                     letterSpacing: "0%",
                 }}
@@ -164,7 +164,7 @@ const CoverBottomHalf: React.FC<CoverBottomHalfProps> = ({
                         })}
                     </Box>
 
-                    <Box sx={{ mt: 1.5 }}>
+                    <Box sx={{ mt: 2,mb:8 }}>
                         {recTab === "products" && <VendingProducts data={reportSource} />}
                         {recTab === "services" && (
                             <VendingServices

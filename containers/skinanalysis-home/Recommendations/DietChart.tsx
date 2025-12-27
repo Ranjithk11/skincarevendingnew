@@ -101,7 +101,7 @@ export default function DietChart({ data }: DietChartProps) {
           mb: 0.75,
           fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
           fontWeight: 510,
-          fontSize: "40px",
+          fontSize: "32px",
           lineHeight: "100%",
           letterSpacing: "0%",
         }}>

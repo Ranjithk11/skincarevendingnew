@@ -124,8 +124,10 @@ const TopLogo: React.FC<TopLogoProps> = ({
             }}
             onClick={onScanAgainClick}
           >
-            <Image src="/icons/face.png" width={18} height={18} alt="" />
-            &nbsp;Scan again
+            <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+              <Image src="/icons/face.png" width={18} height={18} alt="" />
+              <span>Scan again</span>
+            </Box>
           </Button>
         </Box>
       </Box>

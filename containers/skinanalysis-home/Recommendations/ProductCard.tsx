@@ -140,6 +140,26 @@ const StyledProductCard = styled(Card, {
         color: theme.palette.common.white,
       },
     },
+    "& .ribbon": {
+      position: "absolute",
+      top: 20,
+      left: "calc(-1 * var(--f))",
+      zIndex: 2,
+      fontSize: 14,
+      fontWeight: 700,
+      color: "white",
+      lineHeight: 3,
+      width: 220,
+      paddingInline: "0.25em",
+      background: "#cc333f",
+      boxSizing: "border-box",
+      "--f": "0.5em",
+      "--r": "0.8em",
+      borderBottom: "var(--f) solid #0005",
+      borderRight: "var(--r) solid #0000",
+      clipPath:
+        "polygon(0 0, 0 calc(100% - var(--f)), var(--f) 100%, var(--f) calc(100% - var(--f)), 100% calc(100% - var(--f)), calc(100% - var(--r)) calc(50% - var(--f) / 2), 100% 0)",
+    },
   })
 );
 
@@ -297,6 +317,11 @@ const ProductCard = ({
         ...(cardSx || {}),
       }}
     >
+      {discount?.value ? (
+        <Box component="div" className="ribbon">
+          {discount.value}% Flat Discount
+        </Box>
+      ) : null}
       <Box
         component="div"
         className="product_image"
@@ -380,14 +405,14 @@ const ProductCard = ({
                 )}
             </Box>
 
-            {discount?.value && (
+            {/* {discount?.value && (
               <Box mt={1}>
                 <Typography variant="subtitle1" sx={{ fontSize: "24px" }}>
                   Discount: Flat{" "}
                  {discount?.value ? `${discount.value}%` : " "}
                 </Typography>
               </Box>
-            )}
+            )} */}
 
             {showHorizontal && !enabledMask && shopifyUrl && (
               <Button

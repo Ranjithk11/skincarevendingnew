@@ -36,7 +36,7 @@ export default function VendingProducts({ data }: Props) {
           'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
       }}
     >
-      <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 2, mb: 2 }}>
+      <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 5, mb: 2 }}>
         My Skincare Products
       </Typography>
       <Typography sx={{ fontSize: 18, letterSpacing: 1.6, color: "#000",mb:2 }}>
