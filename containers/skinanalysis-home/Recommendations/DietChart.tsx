@@ -1,17 +1,42 @@
 "use client";
 
+import React from "react";
 import { Box, Card, Container, Divider, Grid, Typography, styled } from "@mui/material";
 
-const PageBackground = styled(Box)(() => ({
-  width: "100%",
-  minHeight: "100vh",
-  paddingTop: 16,
-  paddingBottom: 24,
-  backgroundImage: "url('/wending/linesbg.svg')",
-  backgroundRepeat: "no-repeat",
-  backgroundSize: "700px auto",
-  backgroundPosition: "top -60px right -180px",
-}));
+const PageBackground = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Box
+      sx={{
+        minHeight: "100dvh",
+        width: "100%",
+        position: "relative",
+        overflow: "hidden",
+        backgroundColor: "#ffffff",
+      }}
+    >
+      <Box
+        component="svg"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        sx={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <path
+          d="M100,0 L100,100 L0,100 Q25,78 45,60 Q70,35 100,0 Z"
+          fill="#E9F6E8"
+        />
+      </Box>
+
+      <Box sx={{ position: "relative", zIndex: 1, width: "100%" }}>{children}</Box>
+    </Box>
+  );
+};
 
 const SectionCard = styled(Card)(() => ({
   width: "80%",

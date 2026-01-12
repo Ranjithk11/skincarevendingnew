@@ -33,6 +33,7 @@ import ProductsView from "./Recommendations/Products";
 import Payment from "./Recommendations/Payment";
 import ViewAllProducts from "./Recommendations/ViewAllProducts";
 import LipsProductsView from "./Recommendations/LipProducts";
+import NewUiPage from "./Recommendations/newUi";
 
 const defaultFont = "Roboto";
 const extraBold = `/fonts/OpenSans-ExtraBold.ttf`;
@@ -188,7 +189,8 @@ const SkinAnalysisRecommendation = () => {
     >
       {!isLoading && data && !isLoadingImageInfo && (
         <Fragment>
-          <CoverPage useData={dataImageInfo} dataFUQR={dataFUQR} analysisData={data} />
+          <NewUiPage useData={dataImageInfo} dataFUQR={dataFUQR} analysisData={data} />
+          {/* <CoverPage useData={dataImageInfo} dataFUQR={dataFUQR} analysisData={data} /> */}
           {/* <PreventingView useData={dataImageInfo} data={data} /> */}
           {/* <ProductsView data={data} /> */}
           {/* {data?.data?.[0]?.recommendedLipProducts?.length > 0 && (

@@ -9,6 +9,43 @@ type Props = {
   cosmeticServices?: any[];
 };
 
+const PageBackground = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Box
+      sx={{
+        minHeight: "100%",
+        height: "100%",
+        width: "100%",
+        position: "relative",
+        overflow: "hidden",
+        backgroundColor: "#ffffff",
+        mb:2,
+      }}
+    >
+      <Box
+        component="svg"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        sx={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <path
+          d="M100,0 L100,100 L0,100 Q25,78 45,60 Q70,35 100,0 Z"
+          fill="#E9F6E8"
+        />
+      </Box>
+
+      <Box sx={{ position: "relative", zIndex: 1, width: "100%" }}>{children}</Box>
+    </Box>
+  );
+};
+
 const ServiceCard = ({ item }: { item: any }) => {
   const img = item?.images?.[0]?.url;
   return (
@@ -23,6 +60,7 @@ const ServiceCard = ({ item }: { item: any }) => {
         display: "flex",
         flexDirection: "row",
         alignItems: "stretch",
+        mb:2
       }}
     >
       <Box
@@ -104,15 +142,16 @@ export default function VendingServices({ salonServices, cosmeticServices }: Pro
   }, [serviceTab, salonServices, cosmeticServices]);
 
   return (
-    <Box sx={{ width: "100%" }}>
-      <Typography sx={{ fontWeight: 800, fontSize: 36, mt: 4, mb: 2 }}>
-        My Skincare Services
-      </Typography>
-      <Typography sx={{ fontSize: "24px",fontWeight:400, color: "#000" }}>
-        WHAT WE RECOMMEND
-      </Typography>
+    <PageBackground>
+      <Box sx={{ width: "100%" }}>
+        <Typography sx={{ fontWeight: 800, fontSize: 36, mt: 3, mb: 3 }}>
+          My Skincare Services
+        </Typography>
+        <Typography sx={{ fontSize: "24px",fontWeight:400, color: "#000" }}>
+          WHAT WE RECOMMEND
+        </Typography>
 
-      <Box sx={{ mt: 2, display: "flex", gap: 1.5 ,mb:2}}>
+      <Box sx={{ mt: 3, display: "flex", gap: 1.5 ,mb:5}}>
         <Box
           onClick={() => setServiceTab("salon")}
           sx={{
@@ -188,13 +227,14 @@ export default function VendingServices({ salonServices, cosmeticServices }: Pro
         </Box>
       </Box>
 
-      <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt:2}}>
-        {active.slice(0, 6).map((item: any) => (
-          <Grid item xs={6} md={4} key={item?._id || item?.name}>
-            <ServiceCard item={item} />
-          </Grid>
-        ))}
-      </Grid>
-    </Box>
+        <Grid container spacing={{ xs: 2, md: 3 }} sx={{ mt:1}}>
+          {active.slice(0, 6).map((item: any) => (
+            <Grid item xs={6} md={4} key={item?._id || item?.name}>
+              <ServiceCard item={item} />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    </PageBackground>
   );
 }

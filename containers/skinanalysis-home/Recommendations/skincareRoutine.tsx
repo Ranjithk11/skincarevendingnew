@@ -10,27 +10,42 @@ const PageBackground = ({ children }: { children: React.ReactNode }) => {
   return (
     <Box
       sx={{
-        minHeight: "100vh",
+        minHeight: "100dvh",
         width: "100%",
-        position: "relative", // 🔴 FIX: never fixed
-        backgroundColor: "#fff",
-        backgroundImage: {
-          xs: "url('/wending/linesbg.svg')",
-          sm: "url('/wending/linesbg.png')",
-        },
-        backgroundRepeat: "no-repeat",
-        backgroundSize: {
-          xs: "700px auto",
-          sm: "100% auto",
-        },
-        backgroundPosition: {
-          xs: "top -60px right -180px",
-          sm: "top -80px right -240px",
-        },
-        pb: 4,
+        position: "relative",
+        overflow: "hidden",
+        backgroundColor: "#ffffff",
       }}
     >
-      {children}
+      <Box
+        component="svg"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        sx={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <path
+          d="M100,0 L100,100 L0,100 Q25,78 45,60 Q70,35 100,0 Z"
+          fill="#E9F6E8"
+        />
+      </Box>
+
+      <Box
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          width: "100%",
+          pb: 4,
+        }}
+      >
+        {children}
+      </Box>
     </Box>
   );
 };

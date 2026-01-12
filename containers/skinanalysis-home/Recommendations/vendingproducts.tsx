@@ -8,6 +8,42 @@ type Props = {
   data: any;
 };
 
+const PageBackground = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Box
+      sx={{
+        minHeight: "100%",
+        height: "100%",
+        width: "100%",
+        position: "relative",
+        overflow: "hidden",
+        backgroundColor: "#ffffff",
+      }}
+    >
+      <Box
+        component="svg"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+        sx={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          zIndex: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <path
+          d="M100,0 L100,100 L0,100 Q25,78 45,60 Q70,35 100,0 Z"
+          fill="#E9F6E8"
+        />
+      </Box>
+
+      <Box sx={{ position: "relative", zIndex: 1, width: "100%" }}>{children}</Box>
+    </Box>
+  );
+};
+
 export default function VendingProducts({ data }: Props) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
@@ -29,31 +65,33 @@ export default function VendingProducts({ data }: Props) {
   }, [products]);
 
   return (
-    <Box
-      sx={{
-        width: "100%",
-        fontFamily:
-          'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
-      }}
-    >
-      <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 5, mb: 2 }}>
-        My Skincare Products
-      </Typography>
-      <Typography sx={{ fontSize: "24px", letterSpacing: 1.6,fontWeight:400, color: "#000",mb:2 }}>
-        WHAT WE RECOMMEND
-      </Typography>
+    <PageBackground>
+      <Box
+        sx={{
+          width: "100%",
+          mb:2,
+          fontFamily:
+            'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+        }}
+      >
+        <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 3, mb: 3 }}>
+          My Skincare Products
+        </Typography>
+        <Typography sx={{ fontSize: "24px", letterSpacing: 1,fontWeight:400, color: "#000",mb:1 }}>
+          WHAT WE RECOMMEND
+        </Typography>
 
       <Box
         sx={{
-          mt: 2,
-          mb :5,
+          mt: 5,
+          mb: 5,
           display: "flex",
           gap: { xs: 0, md: 0 },
           overflowX: { xs: "auto", md: "hidden" },
           flexWrap: { xs: "nowrap", md: "wrap" },
           justifyContent: { md: "space-between" },
           width: "100%",
-          pb: 2,
+          pb: 1,
         }}
       >
         {categories.slice(0, 8).map((c: any, idx: number) => {
@@ -84,6 +122,7 @@ export default function VendingProducts({ data }: Props) {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  
                 }}
               >
                 {firstImg ? (
@@ -129,7 +168,7 @@ export default function VendingProducts({ data }: Props) {
         })}
       </Box>
 
-      <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 2 }}>
+      <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 1 }}>
         {visibleProducts.length === 0 ? (
           <Grid item xs={12}>
             <Typography sx={{ mt: 1.5, color: "#6b7280" }}>
@@ -160,7 +199,7 @@ export default function VendingProducts({ data }: Props) {
                     }
                     : {
                       maxWidth: 700,
-                      height: 340,
+                      height: 300,
                     }),
                 }}
               />
@@ -168,6 +207,7 @@ export default function VendingProducts({ data }: Props) {
           ))
         )}
       </Grid>
-    </Box>
+      </Box>
+    </PageBackground>
   );
 }
