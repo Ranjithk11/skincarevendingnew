@@ -95,10 +95,16 @@ const StyledSkinAnalysisRecommendation = styled(Container)(({ theme }) => ({
     paddingLeft: 0,
     paddingRight: 0,
   },
-  "& .whatsapp-button": {
+  "& .floating-actions": {
     position: "fixed",
-    right: 30,
-    bottom: 120, // Adjust this to position above the scroll-to-top button
+    right: 16,
+    bottom: 16,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    zIndex: 20,
+  },
+  "& .whatsapp-button": {
     backgroundColor: theme.palette.common.white,
     width: 50,
     height: 50,
@@ -111,14 +117,11 @@ const StyledSkinAnalysisRecommendation = styled(Container)(({ theme }) => ({
       cursor: "pointer",
     },
     "& svg": {
-      fontSize: 40,
+      fontSize: 60,
       color: "#25D366", // WhatsApp green color
     },
   },
   "& .scrool-to-top": {
-    position: "fixed",
-    right: 30,
-    bottom: 50,
     backgroundColor: theme.palette.common.white,
     width: 50,
     height: 50,
@@ -131,7 +134,7 @@ const StyledSkinAnalysisRecommendation = styled(Container)(({ theme }) => ({
       cursor: "pointer",
     },
     "& svg": {
-      fontSize: 40,
+      fontSize: 60,
       color: theme.palette.primary.main,
     },
   },
@@ -221,20 +224,22 @@ const SkinAnalysisRecommendation = () => {
         </Box>
       )}
 
-      <Paper
-        onClick={handleWhatsAppClick}
-        component="div"
-        className="whatsapp-button"
-      >
-        <Icon icon="logos:whatsapp-icon" />
-      </Paper>
-      <Paper
-        onClick={handleScrollToTop}
-        component="div"
-        className="scrool-to-top"
-      >
-        <Icon icon="solar:round-arrow-up-outline" />
-      </Paper>
+      <Box component="div" className="floating-actions">
+        <Paper
+          onClick={handleWhatsAppClick}
+          component="div"
+          className="whatsapp-button"
+        >
+          <Icon icon="logos:whatsapp-icon" />
+        </Paper>
+        <Paper
+          onClick={handleScrollToTop}
+          component="div"
+          className="scrool-to-top"
+        >
+          <Icon icon="solar:round-arrow-up-outline" />
+        </Paper>
+      </Box>
     </StyledSkinAnalysisRecommendation>
   );
 };

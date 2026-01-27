@@ -87,6 +87,22 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
         analysisData ||
         null;
 
+    const overallSkinHealthScore = reportSource?.skinHealthScore?.overall;
+    const overallSkinHealthRating = reportSource?.skinHealthScore?.rating;
+
+    const skinMetrics = reportSource?.skinMetrics;
+    const skinMetricCards = [
+        { label: "Moisture", key: "moisture" as const },
+        { label: "Wrinkles", key: "wrinkles" as const },
+        { label: "Dark Spots", key: "darkSpots" as const },
+    ].map((m) => {
+        const score = skinMetrics?.[m.key]?.score;
+        return {
+            label: m.label,
+            value: typeof score === "number" ? `${score}%` : "--",
+        };
+    });
+
     const recTabs = [
         {
             key: "products" as const,
@@ -269,13 +285,15 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                         boxSizing: "border-box",
                                     }}
                                 >
-                                    Good Enough
+                                    {overallSkinHealthRating || "--"}
                                 </Box>
 
                                 <Box sx={{ flex: 1, textAlign: "left" }}>
                                     <Typography sx={{ fontSize: "24px", fontWeight: 700 }}>
                                         <Box component="span" sx={{ color: "#2ac78fff" }}>
-                                            85
+                                            {typeof overallSkinHealthScore === "number"
+                                                ? overallSkinHealthScore
+                                                : "--"}
                                         </Box>{" "}
                                         <Box component="span" sx={{ color: "#000", fontWeight: 500 }}>
                                             out of 100
@@ -301,11 +319,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                     boxSizing: "border-box",
                                 }}
                             >
-                                {[
-                                    { label: "Moisture", value: "63%" },
-                                    { label: "Wrinkles", value: "25%" },
-                                    { label: "Dark Spots", value: "46%" },
-                                ].map((m) => (
+                                {skinMetricCards.map((m) => (
                                     <Box
                                         key={m.label}
                                         sx={{
@@ -558,15 +572,13 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                     )}
                                     {recTab === "services" && (
                                         <VendingServices
-                                            salonServices={
-                                                reportSource?.recommendedSalonServices || []
-                                            }
-                                            cosmeticServices={
-                                                reportSource?.recommendedCosmeticServices || []
-                                            }
+                                            salonServices={reportSource?.recommendedSalonServices}
+                                            cosmeticServices={reportSource?.recommendedCosmeticServices}
                                         />
                                     )}
-                                    {recTab === "diet" && <DietChart />}
+                                    {recTab === "diet" && (
+                                        <DietChart dietPlan={reportSource?.dietPlan} />
+                                    )}
                                 </Box>
                             </Box>
                         )}

@@ -99,24 +99,77 @@ interface DietPlanItem {
   image: string;
 }
 
-interface DietChartProps {
-  data?: {
-    breakfast: DietPlanItem;
-    lunch: DietPlanItem;
-    dinner: DietPlanItem;
-    snacks: DietPlanItem;
-  };
+interface DietPlanOption {
+  heading?: string;
+  description?: string;
 }
 
-const DEFAULT_DIET_DATA: NonNullable<DietChartProps["data"]> = {
-  breakfast: { title: "Breakfast", items: [], image: "" },
-  lunch: { title: "Lunch", items: [], image: "" },
-  dinner: { title: "Dinner", items: [], image: "" },
-  snacks: { title: "Snacks", items: [], image: "" },
-};
+interface DietPlanPlan {
+  title?: string;
+  options?: DietPlanOption[];
+  sortOrder?: number;
+}
 
-export default function DietChart({ data }: DietChartProps) {
-  const resolvedData = data ?? DEFAULT_DIET_DATA;
+interface DietPlanResponse {
+  title?: string;
+  description?: string;
+  plans?: DietPlanPlan[];
+}
+
+interface DietChartProps {
+  dietPlan?: DietPlanResponse;
+}
+
+export default function DietChart({ dietPlan }: DietChartProps) {
+  const plans = (dietPlan?.plans ?? []).slice().sort((a, b) => {
+    const aOrder = typeof a.sortOrder === "number" ? a.sortOrder : Number.MAX_SAFE_INTEGER;
+    const bOrder = typeof b.sortOrder === "number" ? b.sortOrder : Number.MAX_SAFE_INTEGER;
+    return aOrder - bOrder;
+  });
+
+  const extractTileLabels = (description?: string, max = 3) => {
+    if (!description) return [];
+    const normalized = description
+      .replace(/\//g, ",")
+      .replace(/\./g, ",")
+      .replace(/\r?\n/g, ",")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const parts = normalized
+      .split(/,|\bor\b|\band\b/gi)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => s.replace(/^some\s+/i, "").trim())
+      .filter(Boolean);
+
+    return parts.slice(0, max);
+  };
+
+  const getPlanByTitle = (title: string) =>
+    plans.find((p) => (p.title ?? "").toLowerCase() === title.toLowerCase());
+
+  const breakfastPlan = getPlanByTitle("Breakfast");
+  const lunchPlan = getPlanByTitle("Lunch");
+  const dinnerPlan = getPlanByTitle("Dinner");
+  const supplementsPlan =
+    getPlanByTitle("Additional Supplements") || getPlanByTitle("Supplements") || getPlanByTitle("Snacks");
+
+  const breakfastOption1 = breakfastPlan?.options?.[0];
+  const breakfastOption2 = breakfastPlan?.options?.[1];
+
+  const lunchOption1 = lunchPlan?.options?.[0];
+  const lunchOption2 = lunchPlan?.options?.[1];
+
+  const dinnerOption1 = dinnerPlan?.options?.[0];
+  const dinnerOption2 = dinnerPlan?.options?.[1];
+
+  const breakfastLabels1 = extractTileLabels(breakfastOption1?.description);
+  const lunchLabels1 = extractTileLabels(lunchOption1?.description);
+  const lunchLabels2 = extractTileLabels(lunchOption2?.description);
+  const dinnerLabels1 = extractTileLabels(dinnerOption1?.description);
+  const dinnerLabels2 = extractTileLabels(dinnerOption2?.description);
+
   return (
     <PageBackground>
       <Container maxWidth={false} sx={{ px: 2 }}>
@@ -130,8 +183,22 @@ export default function DietChart({ data }: DietChartProps) {
           lineHeight: "100%",
           letterSpacing: "0%",
         }}>
-          My Diet
+          {dietPlan?.title || "My Diet"}
         </Typography>
+        {dietPlan?.description ? (
+          <Typography
+            sx={{
+              mt: 2,
+              mb: 0.75,
+              fontSize: "24px",
+              fontWeight: 400,
+              color: "#000",
+              letterSpacing: 1.2,
+            }}
+          >
+            {dietPlan.description}
+          </Typography>
+        ) : null}
         <Typography
           sx={{
             mt: 2,
@@ -155,28 +222,51 @@ export default function DietChart({ data }: DietChartProps) {
               fontSize: "28px",
               lineHeight: "100%",
               letterSpacing: "0%",
-            }}>Breakfast</Typography>
+            }}>{breakfastPlan?.title || "Breakfast"}</Typography>
             <Box sx={{ flex: 1 }} />
             <Typography fontSize="24px" fontWeight={700} color="#f97316">
-              Option 1
+              {breakfastOption1?.heading || "Option 1"}
             </Typography>
           </Box>
 
-          <Typography fontSize="24px" fontWeight={400} color="#000" mb={1.5}>
-            Any fresh smoothie, green tea or some nuts
-          </Typography>
+          {/* <Typography fontSize="24px" fontWeight={400} color="#000" mb={1.5}>
+            {breakfastOption1?.description || "--"}
+          </Typography> */}
 
           <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
-              <Tile image="/diet/smoothies.jpg" label="Smoothie" />
+              <Tile image="/diet/smoothies.jpg" label={breakfastLabels1[0] || "Smoothie"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/greenTea.jpg" label="Green tea" />
+              <Tile image="/diet/greenTea.jpg" label={breakfastLabels1[1] || "Green tea"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/mixednut.jpg" label="Mixed nuts" />
+              <Tile image="/diet/mixednut.jpg" label={breakfastLabels1[2] || "Mixed nuts"} />
             </Grid>
           </Grid>
+
+          {/* {breakfastOption2 ? (
+            <>
+              <Divider sx={{ my: 2, borderColor: "#e5e7eb" }} />
+              <Box display="flex" alignItems="center" mb={0.5}>
+                <Typography sx={{
+                  mb: 0.75,
+                  fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                  fontWeight: 700,
+                  fontSize: "28px",
+                  lineHeight: "100%",
+                  letterSpacing: "0%",
+                }}>{breakfastPlan?.title || "Breakfast"}</Typography>
+                <Box sx={{ flex: 1 }} />
+                <Typography fontSize="24px" fontWeight={700} color="#22c55e">
+                  {breakfastOption2.heading || "Option 2"}
+                </Typography>
+              </Box>
+              <Typography fontSize="24px" fontWeight={400} color="#000" mb={1.5}>
+                {breakfastOption2.description || "--"}
+              </Typography>
+            </>
+          ) : null} */}
         </SectionCard>
 
         {/* LUNCH OPTION 1 */}
@@ -189,26 +279,26 @@ export default function DietChart({ data }: DietChartProps) {
               fontSize: "28px",
               lineHeight: "100%",
               letterSpacing: "0%",
-            }} >Lunch</Typography>
+            }} >{lunchPlan?.title || "Lunch"}</Typography>
             <Box flex={1} />
             <Typography fontSize="24px" fontWeight={700} color="#f97316">
-              Option 1
+              {lunchOption1?.heading || "Option 1"}
             </Typography>
           </Box>
 
-          <Typography fontSize="24px" fontWeight={400} color="#000" mb={1.5}>
-            Salmon, Broccoli / Grilled fish or chicken
-          </Typography>
+          {/* <Typography fontSize="24px" fontWeight={400} color="#000" mb={1.5}>
+            {lunchOption1?.description || "--"}
+          </Typography> */}
 
           <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
-              <Tile image="/diet/bakedSalmon.jpg" label="Baked salmon" />
+              <Tile image="/diet/bakedSalmon.jpg" label={lunchLabels1[0] || "Baked salmon"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/fish.jpg" label="Grilled fish" />
+              <Tile image="/diet/fish.jpg" label={lunchLabels1[1] || "Grilled fish"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/grilledChicken.png" label="Grilled chicken" />
+              <Tile image="/diet/grilledChicken.png" label={lunchLabels1[2] || "Grilled chicken"} />
             </Grid>
           </Grid>
 
@@ -222,26 +312,26 @@ export default function DietChart({ data }: DietChartProps) {
               fontSize: "28px",
               lineHeight: "100%",
               letterSpacing: "0%",
-            }}>Lunch</Typography>
+            }}>{lunchPlan?.title || "Lunch"}</Typography>
             <Box flex={1} />
             <Typography fontSize="24px" fontWeight={700} color="#22c55e">
-              Option 2 (vegetarian)
+              {lunchOption2?.heading || "Option 2 (vegetarian)"}
             </Typography>
           </Box>
-
+{/* 
           <Typography fontSize="24px" fontWeight={400} color="#000" mb={1.5}>
-            Whole grain, mixed vegetables, fruits and nuts
-          </Typography>
+            {lunchOption2?.description || "--"}
+          </Typography> */}
 
           <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
-              <Tile image="/diet/grain.jpg" label="Whole grain" />
+              <Tile image="/diet/grain.jpg" label={lunchLabels2[0] || "Whole grain"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/mixedVeggis.jpg" label="Mixed Veggies" />
+              <Tile image="/diet/mixedVeggis.jpg" label={lunchLabels2[1] || "Mixed Veggies"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/mixednut.jpg" label="Mixed nuts" />
+              <Tile image="/diet/mixednut.jpg" label={lunchLabels2[2] || "Mixed nuts"} />
             </Grid>
           </Grid>
         </SectionCard>
@@ -252,55 +342,83 @@ export default function DietChart({ data }: DietChartProps) {
         {/* DINNER OPTION 1 */}
         <SectionCard sx={{ mt: 3, width: { xs: "100%", md: 977 }, height: { xs: "auto", md: 475 } }}>
           <Box display="flex" alignItems="center" mb={0.5}>
-            <Typography fontSize="28px" fontWeight={700}>Dinner</Typography>
+            <Typography fontSize="28px" fontWeight={700}>{dinnerPlan?.title || "Dinner"}</Typography>
             <Box flex={1} />
             <Typography fontSize="24px" fontWeight={700} color="#f97316">
-              Option 1
+              {dinnerOption1?.heading || "Option 1"}
             </Typography>
           </Box>
 
-          <Typography fontSize="24px" fontWeight={400} color="#000" mb={1.5}>
-            Salmon, Broccoli / Grilled fish or chicken
-          </Typography>
+          {/* <Typography fontSize="24px" fontWeight={400} color="#000" mb={1.5}>
+            {dinnerOption1?.description || "--"}
+          </Typography> */}
 
           <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
-              <Tile image="/diet/bakedSalmon.jpg" label="Baked salmon" />
+              <Tile image="/diet/bakedSalmon.jpg" label={dinnerLabels1[0] || "Baked salmon"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/fish.jpg" label="Grilled fish" />
+              <Tile image="/diet/fish.jpg" label={dinnerLabels1[1] || "Grilled fish"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/grilledChicken.png" label="Grilled chicken" />
+              <Tile image="/diet/grilledChicken.png" label={dinnerLabels1[2] || "Grilled chicken"} />
             </Grid>
           </Grid>
 
           <Divider sx={{ my: 2, borderColor: "#e5e7eb" }} />
 
           <Box display="flex" alignItems="center" mb={0.5}>
-            <Typography fontSize="28px" fontWeight={700}>Dinner</Typography>
+            <Typography fontSize="28px" fontWeight={700}>{dinnerPlan?.title || "Dinner"}</Typography>
             <Box flex={1} />
             <Typography fontSize="24px" fontWeight={700} color="#22c55e">
-              Option 2 (vegetarian)
+              {dinnerOption2?.heading || "Option 2 (vegetarian)"}
             </Typography>
           </Box>
 
-          <Typography fontSize=  "24px" fontWeight={400} color="#000" mb={1.5}>
-            Whole grain, mixed vegetables, fruits and nuts
-          </Typography>
+          {/* <Typography fontSize=  "24px" fontWeight={400} color="#000" mb={1.5}>
+            {dinnerOption2?.description || "--"}
+          </Typography> */}
 
           <Grid container spacing={1.25} sx={{ pr: "28px" }}>
             <Grid item xs={4}>
-              <Tile image="/diet/grain.jpg" label="Whole grain" />
+              <Tile image="/diet/grain.jpg" label={dinnerLabels2[0] || "Whole grain"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/mixedVeggis.jpg" label="Mixed Veggies" />
+              <Tile image="/diet/mixedVeggis.jpg" label={dinnerLabels2[1] || "Mixed Veggies"} />
             </Grid>
             <Grid item xs={4}>
-              <Tile image="/diet/mixednut.jpg" label="Mixed nuts" />
+              <Tile image="/diet/mixednut.jpg" label={dinnerLabels2[2] || "Mixed nuts"} />
             </Grid>
           </Grid>
         </SectionCard>
+
+        {supplementsPlan ? (
+          <SectionCard sx={{ mt: 3, width: { xs: "100%", md: 977 } }}>
+            <Typography
+              sx={{
+                mb: 0.75,
+                fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                fontWeight: 700,
+                fontSize: "28px",
+                lineHeight: "100%",
+                letterSpacing: "0%",
+              }}
+            >
+              {supplementsPlan.title || "Additional Supplements"}
+            </Typography>
+
+            {(supplementsPlan.options ?? []).map((opt, idx) => (
+              <Box key={`${opt.heading ?? "option"}-${idx}`} sx={{ mt: idx === 0 ? 1 : 2 }}>
+                <Typography fontSize="24px" fontWeight={700} color="#111827">
+                  {opt.heading || `Option ${idx + 1}`}
+                </Typography>
+                <Typography fontSize="24px" fontWeight={400} color="#000" sx={{ mt: 0.5 }}>
+                  {opt.description || "--"}
+                </Typography>
+              </Box>
+            ))}
+          </SectionCard>
+        ) : null}
 
       </Container>
     </PageBackground>
