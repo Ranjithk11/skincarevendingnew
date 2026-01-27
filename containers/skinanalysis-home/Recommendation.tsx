@@ -213,7 +213,7 @@ const SkinAnalysisRecommendation = () => {
           />
           <Payment />
           {data?.data?.[0]?.dietPlan?._id && (
-            <DietChart data={data?.data?.[0]?.dietPlan} />
+            <DietChart dietPlan={data?.data?.[0]?.dietPlan} />
           )}
           <MeetTeam /> */}
         </Fragment>
