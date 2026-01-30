@@ -13,7 +13,7 @@ interface Slide2Props {
   currentSlide: number;
   selectedSkinType: string;
   setSelectedSkinType: (id: string) => void;
-  handleNext: () => void;
+  handleNext: (skinType?: string) => void;
   skinTypeOptions: SkinTypeOption[];
 }
 
@@ -30,7 +30,7 @@ export default function Slide2({
     if (currentSlide !== 1) return;
 
     window.setTimeout(() => {
-      handleNext();
+      handleNext(optionId);
     }, 250);
   };
 

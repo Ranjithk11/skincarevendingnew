@@ -149,7 +149,7 @@ export default function Questionnaire() {
     }
   };
 
-  const handleNext = async () => {
+  const handleNext = async (overrideSkinType?: string) => {
     // Validate fields on Slide 1
     if (currentSlide === 0) {
       if (!name.trim()) {
@@ -170,6 +170,16 @@ export default function Questionnaire() {
       return;
     }
 
+    // Use override skin type if provided, otherwise use state
+    const skinType = overrideSkinType || selectedSkinType;
+
+    // Validate skin type is selected on Slide 2
+    if (!skinType) {
+      setValidationError("Please select your skin type");
+      setTimeout(() => setValidationError(""), 2000);
+      return;
+    }
+
     const countryCode = "91";
     const formattedPhoneNumber = phone.trim().startsWith("+")
       ? phone.trim()
@@ -183,7 +193,7 @@ export default function Questionnaire() {
       sensitive: "SENSITIVE_SKIN",
     };
 
-    const skinTypeId = skinTypeIdByOption[selectedSkinType] ?? selectedSkinType;
+    const skinTypeId = skinTypeIdByOption[skinType] ?? skinType;
 
     try {
       const resp = await saveUserApi({
@@ -194,7 +204,6 @@ export default function Questionnaire() {
         countryCode,
         isValidated: true,
         skinType: skinTypeId,
-        skipOtp: true,
         onBoardingQuestions: [
           {
             questionId: "skinType",
@@ -218,26 +227,26 @@ export default function Questionnaire() {
         localStorage.setItem("leafwater_skinType", String(skinTypeId));
       } catch {}
 
-      // Create NextAuth session - DISABLED to prevent OTP sending
-      // try {
-      //   await signIn("credentials", {
-      //     redirect: false,
-      //     actionType: "register",
-      //     phoneNumber: formattedPhoneNumber,
-      //     name,
-      //     email,
-      //     countryCode,
-      //     location: "Vending machine",
-      //     onBoardingQuestions: JSON.stringify([
-      //       {
-      //         questionId: "skinType",
-      //         responseId: [skinTypeId],
-      //       },
-      //     ]),
-      //   });
-      // } catch (e) {
-      //   console.error("Failed to create NextAuth session", e);
-      // }
+      // Create NextAuth session
+      try {
+        await signIn("credentials", {
+          redirect: false,
+          actionType: "register",
+          phoneNumber: formattedPhoneNumber,
+          name,
+          email,
+          countryCode,
+          location: "Vending machine",
+          onBoardingQuestions: JSON.stringify([
+            {
+              questionId: "skinType",
+              responseId: [skinTypeId],
+            },
+          ]),
+        });
+      } catch (e) {
+        console.error("Failed to create NextAuth session", e);
+      }
 
       router.push(APP_ROUTES.SELFIE);
     } catch (err) {
