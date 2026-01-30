@@ -21,6 +21,8 @@ interface VendingMachineConfigProps {
   onSlotClick?: (slotNumber: number) => void;
   selectedSlot?: number | null;
   isSyncing?: boolean;
+  totalSlots?: number;
+  columns?: number;
 }
 
 export default function VendingMachineConfig({
@@ -30,8 +32,11 @@ export default function VendingMachineConfig({
   onSlotClick,
   selectedSlot,
   isSyncing = false,
+  totalSlots = 60,
+  columns = 10,
 }: VendingMachineConfigProps) {
-  const slotNumbers = Array.from({ length: 60 }, (_, i) => i + 1);
+  const slotNumbers = Array.from({ length: totalSlots }, (_, i) => i + 1);
+  const rows = Math.ceil(totalSlots / columns);
 
   return (
     <Box
@@ -137,16 +142,17 @@ export default function VendingMachineConfig({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: "repeat(10, 1fr)",
-          gap: 1,
+          gridTemplateColumns: `repeat(${columns}, 1fr)`,
+          gap: 1.5,
           width: "100%",
+          justifyItems: "center",
         }}
       >
         {slotNumbers.map((slotNumber: number) => {
           const slotData = slotsData?.[slotNumber];
           const productName = slotData?.product_name 
-            ? (slotData.product_name.length > 8 
-                ? slotData.product_name.substring(0, 6) + ".." 
+            ? (slotData.product_name.length > 10 
+                ? slotData.product_name.substring(0, 8) + ".." 
                 : slotData.product_name)
             : "";
           return (

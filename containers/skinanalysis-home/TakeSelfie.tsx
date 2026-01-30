@@ -540,11 +540,12 @@ const TakeSelfie = () => {
           try {
             if (fileName) localStorage.setItem("leafwater_selfyImage", fileName);
           } catch {}
+          setLocalSelfyImage(fileName);
           update({
             ...session,
             user: {
               ...session?.user,
-              selfyImage: _res?.config?.data?.name,
+              selfyImage: fileName,
               selfyImagePath: _res?.config?.url,
             },
           });

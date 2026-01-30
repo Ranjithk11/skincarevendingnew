@@ -52,7 +52,12 @@ export interface AssignProductRequest {
 
 export interface UpdateSlotQuantityRequest {
   slotId: number;
-  changeAmount: number;
+  changeAmount?: number;
+  quantity?: number;
+}
+
+export interface RemoveProductRequest {
+  slotId: number;
 }
 
 export interface SyncResponse {
@@ -111,15 +116,25 @@ export const adminApi = createApi({
 
     // Update slot quantity
     updateSlotQuantity: builder.mutation<SyncResponse, UpdateSlotQuantityRequest>({
-      query: ({ slotId, changeAmount }) => ({
+      query: ({ slotId, changeAmount, quantity }) => ({
         url: `/slots/${slotId}`,
         method: "PATCH",
-        body: { change_amount: changeAmount },
+        body: quantity !== undefined ? { quantity } : { change_amount: changeAmount },
       }),
       invalidatesTags: (_result, _error, { slotId }) => [
         "Slots",
         { type: "SlotInfo", id: slotId },
       ],
+    }),
+
+    // Remove product from slot
+    removeProductFromSlot: builder.mutation<SyncResponse, RemoveProductRequest>({
+      query: ({ slotId }) => ({
+        url: "/slots",
+        method: "POST",
+        body: { slot_id: slotId, product_id: null, quantity: 0 },
+      }),
+      invalidatesTags: ["Slots", "Products"],
     }),
 
     // Get all products
@@ -156,6 +171,7 @@ export const {
   useLazyGetSlotInfoQuery,
   useAssignProductToSlotMutation,
   useUpdateSlotQuantityMutation,
+  useRemoveProductFromSlotMutation,
   useGetProductsQuery,
   useLazyGetProductsQuery,
   useSyncProductQuantitiesMutation,
