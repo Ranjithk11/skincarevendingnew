@@ -194,6 +194,7 @@ export default function Questionnaire() {
         countryCode,
         isValidated: true,
         skinType: skinTypeId,
+        skipOtp: true,
         onBoardingQuestions: [
           {
             questionId: "skinType",
@@ -217,26 +218,26 @@ export default function Questionnaire() {
         localStorage.setItem("leafwater_skinType", String(skinTypeId));
       } catch {}
 
-      // Create NextAuth session (so /api/auth/session is populated on live)
-      try {
-        await signIn("credentials", {
-          redirect: false,
-          actionType: "register",
-          phoneNumber: formattedPhoneNumber,
-          name,
-          email,
-          countryCode,
-          location: "Vending machine",
-          onBoardingQuestions: JSON.stringify([
-            {
-              questionId: "skinType",
-              responseId: [skinTypeId],
-            },
-          ]),
-        });
-      } catch (e) {
-        console.error("Failed to create NextAuth session", e);
-      }
+      // Create NextAuth session - DISABLED to prevent OTP sending
+      // try {
+      //   await signIn("credentials", {
+      //     redirect: false,
+      //     actionType: "register",
+      //     phoneNumber: formattedPhoneNumber,
+      //     name,
+      //     email,
+      //     countryCode,
+      //     location: "Vending machine",
+      //     onBoardingQuestions: JSON.stringify([
+      //       {
+      //         questionId: "skinType",
+      //         responseId: [skinTypeId],
+      //       },
+      //     ]),
+      //   });
+      // } catch (e) {
+      //   console.error("Failed to create NextAuth session", e);
+      // }
 
       router.push(APP_ROUTES.SELFIE);
     } catch (err) {

@@ -13,6 +13,7 @@ interface UserLoginPayload {
   isValidated?: boolean;
   location: string;
   skinType?: string;
+  skipOtp?: boolean;
 }
 
 export const loginUser = async (
@@ -57,6 +58,7 @@ export const saveUser = async (payload: UserLoginPayload) => {
         isValidated: payload.isValidated,
         location: payload.location,
         skinType: payload.skinType,
+        skipOtp: payload.skipOtp,
       }),
     }
   );
