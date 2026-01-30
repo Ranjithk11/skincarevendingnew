@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
-import { Box, Card, Grid, Switch, Typography, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Card, Grid, Switch, Typography } from "@mui/material";
+import ProductCard from "./ProductCard";
+
+type Props = {
+  recommendationData?: any;
+};
 
 /* ===============================
    PAGE BACKGROUND (FIXED)
@@ -161,132 +166,60 @@ const HowToUseCard = ({
 /* ===============================
    PRODUCT CARD
 ================================ */
-const ProductCard = ({
-  title,
-  price,
-  image,
-}: {
-  title: string;
-  price: string;
-  image: string;
-}) => {
-  const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
-
+const RoutineProductCard = ({ product, category }: { product: any; category?: string }) => {
   return (
-    <Card
-      sx={{
-        p: 2,
-        width: { xs: "100%", md: 350 },
-        height: { xs: "auto", md: 422 },
-        borderRadius: "13px",
-        border: "1px solid #e5e7eb",
-        boxShadow: "none",
-        display: "flex",
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 2,
-      }}
-    >
-      <Box
-        sx={{
-          height: { xs: 200, md: 250 },
-          width: { xs: 100, md: 130 },
-          minWidth: { xs: 100, md: 130 },
-          bgcolor: "#ffffff",
-          borderRadius: "13px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <img src={image} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
-      </Box>
-
-      <Box
-        sx={{
-          flex: 1,
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          height: "100%",
-        }}
-      >
-        <Typography
-          sx={{
-            fontSize: "24px",
-            fontWeight: 700,
-            color: "#111827",
-            lineHeight: 1.2,
-          }}
-        >
-          {title}
-        </Typography>
-
-        <Typography
-          sx={{
-            mt: 1,
-            fontSize: "24px",
-            fontWeight: 400,
-            color: "#d12b2b",
-          }}
-        >
-          {price}
-        </Typography>
-
-        <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 1 }}>
-          <Box
-            sx={{
-              px: 2,
-              py: 0.8,
-              borderRadius: 999,
-              bgcolor: "#2d5a3d",
-              color: "#fff",
-              fontSize: "18px",
-              fontWeight: 500,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 1,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Buy Now
-            <Box
-              component="img"
-              src="/icons/buy.svg"
-              alt="Buy"
-              sx={{ width: 18, height: 18, objectFit: "contain", display: "block" }}
-            />
-          </Box>
-        </Box>
-
-        <Box sx={{ mt: 1.5, display: "flex" }}>
-          <Box
-            sx={{
-              px: 2,
-              py: 0.8,
-              border: "1px solid #2d5a3d",
-              borderRadius: 999,
-              fontSize: "18px",
-              fontWeight: 500,
-              color: "#2d5a3d",
-              whiteSpace: "nowrap",
-            }}
-          >
-            UNEVEN SKIN
-          </Box>
-        </Box>
-      </Box>
-    </Card>
+    <ProductCard
+      {...product}
+      category={category}
+      enabledMask={false}
+      compact={false}
+      horizontalLayout={true}
+      cardSx={{ width: "100%" }}
+    />
   );
 };
 
 /* ===============================
    MAIN PAGE
 ================================ */
-export default function SkincareRoutinePage() {
+export default function SkincareRoutinePage({ recommendationData }: Props) {
   const [night, setNight] = useState(false);
+
+  const normalize = (v: any) => String(v ?? "").toLowerCase().trim();
+
+  const highRecommendations = recommendationData?.recommendedProducts?.highRecommendation;
+  const productBuckets: Array<{ categoryTitle: string; products: any[] }> = Array.isArray(highRecommendations)
+    ? highRecommendations
+      .filter(Boolean)
+      .map((c: any) => ({
+        categoryTitle: normalize(c?.productCategory?.title),
+        products: Array.isArray(c?.products) ? c.products.filter(Boolean) : [],
+      }))
+    : [];
+
+  const pickProducts = (keywords: string[], limit: number) => {
+    const kw = keywords.map(normalize);
+    for (const b of productBuckets) {
+      const title = b.categoryTitle;
+      if (kw.some((k) => title.includes(k))) {
+        return b.products.slice(0, limit);
+      }
+    }
+
+    const flat = productBuckets.flatMap((b) => b.products);
+    const matches = flat.filter((p: any) => {
+      const use = normalize(p?.productUse);
+      const name = normalize(p?.name);
+      return kw.some((k) => use.includes(k) || name.includes(k));
+    });
+    return matches.slice(0, limit);
+  };
+
+  const cleanserProducts = pickProducts(["face wash", "cleanser"], 2);
+  const serumProducts = pickProducts(["face serum", "serum"], 1);
+  const daycreamProducts = pickProducts(["day cream", "daycream"], 1);
+  const sunscreenProducts = pickProducts(["sunscreen", "sun screen", "sunblock", "spf"], 1);
+  const underEyeProducts = pickProducts(["under-eye", "under eye", "eye cream"], 1);
 
   const steps = night
     ? [
@@ -296,10 +229,7 @@ export default function SkincareRoutinePage() {
         howTitle: "How to Use Your Cleanser",
         howBody: "Wet your face with lukewarm water and apply a small amount of cleanser to your fingertips. Gently massage it onto your skin in circular motions for 20–30 seconds, focusing on areas with excess oil or buildup. Rinse thoroughly and pat your skin dry with a clean towel. Use twice daily for best results.",
         howImg: "/products/ceta1.svg",
-        products: [
-          { title: "Cetaphil Creamy Cleanser", price: "Rs. 599/-", image: "/products/cetaPink.png" },
-          { title: "Cetaphil Gentle Skin Cleanser", price: "Rs. 654/-", image: "/products/ceta1.svg" },
-        ],
+        products: cleanserProducts,
       },
       {
         title: "Face Serum",
@@ -307,9 +237,15 @@ export default function SkincareRoutinePage() {
         howTitle: "How to Use Serum",
         howBody: "After cleansing, apply 2–3 drops of serum to your face and neck. Gently press or massage it into the skin until fully absorbed. Allow it to settle for a minute before applying moisturizer. Use once or twice daily depending on your skin’s needs and the serum’s instructions.",
         howImg: "/products/pilgram.svg",
-        products: [
-          { title: "Pilgrim Niacinamide Serum", price: "Rs. 590/-", image: "/products/pilgram.svg" },
-        ],
+        products: serumProducts,
+      },
+           {
+        title: "Under-Eye Cream",
+        subtitle: "Under-eye cream helps reduce dark circles, puffiness, and fine lines, leaving your skin looking refreshed and rejuvenated.",
+        howTitle: "How to Use Your Under-Eye Cream",
+        howBody: "Apply sunscreen as the final step in your morning routine. Use a generous amount and spread it evenly over your face and neck. Let it absorb for a minute before heading outdoors. Reapply every 2–3 hours, especially after sweating or sun exposure, for consistent protection.",
+        howImg: "/products/cetayellow.svg",
+        products: underEyeProducts,
       },
     ]
     : [
@@ -319,10 +255,7 @@ export default function SkincareRoutinePage() {
         howTitle: "How to Use Your Cleanser",
         howBody: "Wet your face with lukewarm water and apply a small amount of cleanser to your fingertips. Gently massage it onto your skin in circular motions for 20–30 seconds, focusing on areas with excess oil or buildup. Rinse thoroughly and pat your skin dry with a clean towel. Use twice daily for best results.",
         howImg: "/products/ceta1.svg",
-        products: [
-          { title: "Cetaphil Creamy Cleanser", price: "Rs. 599/-", image: "/products/cetaPink.png" },
-          { title: "Cetaphil Gentle Skin Cleanser", price: "Rs. 654/-", image: "/products/ceta1.svg" },
-        ],
+        products: cleanserProducts,
       },
       {
         title: "Daycream",
@@ -330,9 +263,7 @@ export default function SkincareRoutinePage() {
         howTitle: "How to Use Daycream",
         howBody: "After cleansing, apply a small amount of day cream to your face and neck. Gently massage it in using upward, circular motions until fully absorbed. Allow it to settle for a minute before applying sunscreen or makeup. Use every morning for optimal hydration and protection.",
         howImg: "/products/cetapik.svg",
-        products: [
-          { title: "Cetaphil Brightening Day Cream", price: "Rs. 1019/-", image: "/products/cetapik.svg" },
-        ],
+        products: daycreamProducts,
       },
       {
         title: "Sunscreen",
@@ -340,9 +271,7 @@ export default function SkincareRoutinePage() {
         howTitle: "How to Use Sunscreen",
         howBody: "Apply sunscreen as the final step in your morning routine. Use a generous amount and spread it evenly over your face and neck. Let it absorb for a minute before heading outdoors. Reapply every 2–3 hours, especially after sweating or sun exposure, for consistent protection.",
         howImg: "/products/cetayellow.svg",
-        products: [
-          { title: "Pilgrim SPF 50", price: "Rs. 599/-", image: "/products/ultrasun.png" },
-        ],
+        products: sunscreenProducts,
       },
     ];
 
@@ -435,7 +364,7 @@ export default function SkincareRoutinePage() {
               <Grid container spacing={1.5} sx={{ mt: 1 }}>
                 {s.products.map((p, idx) => (
                   <Grid item xs={6} key={idx}>
-                    <ProductCard {...p} />
+                    <RoutineProductCard product={p} category={s.title} />
                   </Grid>
                 ))}
               </Grid>

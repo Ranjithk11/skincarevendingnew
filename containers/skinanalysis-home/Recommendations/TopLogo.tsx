@@ -7,6 +7,10 @@ interface TopLogoProps {
   onCartClick: () => void;
   onScanAgainClick: () => void;
   cartCount?: number;
+  firstButtonLabel?: string;
+  secondButtonLabel?: string;
+  firstButtonIcon?: string;
+  secondButtonIcon?: string;
 }
 
 const TopLogo: React.FC<TopLogoProps> = ({
@@ -14,6 +18,10 @@ const TopLogo: React.FC<TopLogoProps> = ({
   onCartClick,
   onScanAgainClick,
   cartCount = 0,
+  firstButtonLabel = "My cart",
+  secondButtonLabel = "Scan again",
+  firstButtonIcon = "/icons/cart.svg",
+  secondButtonIcon = "/icons/face.png",
 }) => {
   return (
     <Box
@@ -72,7 +80,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
             variant="outlined"
             size="small"
             sx={{
-              width: 180,
+              width: 220,
               height: "60px",
               px: "10px",
               py: "19px",
@@ -100,7 +108,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 },
               }}
             >
-              <Image src="/icons/cart.svg" width={24} height={24} alt="" />
+              <Image src={firstButtonIcon} width={24} height={24} alt="" />
             </Badge>
             <Box
               component="span"
@@ -113,7 +121,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 textOverflow: "ellipsis",
               }}
             >
-              My cart
+              {firstButtonLabel}
             </Box>
           </Button>
 
@@ -139,8 +147,8 @@ const TopLogo: React.FC<TopLogoProps> = ({
             onClick={onScanAgainClick}
           >
             <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
-              <Image src="/icons/face.png" width={ 24} height={24} alt="" />
-              <span>Scan again</span>
+              <Image src={secondButtonIcon} width={24} height={24} alt="" />
+              <span>{secondButtonLabel}</span>
             </Box>
           </Button>
         </Box>

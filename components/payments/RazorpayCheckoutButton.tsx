@@ -1,0 +1,240 @@
+"use client";
+
+import ActionButton from "@/components/ui/ActionButton";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
+import { ButtonProps } from "@mui/material";
+
+type RazorpayOrder = {
+  id: string;
+  amount: number;
+  currency: string;
+};
+
+type CreateOrderResponse =
+  | {
+      success: true;
+      data: {
+        keyId: string;
+        order: RazorpayOrder;
+      };
+    }
+  | { success: false; error: { message: string } };
+
+type VerifyResponse =
+  | { success: true; data: { verified: boolean } }
+  | { success: false; error: { message: string } };
+
+type RazorpayPaymentSuccessResponse = {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+};
+
+const loadRazorpayScript = () => {
+  return new Promise<boolean>((resolve) => {
+    if (typeof window === "undefined") return resolve(false);
+
+    if (document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
+      return resolve(true);
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
+export interface RazorpayCheckoutButtonProps {
+  amountPaise: number;
+  currency?: string;
+  receipt?: string;
+  productId?: string;
+  mode?: "test" | "live";
+  buttonProps?: Omit<ButtonProps, "onClick" | "children" | "variant"> & {
+    variant?: "primary" | "outline";
+  };
+  customer?: {
+    name?: string;
+    email?: string;
+    contact?: string;
+  };
+  onVerified?: (payload: {
+    orderId: string;
+    paymentId: string;
+    signature: string;
+    productId?: string;
+  }) => void;
+  onError?: (message: string) => void;
+  label?: string;
+}
+
+export default function RazorpayCheckoutButton({
+  amountPaise,
+  currency = "INR",
+  receipt,
+  productId,
+  mode = "test",
+  buttonProps,
+  customer,
+  onVerified,
+  onError,
+  label = "Pay Now",
+}: RazorpayCheckoutButtonProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const inFlightRef = useRef(false);
+
+  useEffect(() => {
+    loadRazorpayScript();
+  }, []);
+
+  const reportError = useCallback(
+    (message: string) => {
+      toast.error(message);
+      onError?.(message);
+    },
+    [onError]
+  );
+
+  const handlePay = useCallback(async () => {
+    if (inFlightRef.current) return;
+
+    try {
+      inFlightRef.current = true;
+      setIsLoading(true);
+
+      const unlock = () => {
+        setIsLoading(false);
+        inFlightRef.current = false;
+      };
+
+      if (typeof amountPaise !== "number" || !Number.isFinite(amountPaise) || amountPaise <= 0) {
+        reportError("Invalid amount");
+        return;
+      }
+
+      const loaded = await loadRazorpayScript();
+      if (!loaded || typeof window.Razorpay !== "function") {
+        reportError("Failed to load Razorpay checkout");
+        return;
+      }
+
+      const createOrderRes = await fetch("/api/razorpay/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountPaise,
+          currency,
+          receipt,
+          mode,
+        }),
+      });
+
+      const rawText = await createOrderRes.text().catch(() => "");
+      const createOrderJson = ((): CreateOrderResponse | null => {
+        try {
+          return rawText ? (JSON.parse(rawText) as CreateOrderResponse) : null;
+        } catch {
+          return null;
+        }
+      })();
+
+      if (!createOrderRes.ok || !createOrderJson || createOrderJson.success === false) {
+        const msgFromJson =
+          createOrderJson && "error" in createOrderJson
+            ? createOrderJson.error.message
+            : "";
+        const msg =
+          msgFromJson ||
+          (rawText ? `Create order failed (${createOrderRes.status}): ${rawText}` : `Create order failed (${createOrderRes.status})`);
+        reportError(msg);
+        return;
+      }
+
+      const { keyId, order } = createOrderJson.data;
+
+      const rzp = new window.Razorpay({
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.id,
+        name: "Leafwater",
+        description: "Skincare Products",
+        image: "/logo.png",
+        prefill: {
+          name: customer?.name,
+          email: customer?.email,
+          contact: customer?.contact,
+        },
+        theme: {
+          color: "#316D52",
+          backdrop_color: "rgba(0, 0, 0, 0.7)",
+        },
+        handler: async (response: RazorpayPaymentSuccessResponse) => {
+          try {
+            const verifyRes = await fetch("/api/razorpay/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+
+            const verifyJson = (await verifyRes
+              .json()
+              .catch(() => null)) as VerifyResponse | null;
+
+            if (!verifyRes.ok || !verifyJson || verifyJson.success === false) {
+              const msg =
+                verifyJson && "error" in verifyJson
+                  ? verifyJson.error.message
+                  : "Payment verification failed";
+              reportError(msg);
+              return;
+            }
+
+            toast.success("Payment successful");
+            onVerified?.({
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              productId,
+            });
+          } catch {
+            reportError("Payment verification failed");
+          } finally {
+            unlock();
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            toast.info("Payment cancelled");
+            unlock();
+          },
+        },
+      });
+
+      rzp.on("payment.failed", (err: unknown) => {
+        const e = err as any;
+        const msg = e?.error?.description || e?.error?.reason || "Payment failed";
+        reportError(msg);
+        unlock();
+      });
+
+      rzp.open();
+    } catch {
+      reportError("Something went wrong. Please try again.");
+    }
+  }, [amountPaise, currency, receipt, productId, mode, customer, onVerified, reportError]);
+
+  return (
+    <ActionButton onClick={handlePay} disabled={isLoading} {...buttonProps}>
+      {isLoading ? "Processing..." : label}
+    </ActionButton>
+  );
+}

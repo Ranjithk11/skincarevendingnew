@@ -13,6 +13,7 @@ import {
 import { Icon } from "@iconify/react";
 import { capitalizeWords } from "@/utils/func";
 import { useCart } from "./CartContext";
+import RazorpayCheckoutButton from "@/components/payments/RazorpayCheckoutButton";
 
 type CartProductProps = {
     open: boolean;
@@ -34,8 +35,9 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const { items, setQuantity } = useCart();
     const [showPriceDetails, setShowPriceDetails] = useState(false);
-    const [step, setStep] = useState<"cart" | "checkout">("cart");
+    const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
     const [couponApplied, setCouponApplied] = useState(false);
+    const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
 
     const total = useMemo(() => {
         const sum = items.reduce((acc, it) => acc + parsePrice(it.priceText) * (it.quantity || 0), 0);
@@ -53,7 +55,16 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
         return Number.isFinite(next) ? Math.max(0, next) : 0;
     }, [total, discount]);
 
+    const amountPaise = useMemo(() => {
+        const amount = step === "checkout" ? payableTotal : total;
+        return Math.max(0, Math.round(amount * 100));
+    }, [payableTotal, step, total]);
+
     const handleBack = () => {
+        if (step === "payment") {
+            setStep("checkout");
+            return;
+        }
         if (step === "checkout") {
             setStep("cart");
             return;
@@ -132,16 +143,158 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                 textOverflow: "ellipsis",
                             }}
                         >
-                            {step === "cart" ? `My Cart (${items.length})` : "Checkout"}
+                            {step === "cart" ? `My Cart (${items.length})` : step === "checkout" ? "Checkout" : "Payment"}
                         </Typography>
                     </Box>
                 </Box>
 
                 <Box sx={{ flex: 1, overflowY: "auto", px: 2, py: 2 }}>
-                    {step === "checkout" ? (
+                    {step === "payment" ? (
+                        <Box
+                            sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                minHeight: "100%",
+                                py: 4,
+                            }}
+                        >
+                            <Box
+                                sx={{
+                                    bgcolor: "#316D52",
+                                    borderRadius: "24px",
+                                    p: 4,
+                                    width: "100%",
+                                    maxWidth: 450,
+                                    textAlign: "center",
+                                }}
+                            >
+                                <Typography
+                                    sx={{
+                                        color: "#fff",
+                                        fontWeight: 700,
+                                        fontSize: 32,
+                                        mb: 3,
+                                        textAlign: "left",
+                                    }}
+                                >
+                                    Payment
+                                </Typography>
+
+                                <Box
+                                    sx={{
+                                        bgcolor: "#fff",
+                                        borderRadius: "16px",
+                                        p: 4,
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        gap: 2,
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 1,
+                                            color: paymentMode === "live" ? "#316D52" : "#f59e0b",
+                                            fontWeight: 600,
+                                            fontSize: 20,
+                                        }}
+                                    >
+                                        <Icon
+                                            icon={paymentMode === "live" ? "mdi:check-circle" : "mdi:alert-circle"}
+                                            width={24}
+                                        />
+                                        <Typography sx={{ fontWeight: 600, fontSize: 20 }}>
+                                            {paymentMode === "live" ? "LIVE MODE" : "TEST MODE"}
+                                        </Typography>
+                                    </Box>
+
+                                    <Button
+                                        variant="contained"
+                                        onClick={() => setPaymentMode(paymentMode === "live" ? "test" : "live")}
+                                        sx={{
+                                            bgcolor: paymentMode === "live" ? "#f59e0b" : "#316D52",
+                                            color: "#fff",
+                                            fontWeight: 700,
+                                            fontSize: 18,
+                                            borderRadius: "8px",
+                                            px: 3,
+                                            py: 1,
+                                            textTransform: "none",
+                                            "&:hover": {
+                                                bgcolor: paymentMode === "live" ? "#d97706" : "#234a31",
+                                            },
+                                        }}
+                                    >
+                                        <Icon icon="mdi:arrow-left" width={20} style={{ marginRight: 8 }} />
+                                        Switch to {paymentMode === "live" ? "TEST" : "LIVE"} Mode
+                                    </Button>
+
+                                    <Typography sx={{ color: "#6b7280", fontSize: 16 }}>
+                                        {paymentMode === "live"
+                                            ? "Click to enable test payments"
+                                            : "Click to enable live payments"}
+                                    </Typography>
+
+                                    <Divider sx={{ width: "100%", my: 2 }} />
+
+                                    <Typography sx={{ fontSize: 20, color: "#6b7280" }}>
+                                        Amount to Pay
+                                    </Typography>
+                                    <Typography
+                                        sx={{
+                                            fontSize: 40,
+                                            fontWeight: 700,
+                                            color: "#316D52",
+                                        }}
+                                    >
+                                        ₹{payableTotal.toFixed(2)}
+                                    </Typography>
+
+                                    <RazorpayCheckoutButton
+                                        amountPaise={amountPaise}
+                                        currency="INR"
+                                        mode={paymentMode}
+                                        receipt={`cart_${Date.now()}`}
+                                        onVerified={() => {
+                                            if (onCheckout) onCheckout();
+                                            setStep("cart");
+                                            onClose();
+                                        }}
+                                        onError={() => {
+                                            // keep dialog open so user can retry
+                                        }}
+                                        label="Pay Now"
+                                        buttonProps={{
+                                            fullWidth: true,
+                                            sx: {
+                                                mt: 2,
+                                                fontFamily:
+                                                    'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                                fontWeight: 700,
+                                                fontSize: "24px",
+                                                py: 1.5,
+                                                borderRadius: "12px",
+                                                bgcolor: "#316D52",
+                                                color: "white",
+                                                "&:hover": { bgcolor: "#234a31" },
+                                            },
+                                        }}
+                                    />
+
+                                    <Typography sx={{ color: "#9ca3af", fontSize: 14, mt: 2 }}>
+                                        Secure payment processed by Razorpay
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </Box>
+                    ) : step === "checkout" ? (
                         <>
                             <Box sx={{ bgcolor: "#fff", borderRadius: 2, p: 2, border: "1px solid #e5e7eb" }}>
-                                <Typography sx={{ fontWeight: 700, fontSize: 24, mb: 2 }}>
+                                <Typography sx={{ fontWeight: 700, fontSize: 28, mb: 2 }}>
                                     Review your order
                                 </Typography>
 
@@ -180,7 +333,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                     <Typography
                                                         sx={{
                                                             fontWeight: 500,
-                                                            fontSize: 16,
+                                                            fontSize: 24,
                                                             lineHeight: 1.2,
                                                             overflow: "hidden",
                                                             textOverflow: "ellipsis",
@@ -191,7 +344,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                     </Typography>
                                                 </Box>
 
-                                                <Typography sx={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap" }}>
+                                                <Typography sx={{ fontWeight: 700, fontSize: 24, whiteSpace: "nowrap" }}>
                                                     Rs.{Math.round(Number.isFinite(lineTotal) ? lineTotal : 0)}/-
                                                 </Typography>
                                             </Box>
@@ -202,16 +355,16 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                 <Divider sx={{ my: 1.5 }} />
 
                                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <Typography sx={{ fontWeight: 700, fontSize: 12 }}>Total</Typography>
-                                    <Typography sx={{ fontWeight: 700, fontSize: 12 }}>Rs.{Math.round(total)}/-</Typography>
+                                    <Typography sx={{ fontWeight: 700, fontSize: 24 }}>Total</Typography>
+                                    <Typography sx={{ fontWeight: 700, fontSize: 24 }}>Rs.{Math.round(total)}/-</Typography>
                                 </Box>
                             </Box>
 
                             <Box sx={{ mt: 2, bgcolor: "#fff", borderRadius: 2, p: 2, border: "1px solid #e5e7eb" }}>
                                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                     <Box>
-                                        <Typography sx={{ fontWeight: 700, fontSize: 16 }}>Apply Coupons</Typography>
-                                        <Typography sx={{ fontSize: 12, color: "text.secondary", mt: 0.5 }}>
+                                        <Typography sx={{ fontWeight: 700, fontSize: 28, pb:2 }}>Apply Coupons</Typography>
+                                        <Typography sx={{ fontSize: 24, color: "text.secondary", mt: 0.5 }}>
                                             Get Rs.{couponApplied ? discount : 120} off on this order with "SAVE120"
                                         </Typography>
                                     </Box>
@@ -223,7 +376,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         sx={{
                                             textTransform: "uppercase",
                                             fontWeight: 800,
-                                            fontSize: 14,
+                                            fontSize: 24,
                                             borderRadius: 1,
                                             minWidth: 0,
                                             width: "fit-content",
@@ -259,7 +412,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             alignItems: "center",
                                             width: isMobile ? "100%" : 1080,
                                             maxWidth: "100%",
-                                            minHeight: isMobile ? 0 : 350,
+                                            minHeight: isMobile ? 0 : 220,
                                         }}
                                     >
                                         <Box
@@ -304,7 +457,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             <Typography
                                                 sx={{
                                                     fontWeight: 600,
-                                                    fontSize: isMobile ? 12 : 16,
+                                                    fontSize: 24,
                                                     lineHeight: 1.2,
                                                     overflow: "hidden",
                                                     textOverflow: "ellipsis",
@@ -315,7 +468,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             >
                                                 {capitalizeWords(item.name)}
                                             </Typography>
-                                            <Typography sx={{ mt: 0.5, fontWeight: 800, fontSize: 16, color: "#b91c1c" }}>
+                                            <Typography sx={{ mt: 0.5, fontWeight: 800, fontSize: 24, color: "#b91c1c" }}>
                                                 {item.priceText || ""}
                                             </Typography>
 
@@ -351,7 +504,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                             border: 0,
                                                             outline: "none",
                                                             textAlign: "center",
-                                                            fontSize: 12,
+                                                            fontSize: 24,
                                                             fontWeight: 700,
                                                         }}
                                                     />
@@ -437,7 +590,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             <Typography
                                                 sx={{
                                                     fontWeight: 700,
-                                                    fontSize: 14,
+                                                    fontSize: 24,
                                                     lineHeight: 1.2,
                                                     overflow: "hidden",
                                                     textOverflow: "ellipsis",
@@ -449,7 +602,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                 {capitalizeWords(it.name)}
                                             </Typography>
                                         </Box>
-                                        <Typography sx={{ fontWeight: 700, fontSize: 14, whiteSpace: "nowrap" }}>
+                                        <Typography sx={{ fontWeight: 700, fontSize: 24, whiteSpace: "nowrap" }}>
                                             Rs. {Math.round(Number.isFinite(lineTotal) ? lineTotal : 0)}/-
                                         </Typography>
                                     </Box>
@@ -460,32 +613,50 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 </Box>
 
                 <Box sx={{ p: 2, bgcolor: "#316D52" }}>
-                    <Button
-                        fullWidth
-                        variant="contained"
-                        onClick={() => {
-                            if (step === "cart") {
+                    {step === "cart" ? (
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={() => {
                                 setStep("checkout");
-                                return;
-                            }
-                            if (onCheckout) {
-                                onCheckout();
-                                return;
-                            }
-                            onClose();
-                        }}
-                        sx={{
-                            mt: 2,
-                            mb: 0.75,
-                            fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
-                            fontWeight: 510,
-                            fontSize: "24px",
-                            lineHeight: "100%",
-                            letterSpacing: "0%",
-                        }}
-                    >
-                        {step === "cart" ? "Review and Checkout" : "Proceed to Pay"}
-                    </Button>
+                            }}
+                            sx={{
+                                mt: 2,
+                                mb: 0.75,
+                                fontFamily:
+                                    'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                fontWeight: 510,
+                                fontSize: "24px",
+                                lineHeight: "100%",
+                                letterSpacing: "0%",
+                            }}
+                        >
+                            Review and Checkout
+                        </Button>
+                    ) : step === "checkout" ? (
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={() => {
+                                setStep("payment");
+                            }}
+                            sx={{
+                                mt: 2,
+                                mb: 0.75,
+                                fontFamily:
+                                    'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                fontWeight: 510,
+                                fontSize: "24px",
+                                lineHeight: "100%",
+                                letterSpacing: "0%",
+                                bgcolor: "#2d5a3d",
+                                color: "white",
+                                "&:hover": { bgcolor: "#234a31" },
+                            }}
+                        >
+                            Proceed to Pay
+                        </Button>
+                    ) : null}
                 </Box>
             </Box>
         </Dialog>

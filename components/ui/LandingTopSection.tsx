@@ -9,11 +9,13 @@ import FeatureCard from "./FeatureCard";
 interface LandingTopSectionProps {
   onStartScan: () => void;
   onBrowseProducts?: () => void;
+  onAdminDashboard?: () => void;
 }
 
 export default function LandingTopSection({
   onStartScan,
   onBrowseProducts,
+  onAdminDashboard,
 }: LandingTopSectionProps) {
   return (
     <Box
@@ -123,6 +125,26 @@ export default function LandingTopSection({
           description="Deep insights into your skin, powered by intelligent diagnostics."
         />
       </Box>
+{/* 
+      {onAdminDashboard && (
+        <Typography
+          onClick={onAdminDashboard}
+          sx={{
+            color: "#2d5a3d",
+            fontSize: 20,
+            fontWeight: 400,
+            textDecoration: "underline",
+            cursor: "pointer",
+            textAlign: "right",
+            mt: 2,
+            "&:hover": {
+              color: "#1a3d28",
+            },
+          }}
+        >
+          Admin Dashboard
+        </Typography>
+      )} */}
     </Box>
   );
 }

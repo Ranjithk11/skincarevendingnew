@@ -91,17 +91,65 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
     const overallSkinHealthRating = reportSource?.skinHealthScore?.rating;
 
     const skinMetrics = reportSource?.skinMetrics;
-    const skinMetricCards = [
-        { label: "Moisture", key: "moisture" as const },
-        { label: "Wrinkles", key: "wrinkles" as const },
-        { label: "Dark Spots", key: "darkSpots" as const },
-    ].map((m) => {
-        const score = skinMetrics?.[m.key]?.score;
-        return {
-            label: m.label,
-            value: typeof score === "number" ? `${score}%` : "--",
+    const skinMetricCards = (() => {
+        const toLabel = (raw: string) =>
+            raw
+                .replace(/_/g, " ")
+                .replace(/([a-z])([A-Z])/g, "$1 $2")
+                .replace(/\s+/g, " ")
+                .trim()
+                .replace(/\b\w/g, (c) => c.toUpperCase());
+
+        const toLevelColor = (lvl?: unknown) => {
+            const level = typeof lvl === "string" ? lvl.toUpperCase() : "";
+            if (level === "GOOD") return "#2ac78fff";
+            if (level === "MODERATE") return "#f59e0b";
+            return "#6b7280";
         };
-    });
+
+        if (Array.isArray(skinMetrics)) {
+            return skinMetrics.map((m: any, idx: number) => {
+                const label =
+                    typeof m?.label === "string"
+                        ? m.label
+                        : typeof m?.key === "string"
+                          ? toLabel(m.key)
+                          : `Metric ${idx + 1}`;
+                const score = m?.score;
+                const level = m?.level;
+                return {
+                    label,
+                    value: typeof score === "number" ? `${score}%` : "--",
+                    level: typeof level === "string" ? level : undefined,
+                    levelColor: toLevelColor(level),
+                };
+            });
+        }
+
+        if (skinMetrics && typeof skinMetrics === "object") {
+            return Object.entries(skinMetrics).map(([key, val]: [string, any]) => {
+                const score = val?.score ?? val;
+                const level = val?.level;
+                return {
+                    label: toLabel(key),
+                    value: typeof score === "number" ? `${score}%` : "--",
+                    level: typeof level === "string" ? level : undefined,
+                    levelColor: toLevelColor(level),
+                };
+            });
+        }
+
+        return [] as Array<{
+            label: string;
+            value: string;
+            level?: string;
+            levelColor: string;
+        }>;
+    })();
+
+    const attributeCodeItems = Array.isArray(reportSource?.attributeCode)
+        ? reportSource.attributeCode
+        : [];
 
     const recTabs = [
         {
@@ -254,16 +302,17 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                 minWidth: 0,
                                 display: "flex",
                                 flexDirection: "column",
-                                alignItems: isWide ? "flex-start" : "stretch",
+                                alignItems: isWide ? "center" : "stretch",
+                                justifyContent: isWide ? "center" : "stretch",
                             }}
                         >
                             <Box
                                 sx={{
                                     width: "100%",
                                     display: "flex",
-                                    flexDirection: "row",
+                                    flexDirection: "column",
                                     alignItems: "center",
-                                    justifyContent: "space-between",
+                                    justifyContent: "center",
                                     gap: { xs: 2, md: "31px" },
                                 }}
                             >
@@ -288,8 +337,8 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                     {overallSkinHealthRating || "--"}
                                 </Box>
 
-                                <Box sx={{ flex: 1, textAlign: "left" }}>
-                                    <Typography sx={{ fontSize: "24px", fontWeight: 700 }}>
+                                <Box sx={{ width: "100%", textAlign: "center", mt: 3 }}>
+                                    <Typography sx={{ fontSize: "28px", fontWeight: 700 }}>
                                         <Box component="span" sx={{ color: "#2ac78fff" }}>
                                             {typeof overallSkinHealthScore === "number"
                                                 ? overallSkinHealthScore
@@ -299,52 +348,13 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                             out of 100
                                         </Box>
                                     </Typography>
-                                    <Typography sx={{ fontSize: "24px", color: "#000", fontWeight: 300 }}>
+                                    <Typography sx={{ fontSize: "26px", color: "#000", fontWeight: 400,mt:2 }}>
                                         Overall skincare health score
                                     </Typography>
                                 </Box>
                             </Box>
 
-                            <Box
-                                sx={{
-                                    mt: 3,
-                                    width: "100%",
-                                    border: "1px solid #d1d5db",
-                                    borderRadius: "18px",
-                                    p: 2,
-                                    display: "flex",
-                                    flexDirection: { xs: "column", sm: "row" },
-                                    gap: 2,
-                                    bgcolor: "#ffffff",
-                                    boxSizing: "border-box",
-                                }}
-                            >
-                                {skinMetricCards.map((m) => (
-                                    <Box
-                                        key={m.label}
-                                        sx={{
-                                            flex: 1,
-                                            border: "2px solid #f0d89a",
-                                            borderRadius: "12px",
-                                            p: 3,
-                                            textAlign: "center",
-                                            bgcolor: "#ffffff",
-                                            minHeight: { xs: 90, sm: 110 },
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                        }}
-                                    >
-                                        <Typography sx={{ fontSize: "24px", fontWeight: 300 }}>
-                                            {m.label}
-                                        </Typography>
-                                        <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
-                                            {m.value}
-                                        </Typography>
-                                    </Box>
-                                ))}
-                            </Box>
+                          
                         </Box>
                     </Box>
 
@@ -368,15 +378,122 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                             sx={{
                                 mt: 2,
                                 mb: 3,
-                                fontSize:"24px",
+                                fontSize: "24px",
                                 color: "#6b7280",
                                 letterSpacing: 1,
                             }}
                         >
                             Defects picked up by the scan
                         </Typography>
+                          <Box
+                                sx={{
+                                    mt: 3,
+                                    width: "100%",
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: "18px",
+                                    p: 2,
+                                    gap: 2,
+                                    bgcolor: "#ffffff",
+                                    boxSizing: "border-box",
+                                }}
+                            >
+                                {(() => {
+                                    const seenLabels = new Set<string>();
+                                    
+                                    const attributeCards = attributeCodeItems
+                                        .filter((item: any) => {
+                                            const label = item?.attribute
+                                                ? String(item.attribute).replace(/_/g, " ").toLowerCase().trim()
+                                                : "";
+                                            if (!label || seenLabels.has(label)) return false;
+                                            seenLabels.add(label);
+                                            return true;
+                                        })
+                                        .map((item: any, idx: number) => ({
+                                            key: `attr-${item?.code ?? idx}-${item?.attribute ?? idx}`,
+                                            label: item?.attribute
+                                                ? String(item.attribute).replace(/_/g, " ")
+                                                : "--",
+                                            value: typeof item?.confidence === "number"
+                                                ? `${item.confidence}%`
+                                                : "--",
+                                            level: typeof item?.confidence === "number"
+                                                ? (item.confidence >= 80 ? "Good" : "Moderate")
+                                                : undefined,
+                                            levelColor: typeof item?.confidence === "number"
+                                                ? (item.confidence >= 80 ? "#2ac78fff" : "#f59e0b")
+                                                : "#6b7280",
+                                        }));
 
-                        <Grid container spacing={{ xs: 2, md: 3 }}>
+                                    const metricCards = skinMetricCards
+                                        .filter((m) => {
+                                            const label = m.label.toLowerCase().trim();
+                                            if (seenLabels.has(label)) return false;
+                                            seenLabels.add(label);
+                                            return true;
+                                        })
+                                        .map((m, idx) => ({
+                                            key: `metric-${m.label}-${idx}`,
+                                            label: m.label,
+                                            value: m.value,
+                                            level: m.level,
+                                            levelColor: m.levelColor,
+                                        }));
+
+                                    const allCards = [...attributeCards, ...metricCards];
+
+                                    return (
+                                        <Box
+                                            sx={{
+                                                width: "100%",
+                                                display: "grid",
+                                                gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
+                                                gap: 2,
+                                            }}
+                                        >
+                                            {allCards.map((card) => (
+                                                <Box
+                                                    key={card.key}
+                                                    sx={{
+                                                        border: "2px solid #f0d89a",
+                                                        borderRadius: "12px",
+                                                        p: 3,
+                                                        textAlign: "center",
+                                                        bgcolor: "#ffffff",
+                                                        minHeight: { xs: 90, sm: 110 },
+                                                        display: "flex",
+                                                        flexDirection: "column",
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                    }}
+                                                >
+                                                    <Typography sx={{ fontSize: "24px", fontWeight: 300 }}>
+                                                        {card.label}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
+                                                        {card.value}
+                                                    </Typography>
+                                                    {card.level && (
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: "20px",
+                                                                fontWeight: 600,
+                                                                mt: 1,
+                                                                color: card.levelColor,
+                                                                textTransform: "capitalize",
+                                                            }}
+                                                        >
+                                                            {String(card.level).replace(/_/g, " ").toLowerCase()}
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            ))}
+                                        </Box>
+                                    );
+                                })()}
+                            </Box>
+
+                        {/* <Grid container spacing={{ xs: 2, md: 3 }}>
                             {keyConcerns.map((c) => (
                                 <Grid item xs={12} sm={4} key={c.title}>
                                     <Box
@@ -402,26 +519,26 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                                 backgroundSize: "cover",
                                             }}
                                         />
-                                        {/* <Box
-                    sx={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      p: 2,
-                      bgcolor: "rgba(0,0,0,0.55)",
-                    }}
-                  >
-                    <Typography sx={{ fontSize: "24px", color: "#fff", fontWeight: 500 }}>
-                      {c.title}
-                    </Typography>
-                  </Box> */}
+                                        <Box
+                                            sx={{
+                                                position: "absolute",
+                                                left: 0,
+                                                right: 0,
+                                                bottom: 0,
+                                                p: 2,
+                                                bgcolor: "rgba(0,0,0,0.55)",
+                                            }}
+                                        >
+                                            <Typography sx={{ fontSize: "24px", color: "#fff", fontWeight: 500 }}>
+                                                {c.title}
+                                            </Typography>
+                                        </Box>
                                     </Box>
                                 </Grid>
                             ))}
-                        </Grid>
+                        </Grid> */}
 
-                        <Box
+                        {/* <Box
                             sx={{
                                 mt: 6,
                                 display: "flex",
@@ -498,11 +615,88 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                             >
                                 Recommendations
                             </Box>
+                        </Box> */}
+
+                        <Box
+                            sx={{
+                                mt: 4,
+                                display: "flex",
+                                justifyContent: "flex-start",
+                                gap: 2,
+                                flexWrap: "wrap",
+                            }}
+                        >
+                            <Box
+                                onClick={() => setPostConcernTab("routine")}
+                                sx={{
+                                    width: 200,
+                                    height: 60,
+                                    borderRadius: "999px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: "pointer",
+                                    userSelect: "none",
+                                    fontFamily:
+                                        'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                    fontWeight: 600,
+                                    fontSize: "24px",
+                                    color: postConcernTab === "routine" ? "#ffffff" : "#111827",
+                                    background:
+                                        postConcernTab === "routine"
+                                            ? "linear-gradient(90deg, #1DC9A0 0%, #316D52 100%)"
+                                            : "#ffffff",
+                                    border:
+                                        postConcernTab === "routine"
+                                            ? "1px solid transparent"
+                                            : "1px solid #d1d5db",
+                                    boxShadow:
+                                        postConcernTab === "routine"
+                                            ? "0 10px 22px rgba(0,0,0,0.12)"
+                                            : "none",
+                                }}
+                            >
+                                Routine
+                            </Box>
+
+                            <Box
+                                onClick={() => setPostConcernTab("recommendations")}
+                                sx={{
+                                    width: 240,
+                                    height: 60,
+                                    borderRadius: "999px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: "pointer",
+                                    userSelect: "none",
+                                    fontFamily:
+                                        'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                    fontWeight: 600,
+                                    fontSize: "24px",
+                                    color:
+                                        postConcernTab === "recommendations" ? "#ffffff" : "#111827",
+                                    background:
+                                        postConcernTab === "recommendations"
+                                            ? "linear-gradient(90deg, #1DC9A0 0%, #316D52 100%)"
+                                            : "#ffffff",
+                                    border:
+                                        postConcernTab === "recommendations"
+                                            ? "1px solid transparent"
+                                            : "1px solid #d1d5db",
+                                    boxShadow:
+                                        postConcernTab === "recommendations"
+                                            ? "0 10px 22px rgba(0,0,0,0.12)"
+                                            : "none",
+                                }}
+                            >
+                                Recommendations
+                            </Box>
                         </Box>
 
                         {postConcernTab === "routine" && (
                             <Box sx={{ mt: 5 }}>
-                                <SkincareRoutine />
+                                <SkincareRoutine recommendationData={reportSource} />
                             </Box>
                         )}
 

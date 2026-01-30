@@ -1,27 +1,12 @@
 "use client";
 
-import { Box, Typography, TextField } from "@mui/material";
-import { Backspace } from "@mui/icons-material";
-import { RefObject } from "react";
-import PageBackground from "@/components/ui/PageBackground";
-
-interface Slide1Props {
-  name: string;
-  phone: string;
-  email: string;
-  activeField: "name" | "phone" | "email";
-  isShift: boolean;
-  isNumeric: boolean;
-  nameRef: RefObject<HTMLInputElement | null>;
-  phoneRef: RefObject<HTMLInputElement | null>;
-  emailRef: RefObject<HTMLInputElement | null>;
-  setActiveField: (field: "name" | "phone" | "email") => void;
-  setIsNumeric: (value: boolean) => void;
-  handleKeyPress: (key: string) => void;
-  handleNext: () => void;
-  currentSlide: number;
-  validationError?: string;
-}
+import { useEffect, useState, useRef } from "react";
+import { Box, IconButton, Typography, TextField } from "@mui/material";
+import { ArrowBack, Backspace } from "@mui/icons-material";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { PageBackground } from "@/components/ui";
+import { useAdminLoginMutation } from "@/redux/api/adminApi";
 
 const letterKeys = [
   ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
@@ -35,40 +20,157 @@ const numericKeys = [
   [".", ",", "?", "!", "'"],
 ];
 
-export default function Slide1({
-  name,
-  phone,
-  email,
-  activeField,
-  isShift,
-  isNumeric,
-  nameRef,
-  phoneRef,
-  emailRef,
-  setActiveField,
-  setIsNumeric,
-  handleKeyPress,
-  handleNext,
-  currentSlide,
-  validationError,
-}: Slide1Props) {
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [activeField, setActiveField] = useState<"username" | "password">("username");
+  const [isShift, setIsShift] = useState(true);
+  const [isNumeric, setIsNumeric] = useState(false);
+  const [error, setError] = useState("");
+
+  const [adminLogin, { isLoading }] = useAdminLoginMutation();
+
+  const usernameRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    usernameRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const setValue = activeField === "username" ? setUsername : setPassword;
+      const currentValue = activeField === "username" ? username : password;
+
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        setValue(currentValue.slice(0, -1));
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (activeField === "username") {
+          setActiveField("password");
+          setIsNumeric(false);
+          passwordRef.current?.focus();
+        }
+        return;
+      }
+
+      if (e.key === " ") {
+        e.preventDefault();
+        setValue(currentValue + " ");
+        return;
+      }
+
+      if (e.key.length !== 1) return;
+
+      
+      e.preventDefault();
+      setValue(currentValue + e.key);
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [activeField, username, password]);
+
+  const handleKeyPress = (key: string) => {
+    const setValue = activeField === "username" ? setUsername : setPassword;
+    const currentValue = activeField === "username" ? username : password;
+
+    if (key === "backspace") {
+      setValue(currentValue.slice(0, -1));
+    } else if (key === "space") {
+      setValue(currentValue + " ");
+    } else if (key === "shift") {
+      setIsShift(!isShift);
+    } else if (key === "123" || key === "ABC") {
+      setIsNumeric(!isNumeric);
+    } else if (key === "return") {
+      if (activeField === "username") {
+        setActiveField("password");
+        setIsNumeric(false);
+        passwordRef.current?.focus();
+      }
+    } else {
+      const char = isShift && !isNumeric ? key.toUpperCase() : key.toLowerCase();
+      setValue(currentValue + char);
+      if (isShift && !isNumeric) setIsShift(false);
+    }
+  };
+
+  const handleNext = async () => {
+    if (!username.trim() || !password.trim()) {
+      setError("Please enter both username and password");
+      return;
+    }
+
+    setError("");
+
+    try {
+      const result = await adminLogin({
+        username: username.trim(),
+        password: password.trim(),
+      }).unwrap();
+
+      if (result.success) {
+        localStorage.setItem("admin_logged_in", "true");
+        localStorage.setItem("admin_name", username.trim());
+        router.push("/admin/dashboard");
+      } else {
+        setError(result.message || "Invalid credentials");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Failed to login. Please try again.");
+    }
+  };
+
+  const handleBack = () => {
+    router.back();
+  };
+
   const keys = isNumeric ? numericKeys : letterKeys;
 
   return (
-    <Box
-      sx={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        transform: `translateX(${currentSlide === 0 ? "0%" : "-100%"})`,
-        transition: "transform 0.3s ease",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%" }}>
       <PageBackground showGreenCurve fitParent>
+        {/* Header */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            px: 2,
+          }}
+        >
+          <IconButton onClick={handleBack} sx={{ color: "#1a1a1a" }}>
+            <ArrowBack />
+          </IconButton>
+          <Box
+            sx={{
+              position: "relative",
+              width: 140,
+              height: 140,
+              flexShrink: 0,
+            }}
+          >
+            <Image
+              src="/wending/goldlog.svg"
+              alt="Leaf Water Logo"
+              fill
+              priority
+              style={{
+                objectFit: "contain",
+              }}
+            />
+          </Box>
+        </Box>
+
         {/* Form Content */}
         <Box sx={{ px: 3, pt: 3, pb: 2, flex: 1, overflow: "auto" }}>
           <Box
@@ -77,7 +179,7 @@ export default function Slide1({
               maxWidth: "100%",
               display: "flex",
               flexDirection: "column",
-              gap: "35px",
+              gap: "20px",
             }}
           >
             <Typography
@@ -87,12 +189,12 @@ export default function Slide1({
                 fontWeight: 510,
                 fontStyle: "normal",
                 color: "#1a1a1a",
-                fontSize: "64px",
+                fontSize: "48px",
                 lineHeight: "100%",
                 letterSpacing: 0,
               }}
             >
-              Let's get started
+              Admin Dashboard Login
             </Typography>
             <Typography
               sx={{
@@ -100,22 +202,33 @@ export default function Slide1({
                 fontWeight: 400,
                 fontStyle: "normal",
                 color: "#6b7280",
-                fontSize: "32px",
+                fontSize: "24px",
                 lineHeight: "100%",
                 letterSpacing: 0,
               }}
             >
-              Sign up using your name and phone number
+              Enter your information below
             </Typography>
 
-            {/* Name Field */}
-            <Typography sx={{ color: "#000", fontSize: "36px", mb: 0.5 }}>Name</Typography>
+            {error && (
+              <Typography sx={{ color: "red", fontSize: "18px" }}>
+                {error}
+              </Typography>
+            )}
+
+            {/* Username Field */}
+            <Typography sx={{ color: "#000", fontSize: "24px", mb: 0 }}>Username</Typography>
             <TextField
-              inputRef={nameRef}
+              inputRef={usernameRef}
               fullWidth
-              value={name}
+              value={username}
+              onClick={() => {
+                setActiveField("username");
+                setIsNumeric(false);
+                usernameRef.current?.focus();
+              }}
               onFocus={() => {
-                setActiveField("name");
+                setActiveField("username");
                 setIsNumeric(false);
               }}
               InputProps={{ readOnly: true }}
@@ -124,50 +237,30 @@ export default function Slide1({
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2,
                   bgcolor: "white",
-                  minHeight: "72px",
-                  "& fieldset": { borderColor: activeField === "name" ? "#2d5a3d" : "#e5e7eb" },
+                  minHeight: "56px",
+                  "& fieldset": { borderColor: activeField === "username" ? "#2d5a3d" : "#e5e7eb" },
                 },
                 "& .MuiOutlinedInput-input": {
-                  py: "18px",
-                  fontSize: "28px",
+                  py: "14px",
+                  fontSize: "20px",
                 },
               }}
             />
 
-            {/* Phone Number Field */}
-            <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Phone Number</Typography>
+            {/* Password Field */}
+            <Typography sx={{ color: "#000", fontSize: "24px", mb: 0 }}>Password</Typography>
             <TextField
-              inputRef={phoneRef}
+              inputRef={passwordRef}
               fullWidth
-              value={phone}
-              onFocus={() => {
-                setActiveField("phone");
-                setIsNumeric(true);
+              type="password"
+              value={password}
+              onClick={() => {
+                setActiveField("password");
+                setIsNumeric(false);
+                passwordRef.current?.focus();
               }}
-              InputProps={{ readOnly: true }}
-              sx={{
-                mb: 0,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                  bgcolor: "white",
-                  minHeight: "72px",
-                  "& fieldset": { borderColor: activeField === "phone" ? "#2d5a3d" : "#e5e7eb" },
-                },
-                "& .MuiOutlinedInput-input": {
-                  py: "18px",
-                  fontSize: "28px",
-                },
-              }}
-            />
-
-            {/* Email Field */}
-            <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Email </Typography>
-            <TextField
-              inputRef={emailRef}
-              fullWidth
-              value={email}
               onFocus={() => {
-                setActiveField("email");
+                setActiveField("password");
                 setIsNumeric(false);
               }}
               InputProps={{ readOnly: true }}
@@ -176,44 +269,38 @@ export default function Slide1({
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2,
                   bgcolor: "white",
-                  minHeight: "72px",
-                  "& fieldset": { borderColor: activeField === "email" ? "#2d5a3d" : "#e5e7eb" },
+                  minHeight: "56px",
+                  "& fieldset": { borderColor: activeField === "password" ? "#2d5a3d" : "#e5e7eb" },
                 },
                 "& .MuiOutlinedInput-input": {
-                  py: "18px",
-                  fontSize: "28px",
+                  py: "14px",
+                  fontSize: "20px",
                 },
               }}
             />
           </Box>
         </Box>
-
-        {/* Validation Error Message */}
-        {validationError && (
-          <Box sx={{ px: 3, py: 1, bgcolor: "#fee2e2" }}>
-            <Typography sx={{ color: "#dc2626", fontSize: "20px", textAlign: "center" }}>
-              {validationError}
-            </Typography>
-          </Box>
-        )}
 
         {/* Next Button */}
         <Box
           sx={{
             bgcolor: "#2d5a3d",
-            py: 3,
+            py: 2.5,
             width: "100%",
             textAlign: "center",
-            cursor: "pointer",
+            cursor: isLoading ? "not-allowed" : "pointer",
+            opacity: isLoading ? 0.7 : 1,
             flexShrink: 0,
           }}
-          onClick={handleNext}
+          onClick={!isLoading ? handleNext : undefined}
         >
-          <Typography sx={{ color: "white", fontWeight: 600, fontSize: "30px" }}>Next</Typography>
+          <Typography sx={{ color: "white", fontWeight: 600, fontSize: "24px" }}>
+            {isLoading ? "Loading..." : "Next"}
+          </Typography>
         </Box>
 
         {/* Custom Keyboard */}
-        <Box
+       <Box
           sx={{
             bgcolor: "#d1d5db",
             px: 2,
@@ -336,5 +423,5 @@ export default function Slide1({
         </Box>
       </PageBackground>
     </Box>
-  ); 
+  );
 }

@@ -50,6 +50,7 @@ export default function Questionnaire() {
   const [isShift, setIsShift] = useState(true);
   const [isNumeric, setIsNumeric] = useState(false);
   const [selectedSkinType, setSelectedSkinType] = useState<string>("");
+  const [validationError, setValidationError] = useState<string>("");
 
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
@@ -149,6 +150,21 @@ export default function Questionnaire() {
   };
 
   const handleNext = async () => {
+    // Validate fields on Slide 1
+    if (currentSlide === 0) {
+      if (!name.trim()) {
+        setValidationError("Please enter your name");
+        setTimeout(() => setValidationError(""), 2000);
+        return;
+      }
+      if (!phone.trim() || phone.trim().length < 10) {
+        setValidationError("Please enter a valid phone number");
+        setTimeout(() => setValidationError(""), 2000);
+        return;
+      }
+      setValidationError("");
+    }
+
     if (currentSlide < totalSlides - 1) {
       setCurrentSlide(currentSlide + 1);
       return;
@@ -311,6 +327,7 @@ export default function Questionnaire() {
             handleKeyPress={handleKeyPress}
             handleNext={handleNext}
             currentSlide={currentSlide}
+            validationError={validationError}
           />
           <Slide2
             currentSlide={currentSlide}

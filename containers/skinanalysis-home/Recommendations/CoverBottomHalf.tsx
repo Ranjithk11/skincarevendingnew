@@ -19,7 +19,7 @@ interface CoverBottomHalfProps {
         cosmeticServices: any[];
     }>;
     DietChart: React.ComponentType;
-    SkincareRoutine: React.ComponentType;
+    SkincareRoutine: React.ComponentType<{ recommendationData?: any }>;
 }
 
 const CoverBottomHalf: React.FC<CoverBottomHalfProps> = ({
@@ -195,7 +195,7 @@ const CoverBottomHalf: React.FC<CoverBottomHalfProps> = ({
                             py: { xs: 2.5, md: 0 },
                         }}
                     >
-                        <Box sx={{ flex: 1, display: "flex", justifyContent: "flex-start" }}>
+                        <Box sx={{ flex: 1, display: "flex", justifyContent: "center" }}>
                             <Box
                                 sx={{
                                     width: { xs: "100%", sm: 260 },
@@ -344,7 +344,7 @@ const CoverBottomHalf: React.FC<CoverBottomHalfProps> = ({
                     </Box>
 
                     <Box sx={{ mt: 3 }}>
-                        <SkincareRoutine />
+                        <SkincareRoutine recommendationData={reportSource} />
                     </Box>
                 </>
             )

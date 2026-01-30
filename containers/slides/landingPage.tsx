@@ -14,9 +14,17 @@ export default function LandingPage() {
     router.push("/products");
   };
 
+  const handleAdminDashboard = () => {
+    router.push("/admin/login");
+  };
+
   return (
     <PageBackground showGreenCurve>
-      <LandingTopSection onStartScan={handleStartScan} onBrowseProducts={handleBrowseProducts} />
+      <LandingTopSection 
+        onStartScan={handleStartScan} 
+        onBrowseProducts={handleBrowseProducts}
+        onAdminDashboard={handleAdminDashboard}
+      />
     </PageBackground>
   );
 }
