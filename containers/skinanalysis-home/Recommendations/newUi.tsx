@@ -91,7 +91,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
     const overallSkinHealthRating = reportSource?.skinHealthScore?.rating;
 
     const skinMetrics = reportSource?.skinMetrics;
-    const skinMetricCards = (() => {
+    const skinMetricCards: Array<{ label: string; value: string; level?: string; levelColor: string }> = (() => {
         const toLabel = (raw: string) =>
             raw
                 .replace(/_/g, " ")

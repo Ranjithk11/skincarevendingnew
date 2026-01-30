@@ -1,6 +1,3 @@
-import { SerialPort } from "serialport";
-import { ReadlineParser } from "@serialport/parser-readline";
-
 export type Stm32Config = {
   port: string;
   baudRate: number;
@@ -65,6 +62,10 @@ export async function stm32Dispense(
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
   const command = `${commandPrefix}${code}${commandSuffix}`;
+
+  // Dynamic import to avoid webpack bundling issues
+  const { SerialPort } = await import("serialport");
+  const { ReadlineParser } = await import("@serialport/parser-readline");
 
   const port = new SerialPort({
     path: cfg.port,
