@@ -201,7 +201,7 @@ const CoverBottomHalf: React.FC<CoverBottomHalfProps> = ({
                                     width: { xs: "100%", sm: 260 },
                                     height: { xs: 80, md: 86 },
                                     borderRadius: 2.5,
-                                    border: "2px solid #e6c978",
+                                    border: overallScore >= 70 ? "2px solid #22c55e" : overallScore >= 50 ? "2px solid #e6c978" : "2px solid #ef4444",
                                     bgcolor: "#ffffff",
                                     display: "flex",
                                     alignItems: "center",
@@ -209,10 +209,12 @@ const CoverBottomHalf: React.FC<CoverBottomHalfProps> = ({
                                     fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                                     fontWeight: 510,
                                     fontSize: "24px",
-                                    color: "#111827",
+                                    color: overallScore >= 70 ? "#22c55e" : overallScore >= 50 ? "#111827" : "#ef4444",
+                                    whiteSpace: "nowrap",
+                                    px: 2,
                                 }}
                             >
-                                Good Enough
+                                {overallScore >= 70 ? "Good Enough" : overallScore >= 50 ? "Needs Attention" : "Poor"}
                             </Box>
                         </Box>
 

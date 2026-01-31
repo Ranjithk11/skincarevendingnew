@@ -11,6 +11,8 @@ import Slide1 from "./Slide1";
 import Slide2 from "./Slide2";
 import { PageBackground } from "@/components/ui";
 import { APP_ROUTES } from "@/utils/routes";
+import { useAppDispatch } from "@/redux/store/store";
+import { setSkinType } from "@/redux/reducers/analysisSlice";
 
 const skinTypeOptions = [
   {
@@ -42,6 +44,7 @@ const skinTypeOptions = [
 
 export default function Questionnaire() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -224,7 +227,8 @@ export default function Questionnaire() {
         if (resolvedUserId) {
           localStorage.setItem("leafwater_userId", String(resolvedUserId));
         }
-        localStorage.setItem("leafwater_skinType", String(skinTypeId));
+        // Store skinType in Redux
+        dispatch(setSkinType(skinTypeId));
       } catch {}
 
       // Create NextAuth session

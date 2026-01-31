@@ -11,6 +11,8 @@ import {
 import { APP_ROUTES } from "@/utils/routes";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import ProductCard from "@/containers/skinanalysis-home/Recommendations/ProductCard";
+import { useCart } from "@/containers/skinanalysis-home/Recommendations/CartContext";
+import CartProduct from "@/containers/skinanalysis-home/Recommendations/cartProduct";
 
 const PageBackground = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -73,9 +75,8 @@ export default function BrowseProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [openCart, setOpenCart] = useState(false);
-  const [cart, setCart] = useState<any[]>([]);
+  const { count: cartCount } = useCart();
   const isKiosk = false;
-  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
 
   const [getFilteredProducts, { data, isLoading }] = useLazyGetFilteredProductsQuery();
   const { data: categoriesData } = useGetProductCategoriesQuery({});
@@ -152,18 +153,6 @@ export default function BrowseProductsPage() {
     
     fetchAllCategoryImages();
   }, [categories, imagesLoaded]);
-
-  const handleAddToCart = (product: any) => {
-    setCart((prev) => {
-      const existing = prev.find((item) => item._id === product._id);
-      if (existing) {
-        return prev.map((item) =>
-          item._id === product._id ? { ...item, qty: item.qty + 1 } : item
-        );
-      }
-      return [...prev, { ...product, qty: 1 }];
-    });
-  };
 
   const handleGoBack = () => {
     router.push(APP_ROUTES.HOME);
@@ -372,6 +361,11 @@ export default function BrowseProductsPage() {
           </Box>
         </Box>
       </PageBackground>
+
+      <CartProduct
+        open={openCart}
+        onClose={() => setOpenCart(false)}
+      />
     </Box>
   );
 }

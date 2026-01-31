@@ -220,6 +220,7 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
   const daycreamProducts = pickProducts(["day cream", "daycream"], 1);
   const sunscreenProducts = pickProducts(["sunscreen", "sun screen", "sunblock", "spf"], 1);
   const underEyeProducts = pickProducts(["under-eye", "under eye", "eye cream"], 1);
+  const nightcreamProducts = pickProducts(["night cream", "nightcream", "night"], 1);
 
   const steps = night
     ? [
@@ -240,12 +241,12 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         products: serumProducts,
       },
            {
-        title: "Under-Eye Cream",
-        subtitle: "Under-eye cream helps reduce dark circles, puffiness, and fine lines, leaving your skin looking refreshed and rejuvenated.",
-        howTitle: "How to Use Your Under-Eye Cream",
-        howBody: "Apply sunscreen as the final step in your morning routine. Use a generous amount and spread it evenly over your face and neck. Let it absorb for a minute before heading outdoors. Reapply every 2–3 hours, especially after sweating or sun exposure, for consistent protection.",
-        howImg: "/products/cetayellow.svg",
-        products: underEyeProducts,
+        title: "Night Cream",
+        subtitle: "Night cream provides essential hydration and protection, shielding your skin from environmental damage. It keeps your complexion smooth, radiant, and ready to face the day.",
+        howTitle: "How to Use Your Night Cream",
+        howBody: "After cleansing, apply a small amount of night cream to your face and neck. Gently massage it in using upward, circular motions until fully absorbed. Allow it to settle for a minute before applying sunscreen or makeup. Use every morning for optimal hydration and protection.",
+        howImg: "/products/nightcream.jpeg",
+        products: nightcreamProducts,
       },
     ]
     : [
@@ -277,66 +278,148 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
 
   return (
     <PageBackground>
-      <Box sx={{ px: 2, pt: 2, width: "100%" }}>
+      <Box sx={{ px: 2, pt: 4, width: "100%" }}>
         {/* HEADER */}
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography sx={{
-              mt: 2.5,
-              mb: 0.75,
-              fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
-              fontWeight: 700,
-              fontSize: "36px",
-              lineHeight: "100%",
-              letterSpacing: "0%",
-            }}>
-              My Skincare Routine – {night ? "Night" : "Day"}
-            </Typography>
-            <Typography sx={{
-              mt: 2,
-              mb: 2.5,
-              fontSize:   "24px",
-              color: "#6b7280",
-              letterSpacing: 1.2,
-            }}>
-              {night ? "NIGHTTIME ROUTINE" : "DAYTIME ROUTINE"}
-            </Typography>
-          </Box>
-          <Switch
-            checked={night}
-            onChange={(e) => setNight(e.target.checked)}
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 2 }}>
+          {/* Day/Night Toggle Button - Top Center */}
+          <Box
             sx={{
-              width: 56,
-              height: 30,
-              p: 0,
-              "& .MuiSwitch-switchBase": {
-                p: 0.5,
-                "&.Mui-checked": {
-                  transform: "translateX(26px)",
-                  color: "#ffffff",
-                  "& + .MuiSwitch-track": {
-                    opacity: 1,
-                    backgroundImage: "linear-gradient(90deg, #1DC9A0 0%, #FFDD1B 100%)",
-                  },
+              display: "flex",
+              alignItems: "center",
+              bgcolor: "#f3f4f6",
+              borderRadius: "999px",
+              p: 0.5,
+              gap: 0.5,
+              mb: 4,
+            }}
+          >
+            <Box
+              onClick={() => setNight(false)}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 2.5,
+                py: 1.5,
+                borderRadius: "999px",
+                cursor: "pointer",
+                bgcolor: !night ? "#FFDD1B" : "transparent",
+                transition: "all 0.3s ease",
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  fontSize: "24px",
+                }}
+              >
+                ☀️
+              </Box>
+              <Typography
+                sx={{
+                  fontSize: "24px",
+                  fontWeight: 600,
+                  color: !night ? "#000" : "#6b7280",
+                }}
+              >
+                Day
+              </Typography>
+            </Box>
+
+            <Box
+              onClick={() => setNight(true)}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                px: 2.5,
+                py: 1.5,
+                borderRadius: "999px",
+                cursor: "pointer",
+                bgcolor: night ? "#1DC9A0" : "transparent",
+                transition: "all 0.3s ease",
+              }}
+            >
+              <Box
+                component="span"
+                sx={{
+                  fontSize: "24px",
+                }}
+              >
+                🌙
+              </Box>
+              <Typography
+                sx={{
+                  fontSize: "24px",
+                  fontWeight: 600,
+                  color: night ? "#fff" : "#6b7280",
+                }}
+              >
+                Night
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Title - Below Center */}
+          <Typography sx={{
+            mb: 5,
+            fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+            fontWeight: 700,
+            fontSize: "36px",
+            lineHeight: "100%",
+            letterSpacing: "0%",
+            textAlign: "center",
+          }}>
+            My Skincare Routine – {night ? "Night" : "Day"}
+          </Typography>
+          {/* <Typography sx={{
+            mt: 1,
+            mb: 0,
+            fontSize: "24px",
+            color: "#6b7280",
+            letterSpacing: 1.2,
+            textAlign: "center",
+          }}>
+            {night ? "NIGHTTIME ROUTINE" : "DAYTIME ROUTINE"}
+          </Typography> */}
+        </Box>
+
+        {/* Hidden original Switch - keeping functionality intact */}
+        {/* <Switch
+          checked={night}
+          onChange={(e) => setNight(e.target.checked)}
+          sx={{
+            display: "none",
+            width: 56,
+            height: 30,
+            p: 0,
+            "& .MuiSwitch-switchBase": {
+              p: 0.5,
+              "&.Mui-checked": {
+                transform: "translateX(26px)",
+                color: "#ffffff",
+                "& + .MuiSwitch-track": {
+                  opacity: 1,
+                  backgroundImage: "linear-gradient(90deg, #1DC9A0 0%, #FFDD1B 100%)",
                 },
               },
-              "& .MuiSwitch-thumb": {
-                width: 24,
-                height: 24,
-                backgroundColor: "#FFDD1B",
-                boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
-              },
-              "& .MuiSwitch-track": {
-                borderRadius: 999,
-                opacity: 1,
-                backgroundImage: "linear-gradient(90deg, #FFDD1B 0%, #1DC9A0 100%)",
-              },
-              "& .MuiSwitch-switchBase.Mui-checked .MuiSwitch-thumb": {
-                backgroundColor: "#1DC9A0",
-              },
-            }}
-          />
-        </Box>
+            },
+            "& .MuiSwitch-thumb": {
+              width: 24,
+              height: 24,
+              backgroundColor: "#FFDD1B",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+            },
+            "& .MuiSwitch-track": {
+              borderRadius: 999,
+              opacity: 1,
+              backgroundImage: "linear-gradient(90deg, #FFDD1B 0%, #1DC9A0 100%)",
+            },
+            "& .MuiSwitch-switchBase.Mui-checked .MuiSwitch-thumb": {
+              backgroundColor: "#1DC9A0",
+            },
+          }}
+        /> */}
 
         {/* STEPS */}
         {steps.map((s, i) => (
@@ -362,7 +445,7 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
               <HowToUseCard title={s.howTitle} body={s.howBody} image={s.howImg} />
 
               <Grid container spacing={1.5} sx={{ mt: 1 }}>
-                {s.products.map((p, idx) => (
+                {s.products.map((p: any, idx: number) => (
                   <Grid item xs={6} key={idx}>
                     <RoutineProductCard product={p} category={s.title} />
                   </Grid>

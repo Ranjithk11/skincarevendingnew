@@ -318,7 +318,8 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                             >
                                 <Box
                                     sx={{
-                                        width: 180,
+                                        minWidth: 180,
+                                        px: 3,
                                         height: 86,
                                         borderRadius: "999px",
                                         border: "2px solid #e6c978",
@@ -332,6 +333,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                         fontSize: "24px",
                                         color: "#111827",
                                         boxSizing: "border-box",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     {overallSkinHealthRating || "--"}

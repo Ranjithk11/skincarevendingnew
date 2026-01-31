@@ -4,6 +4,7 @@ import { createSlice } from "@reduxjs/toolkit";
 const initialState = {
   questions: null,
   visitCount: null,
+  skinType: "NORMAL_SKIN",
 };
 
 export const analysisSlice: any = createSlice({
@@ -16,9 +17,12 @@ export const analysisSlice: any = createSlice({
     updateVisitCount: (state, action) => {
       state.visitCount = action.payload;
     },
+    setSkinType: (state, action) => {
+      state.skinType = action.payload;
+    },
   },
 });
 
-export const { saveOnboardingQuestions, updateVisitCount } =
+export const { saveOnboardingQuestions, updateVisitCount, setSkinType } =
   analysisSlice.actions;
 export default analysisSlice.reducer;

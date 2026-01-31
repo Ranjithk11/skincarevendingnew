@@ -77,7 +77,7 @@ export default function Logo({
           <Typography
             sx={{
               fontWeight: 510,
-              fontSize: 16,
+              fontSize: 24,
               lineHeight: "100%",
             }}
           >

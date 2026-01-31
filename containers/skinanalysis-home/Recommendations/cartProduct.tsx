@@ -33,7 +33,7 @@ const parsePrice = (priceText?: string): number => {
 const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-    const { items, setQuantity } = useCart();
+    const { items, setQuantity, removeItem, clear } = useCart();
     const [showPriceDetails, setShowPriceDetails] = useState(false);
     const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
     const [couponApplied, setCouponApplied] = useState(false);
@@ -260,6 +260,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         mode={paymentMode}
                                         receipt={`cart_${Date.now()}`}
                                         onVerified={() => {
+                                            clear();
                                             if (onCheckout) onCheckout();
                                             setStep("cart");
                                             onClose();
@@ -413,8 +414,23 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             width: isMobile ? "100%" : 1080,
                                             maxWidth: "100%",
                                             minHeight: isMobile ? 0 : 220,
+                                            position: "relative",
                                         }}
                                     >
+                                        <IconButton
+                                            size="small"
+                                            onClick={() => removeItem(key)}
+                                            sx={{
+                                                position: "absolute",
+                                                top: 8,
+                                                right: 8,
+                                                bgcolor: "#f3f4f6",
+                                                "&:hover": { bgcolor: "#e5e7eb" },
+                                                zIndex: 1,
+                                            }}
+                                        >
+                                            <Icon icon="mdi:close" width={20} />
+                                        </IconButton>
                                         <Box
                                             sx={{
                                                 width: isMobile ? 80 : 250,

@@ -30,6 +30,9 @@ import * as faceapi from "face-api.js";
 import SideMenuComponent from "@/views/home/selfie/SideMenu";
 import { Icon } from "@iconify/react";
 import PageBackground from "@/components/ui/PageBackground";
+import { useAppSelector } from "@/redux/store/store";
+import Image from "next/image";
+import { ArrowBack } from "@mui/icons-material";
 
 const StyledTakeSelfie = styled(Container)(({ theme }) => ({
   flexGrow: 1,
@@ -309,9 +312,15 @@ const TakeSelfie = () => {
   const theme = useTheme();
   const isUpMdDevice = useMediaQuery(theme.breakpoints.up("md"));
 
+  // Get skinType from Redux store (set in Slide2)
+  const reduxSkinType = useAppSelector((state: any) => state.analysisSlice?.skinType);
+
   const [skinAttributeStatus, setSkinAttributeStatus] = useState<any>(null);
   const { control, getValues } = useForm({
     mode: "all",
+    defaultValues: {
+      skinType: reduxSkinType || "NORMAL_SKIN",
+    },
   });
   const router = useRouter();
 
@@ -590,7 +599,57 @@ const TakeSelfie = () => {
 
   return (
     <PageBackground showGreenCurve>
-      <StyledTakeSelfie disableGutters maxWidth="xl">
+      {/* Top Header with Back Arrow and Logo */}
+      <Box
+        sx={{
+          position: "fixed",
+          top: 10,
+          left: 12,
+          right: 12,
+          zIndex: 10,
+        }}
+      >
+        <Box
+          sx={{
+            px: 2,
+            py: 1.25,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+            bgcolor: "#ffffff",
+            borderRadius: 2,
+            boxShadow: "0 10px 22px rgba(0,0,0,0.10)",
+          }}
+        >
+          <IconButton
+            onClick={() => router.back()}
+            sx={{
+              border: "1px solid #e5e7eb",
+              borderRadius: "50%",
+              width: 48,
+              height: 48,
+            }}
+          >
+            <ArrowBack sx={{ color: "#111827" }} />
+          </IconButton>
+
+          <Box
+            onClick={() => router.push(APP_ROUTES.HOME)}
+            sx={{ position: "relative", width: 270, height: 69, cursor: "pointer" }}
+          >
+            <Image
+              src="/wending/goldlog.svg"
+              alt="Leaf Water Logo"
+              fill
+              sizes="280px"
+              style={{ objectFit: "contain" }}
+            />
+          </Box>
+        </Box>
+      </Box>
+
+      <StyledTakeSelfie disableGutters maxWidth="xl" sx={{ pt: 12 }}>
         {/* {isUpMdDevice && <SideMenuComponent />} */}
 
         {!openCamera && (
@@ -683,7 +742,8 @@ const TakeSelfie = () => {
                         mx: "auto",
                       }}
                     >
-                      <Box mb={2}>
+                      {/* Hidden skin type selector - keeping functionality intact */}
+                      <Box mb={2} sx={{ display: "none" }}>
                         <SelectInputFieldComponent
                           id="skintype"
                           name="skinType"
