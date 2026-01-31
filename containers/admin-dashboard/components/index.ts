@@ -4,3 +4,4 @@ export { default as ProductSlot } from "./ProductSlot";
 export { default as VendingMachineConfig } from "./VendingMachineConfig";
 export { default as ProductInventoryTable } from "./ProductInventoryTable";
 export { default as SlotAssignmentModal } from "./SlotAssignmentModal";
+export { default as MachineStatusModal } from "./MachineStatusModal";

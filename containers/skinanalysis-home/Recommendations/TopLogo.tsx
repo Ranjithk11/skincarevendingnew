@@ -1,6 +1,8 @@
 import { Badge, Box, Button } from "@mui/material";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import React from "react";
+import { APP_ROUTES } from "@/utils/routes";
 
 interface TopLogoProps {
   isKiosk: boolean;
@@ -23,6 +25,12 @@ const TopLogo: React.FC<TopLogoProps> = ({
   firstButtonIcon = "/icons/cart.svg",
   secondButtonIcon = "/icons/face.png",
 }) => {
+  const router = useRouter();
+
+  const handleLogoClick = () => {
+    router.push(APP_ROUTES.HOME);
+  };
+
   return (
     <Box
       sx={{
@@ -55,7 +63,10 @@ const TopLogo: React.FC<TopLogoProps> = ({
             minWidth: 310,
           }}
         >
-          <Box sx={{ position: "relative", width: 270, height: 69 }}>
+          <Box 
+            onClick={handleLogoClick}
+            sx={{ position: "relative", width: 270, height: 69, cursor: "pointer" }}
+          >
             <Image
               src="/wending/goldlog.svg"
               alt=""

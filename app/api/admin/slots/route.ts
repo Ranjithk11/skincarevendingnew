@@ -19,7 +19,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { slot_id, product_id, quantity = 0 } = body;
+    const { slot_id, product_id, quantity = 0, product_name, category, retail_price } = body;
 
     if (!slot_id) {
       return NextResponse.json(
@@ -28,10 +28,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Pass product info for external API products
+    const productInfo = product_name ? {
+      name: product_name,
+      category: category,
+      retail_price: retail_price ? parseFloat(retail_price) : undefined,
+    } : undefined;
+
     const slot = adminDb.assignProductToSlot(
       parseInt(slot_id),
-      product_id ? parseInt(product_id) : null,
-      parseInt(quantity)
+      product_id ?? null,
+      parseInt(quantity),
+      productInfo
     );
 
     if (!slot) {

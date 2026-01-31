@@ -98,19 +98,19 @@ export default function SlotAssignmentModal({
       }}
       BackdropProps={{
         sx: {
-          backgroundColor: "rgba(0,0,0,0.85)",
+          backgroundColor: "rgba(0,0,0,0.5)",
         },
       }}
     >
       <Box
         sx={{
           backgroundColor: "#fff",
-          borderRadius: "24px",
-          width: 733,
+          borderRadius: "12px",
+          width: { xs: "95%", sm: 500 },
           maxHeight: "90vh",
           overflow: "auto",
           outline: "none",
-          p: "47px 45px",
+          p: 3,
         }}
       >
         {/* Header */}
@@ -119,21 +119,21 @@ export default function SlotAssignmentModal({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            mb: hasCurrentProduct ? 4 : 6,
+            mb: 3,
           }}
         >
           <Typography
             sx={{
-              fontSize: 32,
-              fontWeight: 400,
+              fontSize: 24,
+              fontWeight: 600,
               fontFamily: "Roboto, sans-serif",
-              color: "#000",
+              color: "#22c55e",
             }}
           >
             Assign Product to Slot {slotNumber}
           </Typography>
           <IconButton onClick={onClose} sx={{ p: 0 }}>
-            <CloseIcon sx={{ fontSize: 30, color: "#000" }} />
+            <CloseIcon sx={{ fontSize: 24, color: "#666" }} />
           </IconButton>
         </Box>
 
@@ -142,18 +142,19 @@ export default function SlotAssignmentModal({
           <Box
             sx={{
               backgroundColor: "#f9f9f9",
-              borderRadius: "12px",
-              p: 3,
-              mb: 4,
+              borderRadius: "8px",
+              p: 2,
+              mb: 3,
+              border: "1px solid #e5e5e5",
             }}
           >
             <Typography
               sx={{
-                fontSize: 20,
-                fontWeight: 500,
+                fontSize: 14,
+                fontWeight: 600,
                 fontFamily: "Roboto, sans-serif",
                 color: "#000",
-                mb: 2,
+                mb: 1.5,
               }}
             >
               Currently Assigned Product
@@ -162,37 +163,39 @@ export default function SlotAssignmentModal({
               {currentProduct?.image && (
                 <Box
                   sx={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: "8px",
+                    width: 50,
+                    height: 50,
+                    borderRadius: "6px",
                     overflow: "hidden",
                     flexShrink: 0,
+                    border: "1px solid #e5e5e5",
                   }}
                 >
                   <Image
                     src={currentProduct.image}
                     alt={currentProduct.name}
-                    width={60}
-                    height={60}
+                    width={50}
+                    height={50}
                     style={{ objectFit: "cover" }}
                   />
                 </Box>
               )}
-              <Box>
+              <Box sx={{ flex: 1 }}>
                 <Typography
                   sx={{
-                    fontSize: 18,
-                    fontWeight: 500,
+                    fontSize: 14,
+                    fontWeight: 600,
                     fontFamily: "Roboto, sans-serif",
                     color: "#000",
                     textTransform: "uppercase",
+                    lineHeight: 1.3,
                   }}
                 >
                   {currentProduct?.name}
                 </Typography>
                 <Typography
                   sx={{
-                    fontSize: 14,
+                    fontSize: 12,
                     fontFamily: "Roboto, sans-serif",
                     color: "#666",
                   }}
@@ -205,32 +208,34 @@ export default function SlotAssignmentModal({
             {/* Update Quantity Controls */}
             <Typography
               sx={{
-                fontSize: 16,
-                fontWeight: 500,
+                fontSize: 12,
+                fontWeight: 600,
                 fontFamily: "Roboto, sans-serif",
                 color: "#000",
-                mb: 1.5,
+                mb: 1,
               }}
             >
               Update Quantity
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
               {[-10, -5, -1].map((delta) => (
                 <Button
                   key={delta}
                   variant="outlined"
                   onClick={() => handleQuantityButton(delta)}
                   sx={{
-                    minWidth: 50,
-                    height: 40,
-                    borderRadius: "8px",
-                    borderColor: "#ff6b6b",
-                    color: "#ff6b6b",
-                    fontSize: 16,
+                    minWidth: 40,
+                    height: 32,
+                    borderRadius: "6px",
+                    borderColor: "#fca5a5",
+                    backgroundColor: "#fef2f2",
+                    color: "#dc2626",
+                    fontSize: 14,
                     fontWeight: 500,
+                    p: 0,
                     "&:hover": {
-                      borderColor: "#ff4545",
-                      backgroundColor: "rgba(255,69,69,0.1)",
+                      borderColor: "#f87171",
+                      backgroundColor: "#fee2e2",
                     },
                   }}
                 >
@@ -239,18 +244,19 @@ export default function SlotAssignmentModal({
               ))}
               <Box
                 sx={{
-                  minWidth: 60,
-                  height: 40,
+                  minWidth: 50,
+                  height: 32,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  border: "1px solid rgba(0,0,0,0.2)",
-                  borderRadius: "8px",
-                  fontSize: 16,
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: 14,
                   fontWeight: 500,
+                  backgroundColor: "#fff",
                 }}
               >
-                {quantityAdjustment >= 0 ? `+${quantityAdjustment}` : quantityAdjustment}
+                {quantityAdjustment >= 0 ? quantityAdjustment : quantityAdjustment}
               </Box>
               {[1, 5, 10].map((delta) => (
                 <Button
@@ -258,16 +264,18 @@ export default function SlotAssignmentModal({
                   variant="outlined"
                   onClick={() => handleQuantityButton(delta)}
                   sx={{
-                    minWidth: 50,
-                    height: 40,
-                    borderRadius: "8px",
-                    borderColor: "#39cf4a",
-                    color: "#39cf4a",
-                    fontSize: 16,
+                    minWidth: 40,
+                    height: 32,
+                    borderRadius: "6px",
+                    borderColor: "#86efac",
+                    backgroundColor: "#f0fdf4",
+                    color: "#16a34a",
+                    fontSize: 14,
                     fontWeight: 500,
+                    p: 0,
                     "&:hover": {
-                      borderColor: "#2db33d",
-                      backgroundColor: "rgba(57,207,74,0.1)",
+                      borderColor: "#4ade80",
+                      backgroundColor: "#dcfce7",
                     },
                   }}
                 >
@@ -279,20 +287,21 @@ export default function SlotAssignmentModal({
                 onClick={handleUpdateQuantity}
                 disabled={quantityAdjustment === 0}
                 sx={{
-                  minWidth: 80,
-                  height: 40,
-                  borderRadius: "8px",
-                  backgroundColor: "#356A5A",
+                  minWidth: 60,
+                  height: 32,
+                  borderRadius: "6px",
+                  backgroundColor: "#3b82f6",
                   color: "#fff",
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: 500,
                   textTransform: "none",
+                  p: 0,
                   "&:hover": {
-                    backgroundColor: "#2a5548",
+                    backgroundColor: "#2563eb",
                   },
                   "&:disabled": {
-                    backgroundColor: "#ccc",
-                    color: "#999",
+                    backgroundColor: "#e5e7eb",
+                    color: "#9ca3af",
                   },
                 }}
               >
@@ -303,14 +312,14 @@ export default function SlotAssignmentModal({
         )}
 
         {/* Select Product */}
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 3 }}>
           <Typography
             sx={{
-              fontSize: 24,
-              fontWeight: 400,
+              fontSize: 14,
+              fontWeight: 500,
               fontFamily: "Roboto, sans-serif",
               color: "#000",
-              mb: 2,
+              mb: 1,
             }}
           >
             Select Product
@@ -321,23 +330,24 @@ export default function SlotAssignmentModal({
               onChange={(e) => setSelectedProductId(e.target.value)}
               displayEmpty
               sx={{
-                height: 73,
-                borderRadius: "12px",
-                fontSize: 20,
+                height: 48,
+                borderRadius: "8px",
+                fontSize: 14,
                 fontFamily: "Roboto, sans-serif",
                 "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(0,0,0,0.2)",
+                  borderColor: "#22c55e",
+                  borderWidth: 2,
                 },
                 "&:hover .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "rgba(0,0,0,0.4)",
+                  borderColor: "#16a34a",
                 },
                 "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#356A5A",
+                  borderColor: "#16a34a",
                 },
               }}
             >
-              <MenuItem value="" disabled>
-                <Typography sx={{ color: "#999" }}>Select a product</Typography>
+              <MenuItem value="">
+                <Typography sx={{ color: "#666" }}>-- Select a product --</Typography>
               </MenuItem>
               {products.map((product) => (
                 <MenuItem key={product.id} value={product.id}>
@@ -352,10 +362,10 @@ export default function SlotAssignmentModal({
         {selectedProduct && (
           <Box
             sx={{
-              border: "1px solid rgba(0,0,0,0.1)",
-              borderRadius: "12px",
+              border: "1px solid #e5e5e5",
+              borderRadius: "8px",
               p: 2,
-              mb: 4,
+              mb: 3,
               display: "flex",
               alignItems: "center",
               gap: 2,
@@ -364,18 +374,19 @@ export default function SlotAssignmentModal({
             {selectedProduct.image && (
               <Box
                 sx={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: "8px",
+                  width: 60,
+                  height: 60,
+                  borderRadius: "6px",
                   overflow: "hidden",
                   flexShrink: 0,
+                  border: "1px solid #e5e5e5",
                 }}
               >
                 <Image
                   src={selectedProduct.image}
                   alt={selectedProduct.name}
-                  width={80}
-                  height={80}
+                  width={60}
+                  height={60}
                   style={{ objectFit: "cover" }}
                 />
               </Box>
@@ -383,18 +394,19 @@ export default function SlotAssignmentModal({
             <Box>
               <Typography
                 sx={{
-                  fontSize: 18,
+                  fontSize: 14,
                   fontWeight: 600,
                   fontFamily: "Roboto, sans-serif",
                   color: "#000",
                   textTransform: "uppercase",
+                  lineHeight: 1.3,
                 }}
               >
                 {selectedProduct.name}
               </Typography>
               <Typography
                 sx={{
-                  fontSize: 14,
+                  fontSize: 12,
                   fontFamily: "Roboto, sans-serif",
                   color: "#666",
                   textTransform: "uppercase",
@@ -404,10 +416,10 @@ export default function SlotAssignmentModal({
               </Typography>
               <Typography
                 sx={{
-                  fontSize: 16,
-                  fontWeight: 500,
+                  fontSize: 14,
+                  fontWeight: 600,
                   fontFamily: "Roboto, sans-serif",
-                  color: "#39cf4a",
+                  color: "#22c55e",
                 }}
               >
                 {selectedProduct.price}
@@ -417,11 +429,11 @@ export default function SlotAssignmentModal({
         )}
 
         {/* Quantity Input */}
-        <Box sx={{ mb: 4 }}>
+        <Box sx={{ mb: 3 }}>
           <Typography
             sx={{
-              fontSize: 24,
-              fontWeight: 400,
+              fontSize: 14,
+              fontWeight: 500,
               fontFamily: "Roboto, sans-serif",
               color: "#000",
               mb: 0.5,
@@ -431,8 +443,9 @@ export default function SlotAssignmentModal({
             <Typography
               component="span"
               sx={{
-                fontSize: 20,
-                color: "#9a9a9a",
+                fontSize: 12,
+                color: "#9ca3af",
+                fontWeight: 400,
               }}
             >
               (Must be less than or equal to product stock)
@@ -444,20 +457,21 @@ export default function SlotAssignmentModal({
             onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
             fullWidth
             sx={{
-              mt: 2,
+              mt: 1,
               "& .MuiOutlinedInput-root": {
-                height: 73,
-                borderRadius: "12px",
-                fontSize: 20,
+                height: 48,
+                borderRadius: "8px",
+                fontSize: 14,
                 fontFamily: "Roboto, sans-serif",
                 "& fieldset": {
-                  borderColor: "rgba(0,0,0,0.2)",
+                  borderColor: "#22c55e",
+                  borderWidth: 2,
                 },
                 "&:hover fieldset": {
-                  borderColor: "rgba(0,0,0,0.4)",
+                  borderColor: "#16a34a",
                 },
                 "&.Mui-focused fieldset": {
-                  borderColor: "#356A5A",
+                  borderColor: "#16a34a",
                 },
               },
             }}
@@ -470,23 +484,24 @@ export default function SlotAssignmentModal({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            gap: 2,
           }}
         >
           <Button
             variant="contained"
             onClick={handleRemove}
             sx={{
-              width: 139,
-              height: 73,
-              borderRadius: "12px",
-              backgroundColor: "#ff4545",
+              flex: 1,
+              height: 48,
+              borderRadius: "8px",
+              backgroundColor: "#ef4444",
               color: "#fff",
-              fontSize: 24,
-              fontWeight: 400,
+              fontSize: 16,
+              fontWeight: 500,
               fontFamily: "Roboto, sans-serif",
               textTransform: "none",
               "&:hover": {
-                backgroundColor: "#e03e3e",
+                backgroundColor: "#dc2626",
               },
             }}
           >
@@ -497,21 +512,21 @@ export default function SlotAssignmentModal({
             onClick={handleAssign}
             disabled={!selectedProductId || quantity <= 0}
             sx={{
-              width: 139,
-              height: 73,
-              borderRadius: "12px",
-              backgroundColor: "#39cf4a",
+              flex: 1,
+              height: 48,
+              borderRadius: "8px",
+              backgroundColor: "#22c55e",
               color: "#fff",
-              fontSize: 24,
-              fontWeight: 400,
+              fontSize: 16,
+              fontWeight: 500,
               fontFamily: "Roboto, sans-serif",
               textTransform: "none",
               "&:hover": {
-                backgroundColor: "#2db33d",
+                backgroundColor: "#16a34a",
               },
               "&:disabled": {
-                backgroundColor: "#ccc",
-                color: "#999",
+                backgroundColor: "#e5e7eb",
+                color: "#9ca3af",
               },
             }}
           >

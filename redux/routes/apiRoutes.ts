@@ -14,4 +14,8 @@ export enum API_ROUTES {
   FETCH_ADMIN_RECOMMENDATION_BY_ID = "/fetch-admin-recommendations-by-id",
   FETCH_BRANCHES = "/user/fetch-branches",
   VALIDATE_DOMAIN = "/db-config/validate-domain",
+  GET_TOP_SELLING_PRODUCTS = "/product/fetch-top-selling-products",
+  FETCH_ALL_PRODUCTS = "/product/fetch-by-filter",
+  GET_PRODUCT_CATEGORIES = "/product/get-product-categories",
+  GET_ALL_BRANDS = "/brand/fetch",
 }

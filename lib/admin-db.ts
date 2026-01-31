@@ -22,18 +22,39 @@ export interface VendingSlot {
   last_updated?: string;
 }
 
-// Sample products data
+// Vending machine products data (from Python project CSV)
 const products: Product[] = [
-  { id: 1, name: "Cetaphil Gentle Skin Cleanser", category: "Cleanser", retail_price: 450, quantity: 10, in_stock: true, image_url: "/products/cetaphil.jpg" },
-  { id: 2, name: "Neutrogena Hydro Boost", category: "Moisturizer", retail_price: 650, quantity: 8, in_stock: true, image_url: "/products/neutrogena.jpg" },
-  { id: 3, name: "La Roche-Posay Effaclar", category: "Cleanser", retail_price: 850, quantity: 5, in_stock: true, image_url: "/products/laroche.jpg" },
-  { id: 4, name: "CeraVe Moisturizing Cream", category: "Moisturizer", retail_price: 550, quantity: 12, in_stock: true, image_url: "/products/cerave.jpg" },
-  { id: 5, name: "The Ordinary Niacinamide", category: "Serum", retail_price: 350, quantity: 15, in_stock: true, image_url: "/products/ordinary.jpg" },
-  { id: 6, name: "Bioderma Sensibio H2O", category: "Cleanser", retail_price: 750, quantity: 7, in_stock: true, image_url: "/products/bioderma.jpg" },
-  { id: 7, name: "Pilgrim Red Vine Night Gel", category: "Night Cream", retail_price: 650, quantity: 6, in_stock: true, image_url: "/products/pilgrim.jpg" },
-  { id: 8, name: "Minimalist Salicylic Acid", category: "Serum", retail_price: 399, quantity: 9, in_stock: true, image_url: "/products/minimalist.jpg" },
-  { id: 9, name: "Dot & Key Vitamin C Serum", category: "Serum", retail_price: 695, quantity: 4, in_stock: true, image_url: "/products/dotkey.jpg" },
-  { id: 10, name: "Plum Green Tea Face Wash", category: "Cleanser", retail_price: 345, quantity: 11, in_stock: true, image_url: "/products/plum.jpg" },
+  { id: 1, name: "PILGRIM RED VINE NIGHT GEL CREME", category: "Night Cream", retail_price: 650, quantity: 15, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/red+vine+face+wash.jpg" },
+  { id: 2, name: "10% NIACINAMIDE FACE SERUM", category: "Face Serum", retail_price: 595, quantity: 40, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/10%25+niacinamide+face+serum.jpg" },
+  { id: 3, name: "10%VITAMIN C FACE SERUM", category: "Face Serum", retail_price: 545, quantity: 20, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/PILGRIM+SECRETS+OF+JEJU+ISLAND+NATURAL+VIT+C+FACE+SERUM+20%25+30ML.jpeg" },
+  { id: 4, name: "2% KOJIC ACID SERUM", category: "Face Serum", retail_price: 495, quantity: 59, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/oil+control+serum.jpg" },
+  { id: 5, name: "CETAPHIL OPTIMAL HYDRATION SERUM", category: "Face Serum", retail_price: 849, quantity: 25, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/cetaphil-optimal-hydration-serum-30ml.jpg" },
+  { id: 6, name: "CETAPHIL BRIGHT RADIANCE SERUM", category: "Face Serum", retail_price: 2299, quantity: 18, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/cetaphil-bright-healthy-radiance-perfecting-serum-30ml.jpg" },
+  { id: 7, name: "CETAPHIL GENTLE SKIN CLEANSER", category: "Cleanser", retail_price: 429, quantity: 30, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/cetaphil-gentle-skin-cleanser-125ml.jpg" },
+  { id: 8, name: "CETAPHIL OILY SKIN CLEANSER", category: "Cleanser", retail_price: 699, quantity: 22, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/cetaphil-oily-skin-cleanser-125ml.jpg" },
+  { id: 9, name: "CETAPHIL SUNSCREEN SPF 50+", category: "Sunscreen", retail_price: 1182, quantity: 35, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/cetaphil+spf+50.jpg" },
+  { id: 10, name: "CETAPHIL DAILY ADVANCE LOTION", category: "Lotion", retail_price: 250, quantity: 28, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/Cetaphil-Daily-Advance-Ultra-Hydrating-Lotion-30gm.jpg" },
+  { id: 11, name: "CETAPHIL BRIGHT RADIANCE DAY CREAM", category: "Moisturiser", retail_price: 1080, quantity: 15, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/Cetaphil-Bright-Healthy-Radiance-Brightening-day-protection-Cream-spf15-50g.jpg" },
+  { id: 12, name: "CETAPHIL BRIGHT RADIANCE NIGHT CREAM", category: "Night Cream", retail_price: 1035, quantity: 12, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/Cetaphil-Bright-Healthy-Radiance-Brightening-Night-Comfort-Cream-50g.jpg" },
+  { id: 13, name: "PILGRIM SWISS AQUA RUSH 12HA SERUM", category: "Face Serum", retail_price: 795, quantity: 20, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/swiss+aqua+rush+12ha+serum.jpg" },
+  { id: 14, name: "PILGRIM LIFT & FIRM SERUM", category: "Face Serum", retail_price: 650, quantity: 18, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/Lift+%26+firm+Serum.jpg" },
+  { id: 15, name: "PILGRIM TEA TREE PURIFYING TONER", category: "Toner", retail_price: 300, quantity: 25, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/tea+tree+purifying+toner.jpg" },
+  { id: 16, name: "O3+ VITAMIN C SERUM GLOW", category: "Face Serum", retail_price: 920, quantity: 15, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/O3%2B+Vit+C+serum.jpg" },
+  { id: 17, name: "O3+ NIACINAMIDE FACE SERUM", category: "Face Serum", retail_price: 740, quantity: 20, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/O3+%2B+Niacinamide+serum.jpg" },
+  { id: 18, name: "LOREAL REVITALIFT EYE SERUM", category: "Eye Serum", retail_price: 899, quantity: 12, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/LOREAL+REVITALIFT+EYE+SERUM+20ML.jpg" },
+  { id: 19, name: "LOTUS VITAMIN C MATTE SUNSCREEN SPF 50", category: "Sunscreen", retail_price: 475, quantity: 30, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/LOTUS+SAFE+SUN+VITAMIN+C+MATTE+GEL+DAILY+SUNSCREEN+SPF+50+75GM.jpg" },
+  { id: 20, name: "THE DERMA CO 1% HYALURONIC SUNSCREEN", category: "Sunscreen", retail_price: 499, quantity: 25, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/THE+DERMA+CO+1%25+HYALURONIC+SUNSCREEN+AQUA+GEL+50ML.jpg" },
+  { id: 21, name: "CERAVE PM FACIAL LOTION", category: "Moisturiser", retail_price: 1790, quantity: 10, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/CERAVE+PM+FACIAL+LOTION+52ML.jpg" },
+  { id: 22, name: "DOT & KEY VITAMIN C+E FACE SERUM", category: "Face Serum", retail_price: 695, quantity: 18, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/DOT%26KEY+5%25+NIACINAMIDE+10%25+VITAMIN+C%2BE+SUPER+BRIGHT+FACE+SERUM+30ML.webp" },
+  { id: 23, name: "SHAHNAZ HUSAIN MOISTURISING DAY CREAM", category: "Moisturiser", retail_price: 745, quantity: 15, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/SHAHANAZ+HUSAIN+SHA+TAJ+MOISTURIZING+CREAM+40GM.jpeg" },
+  { id: 24, name: "SHAHNAZ HUSAIN OXYGEN PLUS CREAM", category: "Cream", retail_price: 450, quantity: 20, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/SHAHANAZ+HUSAIN+OXYGEN+PLUS+CREAM+50GM.webp" },
+  { id: 25, name: "URBAN VEDA RADIANCE NIGHT CREAM", category: "Night Cream", retail_price: 3199, quantity: 8, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/Urban+Veda+-+Radiance+R+Night+Cream+.jpg" },
+  { id: 26, name: "URBAN VEDA SOOTHING NIGHT CREAM", category: "Night Cream", retail_price: 2599, quantity: 10, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/Urban+Veda+-+Soothing+Clarifying+Night+Cream.jpg" },
+  { id: 27, name: "CETAPHIL SYNDET BAR", category: "Bar", retail_price: 200, quantity: 40, in_stock: true, image_url: "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/cetaphil+cleansing+%26+moisturising+syndet+bar.jpg" },
+  { id: 28, name: "SKINSKA DEWSKA BABY SOAP", category: "Bar", retail_price: 189, quantity: 35, in_stock: true, image_url: "https://skinskaproducts.s3.eu-north-1.amazonaws.com/dewska+baby+soap.jpg" },
+  { id: 29, name: "SKINSKA DEWSKA MOISTURISING SOAP", category: "Bar", retail_price: 169, quantity: 30, in_stock: true, image_url: "https://skinskaproducts.s3.eu-north-1.amazonaws.com/dewska+moisturising+soap.jpg" },
+  { id: 30, name: "SKINSKA OATMEAL ORANGE PAPAYA SOAP", category: "Bar", retail_price: 229, quantity: 25, in_stock: true, image_url: "https://skinskaproducts.s3.eu-north-1.amazonaws.com/skinska-naturals-sn-oatmeal+orange+papaya+soap.jpg" },
+  { id: 31, name: "SKINSKA DEWSKA ANTI BACTERIAL SOAP", category: "Bar", retail_price: 179, quantity: 28, in_stock: true, image_url: "https://skinskaproducts.s3.eu-north-1.amazonaws.com/dewska+anti+bacterial+soap.jpg" },
 ];
 
 // Initialize vending slots (60 slots)
@@ -98,7 +119,12 @@ export const adminDb = {
     return vendingSlots.get(slotId);
   },
 
-  assignProductToSlot(slotId: number, productId: number | null, quantity: number = 0): VendingSlot | undefined {
+  assignProductToSlot(
+    slotId: number, 
+    productId: string | number | null, 
+    quantity: number = 0,
+    productInfo?: { name?: string; category?: string; retail_price?: number }
+  ): VendingSlot | undefined {
     const slot = vendingSlots.get(slotId);
     if (!slot) return undefined;
 
@@ -110,12 +136,25 @@ export const adminDb = {
       slot.retail_price = undefined;
       slot.quantity = 0;
     } else {
-      const product = products.find((p) => p.id === productId);
-      if (product) {
-        slot.product_id = product.id;
-        slot.product_name = product.name;
-        slot.category = product.category;
-        slot.retail_price = product.retail_price;
+      // First try to find in local products (for backward compatibility)
+      const localProduct = products.find((p) => p.id === productId || p.id === parseInt(String(productId)));
+      
+      if (localProduct) {
+        slot.product_id = localProduct.id;
+        slot.product_name = localProduct.name;
+        slot.category = localProduct.category;
+        slot.retail_price = localProduct.retail_price;
+        slot.quantity = quantity;
+      } else if (productInfo) {
+        // Use provided product info for external products (from main API)
+        slot.product_id = productId as any;
+        slot.product_name = productInfo.name;
+        slot.category = productInfo.category;
+        slot.retail_price = productInfo.retail_price;
+        slot.quantity = quantity;
+      } else {
+        // Just store the product ID and quantity
+        slot.product_id = productId as any;
         slot.quantity = quantity;
       }
     }

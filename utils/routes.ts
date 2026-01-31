@@ -1,5 +1,6 @@
 export const APP_ROUTES = {
   HOME:"/",
+  PRODUCTS: "/products",
   SKIN_ANALYSIS: "/skinanalysis",
   SKIN_ANALYSIS_HOME: "/skinanalysis/home",
   AUTH_MOBILE: "/auth/mobile",

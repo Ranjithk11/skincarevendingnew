@@ -125,7 +125,7 @@ export default function LandingTopSection({
           description="Deep insights into your skin, powered by intelligent diagnostics."
         />
       </Box>
-{/* 
+
       {onAdminDashboard && (
         <Typography
           onClick={onAdminDashboard}
@@ -144,7 +144,7 @@ export default function LandingTopSection({
         >
           Admin Dashboard
         </Typography>
-      )} */}
+      )}
     </Box>
   );
 }

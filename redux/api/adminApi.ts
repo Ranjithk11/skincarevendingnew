@@ -1,7 +1,7 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export interface Product {
-  id: number;
+  id: string | number;
   name: string;
   description?: string;
   retail_price: number;
@@ -9,6 +9,7 @@ export interface Product {
   image_url?: string;
   quantity: number;
   in_stock: boolean;
+  shopify_url?: string;
 }
 
 export interface VendingSlot {
@@ -46,8 +47,11 @@ export interface AdminLoginResponse {
 
 export interface AssignProductRequest {
   slotId: number;
-  productId?: number | null;
+  productId?: string | number | null;
   quantity?: number;
+  productName?: string;
+  category?: string;
+  retailPrice?: number;
 }
 
 export interface UpdateSlotQuantityRequest {
@@ -106,10 +110,17 @@ export const adminApi = createApi({
 
     // Assign product to slot
     assignProductToSlot: builder.mutation<SyncResponse, AssignProductRequest>({
-      query: ({ slotId, productId, quantity = 0 }) => ({
+      query: ({ slotId, productId, quantity = 0, productName, category, retailPrice }) => ({
         url: "/slots",
         method: "POST",
-        body: { slot_id: slotId, product_id: productId, quantity },
+        body: { 
+          slot_id: slotId, 
+          product_id: productId, 
+          quantity,
+          product_name: productName,
+          category: category,
+          retail_price: retailPrice,
+        },
       }),
       invalidatesTags: ["Slots", "Products"],
     }),

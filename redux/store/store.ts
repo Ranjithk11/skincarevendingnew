@@ -8,6 +8,7 @@ import {analysisSlice} from "../reducers/analysisSlice";
 import { cartSlice } from "../reducers/cartSlice";
 import { authApi } from "../api/authApi";
 import { adminApi } from "../api/adminApi";
+import { productsApi } from "../api/products";
 
 const persistConfig = {
   key: "root",
@@ -19,6 +20,7 @@ const rootReducer = combineReducers({
   [analysisApi.reducerPath]: analysisApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   [adminApi.reducerPath]: adminApi.reducer,
+  [productsApi.reducerPath]: productsApi.reducer,
   analysisSlice: analysisSlice.reducer,
   cart: cartSlice.reducer,
 });
@@ -33,7 +35,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).concat([analysisApi.middleware, authApi.middleware, adminApi.middleware]),
+    }).concat([analysisApi.middleware, authApi.middleware, adminApi.middleware, productsApi.middleware]),
 });
 
 export const persistor = persistStore(store);

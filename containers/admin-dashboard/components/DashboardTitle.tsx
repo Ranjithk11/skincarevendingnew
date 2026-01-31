@@ -76,8 +76,8 @@ export default function DashboardTitle({
             <Image
               src="/wending/dashboard-gauge.svg"
               alt="Dashboard"
-              width={30}
-              height={30}
+              width={40}
+              height={40}
               style={{ objectFit: "contain" }}
             />
           }
@@ -100,8 +100,8 @@ export default function DashboardTitle({
             <Image
               src="/wending/home.svg"
               alt="Home Machine"
-              width={24}
-              height={24}
+              width={40}
+              height={40}
               style={{ objectFit: "contain" }}
             />
           }
@@ -113,8 +113,8 @@ export default function DashboardTitle({
             <Image
               src="/wending/soap-dispenser.svg"
               alt="Dispense"
-              width={24}
-              height={24}
+              width={ 40}
+              height={40}
               style={{ objectFit: "contain" }}
             />
           }
@@ -126,8 +126,8 @@ export default function DashboardTitle({
             <Image
               src="/wending/voice.svg"
               alt="Voice"
-              width={24}
-              height={24}
+              width={40}
+              height={40}
               style={{ objectFit: "contain" }}
             />
           }
@@ -139,8 +139,8 @@ export default function DashboardTitle({
             <Image
               src="/wending/test-results.svg"
               alt="Test"
-              width={24}
-              height={24}
+              width={40}
+              height={40}
               style={{ objectFit: "contain" }}
             />
           }
@@ -152,31 +152,21 @@ export default function DashboardTitle({
             <Image
               src="/wending/blind.svg"
               alt="Hide"
-              width={24}
-              height={24}
+              width={40}
+              height={40}
               style={{ objectFit: "contain" }}
             />
           }
           label="Hide"
           onClick={onHideClick}
         />
-      </Box>
-
-      <Box
-        sx={{
-          display: "flex",
-          flexWrap: "wrap",
-          alignItems: "center",
-          gap: 2,
-        }}
-      >
-        <ActionButton
+          <ActionButton
           icon={
             <Image
               src="/wending/load-cargo.svg"
               alt="Load Products"
-              width={24}
-              height={24}
+              width={40}
+              height={40}
               style={{ objectFit: "contain" }}
             />
           }
@@ -184,6 +174,7 @@ export default function DashboardTitle({
           onClick={onLoadProductsClick}
         />
       </Box>
+
     </Box>
   );
 }

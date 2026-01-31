@@ -35,6 +35,7 @@ export default function DesktopLandingPage() {
           <ActionButton
             variant="outline"
             icon={<Image src="/wending/productlog.svg" alt="Products" width={24} height={24} />}
+            onClick={() => router.push("/products")}
           >
             Browse Products
           </ActionButton>

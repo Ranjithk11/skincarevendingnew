@@ -1,8 +1,9 @@
 "use client";
 
-import { Box, IconButton, Typography } from "@mui/material";
+import { Box, IconButton, Typography, Link } from "@mui/material";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import Image from "next/image";
 
 interface Product {
   id: string;
@@ -10,6 +11,7 @@ interface Product {
   category: string;
   price: string;
   amount: number;
+  image?: string;
 }
 
 interface ProductInventoryTableProps {
@@ -59,7 +61,7 @@ export default function ProductInventoryTable({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: "50px 1fr 120px 80px 60px 100px",
+          gridTemplateColumns: "70px 1fr 100px 100px 100px 100px",
           gap: 2,
           alignItems: "center",
           pb: 2,
@@ -74,17 +76,7 @@ export default function ProductInventoryTable({
             textTransform: "uppercase",
           }}
         >
-          ID
-        </Typography>
-        <Typography
-          sx={{
-            fontSize:24,
-            fontWeight: 500,
-            color: "#9a9a9a",
-            textTransform: "uppercase",
-          }}
-        >
-          NAME
+          Image
         </Typography>
         <Typography
           sx={{
@@ -94,7 +86,7 @@ export default function ProductInventoryTable({
             textTransform: "uppercase",
           }}
         >
-          CATEGORY
+          Name
         </Typography>
         <Typography
           sx={{
@@ -104,7 +96,7 @@ export default function ProductInventoryTable({
             textTransform: "uppercase",
           }}
         >
-          PRICE
+          Price
         </Typography>
         <Typography
           sx={{
@@ -114,7 +106,17 @@ export default function ProductInventoryTable({
             textTransform: "uppercase",
           }}
         >
-          AMNT.
+          Slots
+        </Typography>
+        <Typography
+          sx={{
+            fontSize: 24,
+            fontWeight: 500,
+            color: "#9a9a9a",
+            textTransform: "uppercase",
+          }}
+        >
+          Qty.
         </Typography>
         <Typography
           sx={{
@@ -125,7 +127,7 @@ export default function ProductInventoryTable({
             textAlign: "right",
           }}
         >
-          ACTIONS
+          Actions
         </Typography>
       </Box>
 
@@ -134,60 +136,86 @@ export default function ProductInventoryTable({
           key={index}
           sx={{
             display: "grid",
-            gridTemplateColumns: "50px 60px 120px 80px 60px 100px",
+            gridTemplateColumns: "70px 1fr 100px 100px 100px 100px",
             gap: 2,
             alignItems: "center",
             py: 2,
             borderBottom: index < products.length - 1 ? "1px solid #f0f0f0" : "none",
           }}
         >
-          <Typography
+          <Box
             sx={{
-              fontSize: 14,
-              fontWeight: 100,
-              color: "#000",
-              fontFamily: "Roboto, sans-serif",
+              width: 50,
+              height: 50,
+              borderRadius: "8px",
+              overflow: "hidden",
+              backgroundColor: "#f5f5f5",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            {product.id}
-          </Typography>
+            {product.image ? (
+              <img
+                src={product.image}
+                alt={product.name}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <Box
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  backgroundColor: "#e0e0e0",
+                }}
+              />
+            )}
+          </Box>
           <Typography
             sx={{
-              fontSize:14,
-              fontWeight: 50,
+              fontSize: 24,
+              fontWeight: 400,
               color: "#000",
               fontFamily: "Roboto, sans-serif",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              textTransform: "uppercase",
             }}
           >
             {product.name}
           </Typography>
           <Typography
             sx={{
-              fontSize: 14,
-              fontWeight: 100,
-              color: "#000",
-              fontFamily: "Roboto, sans-serif",
-            }}
-          >
-            {product.category}
-          </Typography>
-          <Typography
-            sx={{
-              fontSize: 14,
-              fontWeight: 100,
+              fontSize: 24,
+              fontWeight: 400,
               color: "#000",
               fontFamily: "Roboto, sans-serif",
             }}
           >
             {product.price}
           </Typography>
+          <Link
+            component="button"
+            sx={{
+              fontSize: 24,
+              fontWeight: 400,
+              color: "#1976d2",
+              fontFamily: "Roboto, sans-serif",
+              textDecoration: "underline",
+              cursor: "pointer",
+            }}
+          >
+            View Slots
+          </Link>
           <Typography
             sx={{
-              fontSize: 14,
-              fontWeight: 100,
+              fontSize: 24,
+              fontWeight: 400,
               color: "#000",
               fontFamily: "Roboto, sans-serif",
             }}

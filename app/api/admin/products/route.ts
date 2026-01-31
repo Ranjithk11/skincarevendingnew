@@ -1,16 +1,90 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/admin-db";
 
-// GET all products
-export async function GET() {
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+const DB_TOKEN = process.env.NEXT_PUBLIC_DB_TOKEN;
+
+// Fallback local products when API is unavailable
+function getLocalProducts() {
+  return adminDb.getAllProducts().map((p) => ({
+    id: p.id.toString(),
+    name: p.name,
+    description: p.description || "",
+    retail_price: p.retail_price,
+    category: p.category || "",
+    image_url: p.image_url || "",
+    quantity: p.quantity,
+    in_stock: p.in_stock,
+    shopify_url: "",
+  }));
+}
+
+// GET all products from main backend API
+export async function GET(request: Request) {
   try {
-    const products = adminDb.getAllProducts();
-    return NextResponse.json(products);
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch products" },
-      { status: 500 }
+    // If API_BASE is not configured, use local products
+    if (!API_BASE) {
+      console.log("API_BASE not configured, using local products");
+      return NextResponse.json(getLocalProducts());
+    }
+
+    const { searchParams } = new URL(request.url);
+    const search = searchParams.get("search") || "";
+    const catId = searchParams.get("catId") || "";
+    const brandId = searchParams.get("brandId") || "";
+    const page = searchParams.get("page") || "1";
+    const limit = searchParams.get("limit") || "50";
+    const hasBrand = searchParams.get("hasBrand") || "false";
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (DB_TOKEN) {
+      headers["x-db-token"] = DB_TOKEN;
+    }
+
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (page) params.append("page", page);
+    if (limit) params.append("limit", limit);
+    if (catId && catId !== "all") params.append("catId", catId);
+    if (brandId && brandId !== "all") params.append("brandId", brandId);
+    params.append("hasBrand", hasBrand);
+    params.append("isShopifyAvailable", "true");
+
+    const response = await fetch(
+      `${API_BASE}/product/fetch-by-filter?${params.toString()}`,
+      {
+        cache: "no-store",
+        headers,
+      }
     );
+
+    if (response.ok) {
+      const result = await response.json();
+      // Extract products array from response and transform to expected format
+      const rawProducts = result?.data?.[0]?.products || result?.data || [];
+      const products = rawProducts.map((p: any) => ({
+        id: p._id || p.id,
+        name: p.name,
+        description: p.productBenefits || p.description || "",
+        retail_price: p.retailPrice || p.retail_price || 0,
+        category: p.productCategory?.title || p.category || "",
+        image_url: p.images?.[0]?.url || p.image_url || "",
+        quantity: p.quantity || 0,
+        in_stock: p.inStock ?? p.in_stock ?? true,
+        shopify_url: p.shopifyUrl || p.shopify_url || "",
+      }));
+      return NextResponse.json(products);
+    }
+
+    // If backend fails, fallback to local products
+    console.error("Backend error, falling back to local products");
+    return NextResponse.json(getLocalProducts());
+  } catch (error: any) {
+    console.error("Error fetching products:", error.message, "- using local fallback");
+    // Fallback to local products on any error
+    return NextResponse.json(getLocalProducts());
   }
 }

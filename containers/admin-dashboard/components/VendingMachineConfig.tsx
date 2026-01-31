@@ -142,10 +142,9 @@ export default function VendingMachineConfig({
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: `repeat(${columns}, 1fr)`,
-          gap: 1.5,
+          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          gap: 1,
           width: "100%",
-          justifyItems: "center",
         }}
       >
         {slotNumbers.map((slotNumber: number) => {
