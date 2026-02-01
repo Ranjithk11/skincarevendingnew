@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Box, IconButton, Typography, Link } from "@mui/material";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import Image from "next/image";
+import ViewSlotsModal from "./ViewSlotsModal";
 
 interface Product {
   id: string;
@@ -35,7 +36,28 @@ export default function ProductInventoryTable({
   onHideClick,
   onEditClick,
 }: ProductInventoryTableProps) {
+  const [slotsModalOpen, setSlotsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  const handleViewSlots = (product: Product) => {
+    setSelectedProduct(product);
+    setSlotsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setSlotsModalOpen(false);
+    setSelectedProduct(null);
+  };
+
   return (
+    <>
+      {/* View Slots Modal */}
+      <ViewSlotsModal
+        open={slotsModalOpen}
+        onClose={handleCloseModal}
+        productId={selectedProduct?.id || ""}
+        productName={selectedProduct?.name || ""}
+      />
     <Box
       sx={{
         backgroundColor: "#fff",
@@ -48,11 +70,12 @@ export default function ProductInventoryTable({
     >
       <Typography
         sx={{
-          fontSize: 24,
+          fontSize: 28,
           fontWeight: 500,
           fontFamily: "Roboto, sans-serif",
           color: "#000",
-          mb: 3,
+          mt: 3,
+          mb:4
         }}
       >
         Product Inventory
@@ -201,6 +224,7 @@ export default function ProductInventoryTable({
           </Typography>
           <Link
             component="button"
+            onClick={() => handleViewSlots(product)}
             sx={{
               fontSize: 24,
               fontWeight: 400,
@@ -250,5 +274,6 @@ export default function ProductInventoryTable({
         </Box>
       ))}
     </Box>
+    </>
   );
 }

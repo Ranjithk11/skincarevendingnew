@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminDashboard } from "@/containers/admin-dashboard";
-import { SlotAssignmentModal, MachineStatusModal } from "@/containers/admin-dashboard/components";
+import { SlotAssignmentModal, MachineStatusModal, EditProductModal } from "@/containers/admin-dashboard/components";
 import { useRouter } from "next/navigation";
 import {
   useGetVendingSlotsQuery,
@@ -29,6 +29,16 @@ export default function AdminDashboardPage() {
   const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
   const [dispenseStatus, setDispenseStatus] = useState<boolean | null>(null);
   const [dispenseLoading, setDispenseLoading] = useState(false);
+
+  // Edit product modal state
+  const [editProductModalOpen, setEditProductModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<{
+    id: string;
+    name: string;
+    category: string;
+    price: number;
+    quantity: number;
+  } | null>(null);
 
   // Redux queries
   const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetVendingSlotsQuery();
@@ -192,12 +202,26 @@ export default function AdminDashboardPage() {
 
   // Get current slot data for modal
   const currentSlotData = selectedSlot ? slotsData?.[selectedSlot] : null;
-  const currentProduct = currentSlotData?.product_id 
-    ? productsData?.find((p: Product) => p.id === currentSlotData.product_id)
+  // Try to find product in products list, or use slot's stored product info
+  let currentProduct = currentSlotData?.product_id 
+    ? productsData?.find((p: Product) => p.id.toString() === currentSlotData.product_id?.toString())
     : null;
+  
+  // If product not found in list but slot has product info, create a product object from slot data
+  if (!currentProduct && currentSlotData?.product_id && currentSlotData?.product_name) {
+    currentProduct = {
+      id: currentSlotData.product_id.toString(),
+      name: currentSlotData.product_name,
+      category: currentSlotData.category || "",
+      retail_price: currentSlotData.retail_price || 0,
+      image_url: (currentSlotData as any).image_url || "",
+      quantity: currentSlotData.quantity || 0,
+      in_stock: true,
+    };
+  }
 
-  // Transform products for modal
-  const modalProducts = productsData?.map((product: Product) => ({
+  // Transform products for modal - include both API products and slot-assigned products
+  const apiProducts = productsData?.map((product: Product) => ({
     id: product.id.toString(),
     name: product.name,
     category: product.category || "Uncategorized",
@@ -205,18 +229,81 @@ export default function AdminDashboardPage() {
     amount: product.quantity,
     image: product.image_url,
   })) || [];
+  
+  // Add slot-assigned products that aren't in the API list (for slots 1-10 with local products)
+  const slotProducts: typeof apiProducts = [];
+  if (slotsData) {
+    Object.values(slotsData).forEach((slot: any) => {
+      if (slot.product_id && slot.product_name) {
+        const existsInApi = apiProducts.some(p => p.id === slot.product_id?.toString());
+        const existsInSlotProducts = slotProducts.some(p => p.id === slot.product_id?.toString());
+        if (!existsInApi && !existsInSlotProducts) {
+          slotProducts.push({
+            id: slot.product_id.toString(),
+            name: slot.product_name,
+            category: slot.category || "Uncategorized",
+            price: `₹${slot.retail_price || 0}`,
+            amount: slot.quantity || 0,
+            image: slot.image_url || "",
+          });
+        }
+      }
+    });
+  }
+  const modalProducts = [...apiProducts, ...slotProducts];
 
   const handleProductHideClick = (productId: string) => {
+    // TODO: Implement hide/show product visibility
     console.log(`Hide product ${productId}`);
   };
 
   const handleProductEditClick = (productId: string) => {
-    console.log(`Edit product ${productId}`);
+    // Find the product to edit
+    const product = productsData?.find((p: Product) => p.id.toString() === productId);
+    if (product) {
+      setEditingProduct({
+        id: productId,
+        name: product.name,
+        category: product.category || "",
+        price: product.retail_price,
+        quantity: product.quantity,
+      });
+      setEditProductModalOpen(true);
+    }
+  };
+
+  const handleSaveProduct = async (data: {
+    productId: string;
+    name: string;
+    category: string;
+    price: number;
+    quantity: number;
+  }) => {
+    try {
+      // Remove 'products/' prefix if present to avoid duplicate path
+      const cleanProductId = data.productId.replace(/^products\//, '');
+      // Update product via API (saves to local storage for external products)
+      await fetch(`/api/admin/products/${cleanProductId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          category: data.category,
+          retail_price: data.price,
+          quantity: data.quantity,
+        }),
+      });
+      
+      // Refetch products to show updated data
+      refetchProducts();
+    } catch (error) {
+      console.error("Error saving product:", error);
+    }
   };
 
   if (slotsLoading || productsLoading) {
     return (
-      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <div style={{ display: "flex",fontSize:"28px", justifyContent: "center", alignItems: "center", height: "100vh" }}>
         Loading...
       </div>
     );
@@ -289,6 +376,21 @@ export default function AdminDashboardPage() {
         errorMessage="Error Sending dispense command"
         successSubMessage="Connected to machine"
         errorSubMessage="Failed to connect to the machine"
+      />
+
+      {/* Edit Product Modal */}
+      <EditProductModal
+        open={editProductModalOpen}
+        onClose={() => {
+          setEditProductModalOpen(false);
+          setEditingProduct(null);
+        }}
+        productId={editingProduct?.id || ""}
+        productName={editingProduct?.name || ""}
+        category={editingProduct?.category || ""}
+        price={editingProduct?.price || 0}
+        quantity={editingProduct?.quantity || 0}
+        onSave={handleSaveProduct}
       />
     </>
   );

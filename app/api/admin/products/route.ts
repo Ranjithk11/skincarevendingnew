@@ -4,6 +4,35 @@ import { adminDb } from "@/lib/admin-db";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 const DB_TOKEN = process.env.NEXT_PUBLIC_DB_TOKEN;
 
+// Apply product overrides and calculate quantity from slots
+function applyOverrides(products: any[]) {
+  const overrides = adminDb.getAllProductOverrides();
+  return products.map((product) => {
+    const productId = product.id?.toString() || "";
+    // Try both with and without 'products/' prefix
+    const cleanId = productId.replace(/^products\//, '');
+    const override = overrides[productId] || overrides[cleanId];
+    
+    // Calculate quantity from slots (sum of all slot quantities for this product)
+    const slots = adminDb.getSlotsForProduct(productId, product.name);
+    const totalQuantity = slots.reduce((sum, slot) => sum + slot.quantity, 0);
+    
+    if (override) {
+      return {
+        ...product,
+        name: override.name ?? product.name,
+        category: override.category ?? product.category,
+        retail_price: override.retail_price ?? product.retail_price,
+        quantity: totalQuantity, // Use calculated quantity from slots
+      };
+    }
+    return {
+      ...product,
+      quantity: totalQuantity > 0 ? totalQuantity : product.quantity,
+    };
+  });
+}
+
 // Fallback local products when API is unavailable
 function getLocalProducts() {
   return adminDb.getAllProducts().map((p) => ({
@@ -76,7 +105,9 @@ export async function GET(request: Request) {
         in_stock: p.inStock ?? p.in_stock ?? true,
         shopify_url: p.shopifyUrl || p.shopify_url || "",
       }));
-      return NextResponse.json(products);
+      // Apply local overrides to external products (like Flask's SQLite storage)
+      const productsWithOverrides = applyOverrides(products);
+      return NextResponse.json(productsWithOverrides);
     }
 
     // If backend fails, fallback to local products

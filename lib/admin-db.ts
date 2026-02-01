@@ -1,5 +1,60 @@
-// In-memory database for admin functionality
+// In-memory database for admin functionality with file persistence
 // In production, replace with a real database (PostgreSQL, MongoDB, etc.)
+
+import * as fs from 'fs';
+import * as path from 'path';
+
+const SLOTS_FILE = path.join(process.cwd(), 'data', 'slots.json');
+const PRODUCT_OVERRIDES_FILE = path.join(process.cwd(), 'data', 'product-overrides.json');
+
+// Product overrides for external products (similar to Flask's SQLite storage)
+interface ProductOverride {
+  id: string;
+  name?: string;
+  category?: string;
+  retail_price?: number;
+  quantity?: number;
+  updated_at: string;
+}
+
+const productOverrides: Map<string, ProductOverride> = new Map();
+
+// Save product overrides to file
+function saveProductOverrides() {
+  try {
+    const dataDir = path.join(process.cwd(), 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const overridesObj: Record<string, ProductOverride> = {};
+    productOverrides.forEach((override, key) => {
+      overridesObj[key] = override;
+    });
+    fs.writeFileSync(PRODUCT_OVERRIDES_FILE, JSON.stringify(overridesObj, null, 2));
+  } catch (error) {
+    console.error('Error saving product overrides:', error);
+  }
+}
+
+// Load product overrides from file
+function loadProductOverrides(): boolean {
+  try {
+    if (fs.existsSync(PRODUCT_OVERRIDES_FILE)) {
+      const data = fs.readFileSync(PRODUCT_OVERRIDES_FILE, 'utf-8');
+      const overridesObj = JSON.parse(data);
+      Object.entries(overridesObj).forEach(([key, override]) => {
+        productOverrides.set(key, override as ProductOverride);
+      });
+      return true;
+    }
+  } catch (error) {
+    console.error('Error loading product overrides:', error);
+  }
+  return false;
+}
+
+// Initialize product overrides on module load
+loadProductOverrides();
 
 export interface Product {
   id: number;
@@ -60,8 +115,49 @@ const products: Product[] = [
 // Initialize vending slots (60 slots)
 const vendingSlots: Map<number, VendingSlot> = new Map();
 
+// Save slots to file
+function saveSlots() {
+  try {
+    const dataDir = path.join(process.cwd(), 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const slotsObj: Record<number, VendingSlot> = {};
+    vendingSlots.forEach((slot, key) => {
+      slotsObj[key] = slot;
+    });
+    fs.writeFileSync(SLOTS_FILE, JSON.stringify(slotsObj, null, 2));
+  } catch (error) {
+    console.error('Error saving slots:', error);
+  }
+}
+
+// Load slots from file
+function loadSlots(): boolean {
+  try {
+    if (fs.existsSync(SLOTS_FILE)) {
+      const data = fs.readFileSync(SLOTS_FILE, 'utf-8');
+      const slotsObj = JSON.parse(data);
+      Object.entries(slotsObj).forEach(([key, slot]) => {
+        vendingSlots.set(parseInt(key), slot as VendingSlot);
+      });
+      return true;
+    }
+  } catch (error) {
+    console.error('Error loading slots:', error);
+  }
+  return false;
+}
+
 // Initialize slots with some products assigned
 function initializeSlots() {
+  // Try to load from file first
+  if (loadSlots()) {
+    console.log('Loaded slots from file');
+    return;
+  }
+
+  // Initialize fresh slots if no saved data
   for (let i = 1; i <= 60; i++) {
     const slot: VendingSlot = {
       slot_id: i,
@@ -81,6 +177,7 @@ function initializeSlots() {
 
     vendingSlots.set(i, slot);
   }
+  saveSlots();
 }
 
 // Initialize on module load
@@ -104,6 +201,30 @@ export const adminDb = {
       return products[index];
     }
     return undefined;
+  },
+
+  // Product Overrides for external products
+  setProductOverride(productId: string, updates: { name?: string; category?: string; retail_price?: number; quantity?: number }): ProductOverride {
+    const override: ProductOverride = {
+      id: productId,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    productOverrides.set(productId, override);
+    saveProductOverrides();
+    return override;
+  },
+
+  getProductOverride(productId: string): ProductOverride | undefined {
+    return productOverrides.get(productId);
+  },
+
+  getAllProductOverrides(): Record<string, ProductOverride> {
+    const result: Record<string, ProductOverride> = {};
+    productOverrides.forEach((override, key) => {
+      result[key] = override;
+    });
+    return result;
   },
 
   // Vending Slots
@@ -161,6 +282,7 @@ export const adminDb = {
 
     slot.last_updated = new Date().toISOString();
     vendingSlots.set(slotId, slot);
+    saveSlots();
     return slot;
   },
 
@@ -171,7 +293,32 @@ export const adminDb = {
     slot.quantity = Math.max(0, slot.quantity + changeAmount);
     slot.last_updated = new Date().toISOString();
     vendingSlots.set(slotId, slot);
+    saveSlots();
     return slot;
+  },
+
+  // Get all slots for a specific product
+  getSlotsForProduct(productId: string | number, productName?: string): Array<{ slot_id: number; quantity: number }> {
+    const slots: Array<{ slot_id: number; quantity: number }> = [];
+    const searchId = typeof productId === 'string' ? productId : productId.toString();
+    const searchName = productName?.toUpperCase();
+    
+    vendingSlots.forEach((slot) => {
+      if (slot.product_id !== undefined) {
+        const slotProductId = typeof slot.product_id === 'string' ? slot.product_id : slot.product_id.toString();
+        const slotProductName = slot.product_name?.toUpperCase();
+        
+        // Match by ID or by product name
+        if (slotProductId === searchId || (searchName && slotProductName && slotProductName.includes(searchName.substring(0, 10)))) {
+          slots.push({
+            slot_id: slot.slot_id,
+            quantity: slot.quantity,
+          });
+        }
+      }
+    });
+    
+    return slots;
   },
 
   // Sync product quantities from slots
