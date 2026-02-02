@@ -166,13 +166,21 @@
   },
   "20": {
     "slot_id": 20,
-    "quantity": 0,
-    "last_updated": "2026-02-01T15:09:15.278Z"
+    "quantity": 10,
+    "last_updated": "2026-02-02T17:13:59.114Z",
+    "product_id": "products/33945912",
+    "product_name": "Foxtale Skin Radiance Mask",
+    "category": "",
+    "retail_price": 799
   },
   "21": {
     "slot_id": 21,
-    "quantity": 0,
-    "last_updated": "2026-02-01T15:09:15.278Z"
+    "quantity": 10,
+    "last_updated": "2026-02-02T17:24:02.353Z",
+    "product_id": "products/31099442",
+    "product_name": "SKINSKA Calmyk Anti-Acne Cream",
+    "category": "",
+    "retail_price": 229
   },
   "22": {
     "slot_id": 22,
@@ -200,8 +208,12 @@
   },
   "26": {
     "slot_id": 26,
-    "quantity": 0,
-    "last_updated": "2026-02-01T15:09:15.278Z"
+    "quantity": 20,
+    "last_updated": "2026-02-02T15:15:17.465Z",
+    "product_id": "products/33945912",
+    "product_name": "Foxtale Skin Radiance Mask",
+    "category": "",
+    "retail_price": 799
   },
   "27": {
     "slot_id": 27,
@@ -210,8 +222,12 @@
   },
   "28": {
     "slot_id": 28,
-    "quantity": 0,
-    "last_updated": "2026-02-01T15:09:15.278Z"
+    "quantity": 10,
+    "last_updated": "2026-02-02T15:21:14.806Z",
+    "product_id": "products/31104983",
+    "product_name": "SKINSKA Ceroc C3 Vitamin-C Face Serum",
+    "category": "",
+    "retail_price": 1599
   },
   "29": {
     "slot_id": 29,
@@ -270,8 +286,12 @@
   },
   "40": {
     "slot_id": 40,
-    "quantity": 0,
-    "last_updated": "2026-02-01T15:09:15.278Z"
+    "quantity": 10,
+    "last_updated": "2026-02-02T16:48:21.038Z",
+    "product_id": 28,
+    "product_name": "SKINSKA DEWSKA BABY SOAP",
+    "category": "Bar",
+    "retail_price": 189
   },
   "41": {
     "slot_id": 41,
@@ -374,7 +394,11 @@
   },
   "60": {
     "slot_id": 60,
-    "quantity": 0,
-    "last_updated": "2026-02-01T15:09:15.279Z"
+    "quantity": 10,
+    "last_updated": "2026-02-02T17:24:13.626Z",
+    "product_id": "products/31104026",
+    "product_name": "PILGRIM 10% NIACINAMIDE FACE SERUM",
+    "category": "",
+    "retail_price": 595
   }
 }

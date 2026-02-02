@@ -132,7 +132,7 @@ export default function SlotAssignmentModal({
         >
           <Typography
             sx={{
-              fontSize: 24,
+              fontSize: 32,
               fontWeight: 600,
               fontFamily: "Roboto, sans-serif",
               color: "#22c55e",
@@ -158,7 +158,7 @@ export default function SlotAssignmentModal({
           >
             <Typography
               sx={{
-                fontSize: 14,
+                fontSize: 24,
                 fontWeight: 600,
                 fontFamily: "Roboto, sans-serif",
                 color: "#000",
@@ -191,7 +191,7 @@ export default function SlotAssignmentModal({
               <Box sx={{ flex: 1 }}>
                 <Typography
                   sx={{
-                    fontSize: 14,
+                    fontSize: 24,
                     fontWeight: 600,
                     fontFamily: "Roboto, sans-serif",
                     color: "#000",
@@ -203,7 +203,7 @@ export default function SlotAssignmentModal({
                 </Typography>
                 <Typography
                   sx={{
-                    fontSize: 12,
+                    fontSize: 24,
                     fontFamily: "Roboto, sans-serif",
                     color: "#666",
                   }}
@@ -216,7 +216,7 @@ export default function SlotAssignmentModal({
             {/* Update Quantity Controls */}
             <Typography
               sx={{
-                fontSize: 12,
+                fontSize: 24,
                 fontWeight: 600,
                 fontFamily: "Roboto, sans-serif",
                 color: "#000",
@@ -238,7 +238,7 @@ export default function SlotAssignmentModal({
                     borderColor: "#fca5a5",
                     backgroundColor: "#fef2f2",
                     color: "#dc2626",
-                    fontSize: 14,
+                    fontSize: 24,
                     fontWeight: 500,
                     p: 0,
                     "&:hover": {
@@ -259,7 +259,7 @@ export default function SlotAssignmentModal({
                   justifyContent: "center",
                   border: "1px solid #d1d5db",
                   borderRadius: "6px",
-                  fontSize: 14,
+                  fontSize: 24,
                   fontWeight: 500,
                   backgroundColor: "#fff",
                 }}
@@ -278,7 +278,7 @@ export default function SlotAssignmentModal({
                     borderColor: "#86efac",
                     backgroundColor: "#f0fdf4",
                     color: "#16a34a",
-                    fontSize: 14,
+                    fontSize: 24,
                     fontWeight: 500,
                     p: 0,
                     "&:hover": {
@@ -300,7 +300,7 @@ export default function SlotAssignmentModal({
                   borderRadius: "6px",
                   backgroundColor: "#3b82f6",
                   color: "#fff",
-                  fontSize: 12,
+                  fontSize: 24,
                   fontWeight: 500,
                   textTransform: "none",
                   p: 0,
@@ -323,7 +323,7 @@ export default function SlotAssignmentModal({
         <Box sx={{ mb: 3 }}>
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 24,
               fontWeight: 500,
               fontFamily: "Roboto, sans-serif",
               color: "#000",
@@ -346,7 +346,7 @@ export default function SlotAssignmentModal({
               sx={{
                 height: 48,
                 borderRadius: "8px",
-                fontSize: 18,
+                fontSize: 24,
                 fontFamily: "Roboto, sans-serif",
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "#22c55e",
@@ -384,10 +384,13 @@ export default function SlotAssignmentModal({
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       borderRadius: "6px",
-                      fontSize: 18,
+                      fontSize: 24,
                     },
                   }}
                 />
+                <Typography sx={{ fontSize: 16, color: "#666", mt: 0.5, textAlign: "right" }}>
+                  {searchQuery ? `${filteredProducts.length} of ${products.length} products` : `Total: ${products.length} products`}
+                </Typography>
               </Box>
               <MenuItem value="">
                 <Typography sx={{ color: "#666" }}>-- Select a product --</Typography>
@@ -424,8 +427,8 @@ export default function SlotAssignmentModal({
             {selectedProduct.image && (
               <Box
                 sx={{
-                  width: 60,
-                  height: 60,
+                  width: 120,
+                  height: 120,
                   borderRadius: "6px",
                   overflow: "hidden",
                   flexShrink: 0,
@@ -435,8 +438,8 @@ export default function SlotAssignmentModal({
                 <Image
                   src={selectedProduct.image}
                   alt={selectedProduct.name}
-                  width={60}
-                  height={60}
+                  width={120}
+                  height={120}
                   style={{ objectFit: "cover" }}
                 />
               </Box>
@@ -444,7 +447,7 @@ export default function SlotAssignmentModal({
             <Box>
               <Typography
                 sx={{
-                  fontSize: 14,
+                  fontSize: 24,
                   fontWeight: 600,
                   fontFamily: "Roboto, sans-serif",
                   color: "#000",
@@ -456,7 +459,7 @@ export default function SlotAssignmentModal({
               </Typography>
               <Typography
                 sx={{
-                  fontSize: 12,
+                  fontSize: 24,
                   fontFamily: "Roboto, sans-serif",
                   color: "#666",
                   textTransform: "uppercase",
@@ -466,7 +469,7 @@ export default function SlotAssignmentModal({
               </Typography>
               <Typography
                 sx={{
-                  fontSize: 14,
+                  fontSize: 24,
                   fontWeight: 600,
                   fontFamily: "Roboto, sans-serif",
                   color: "#22c55e",
@@ -482,7 +485,7 @@ export default function SlotAssignmentModal({
         <Box sx={{ mb: 3 }}>
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 24,
               fontWeight: 500,
               fontFamily: "Roboto, sans-serif",
               color: "#000",
@@ -493,7 +496,7 @@ export default function SlotAssignmentModal({
             <Typography
               component="span"
               sx={{
-                fontSize: 12,
+                fontSize:   24,
                 color: "#9ca3af",
                 fontWeight: 400,
               }}
@@ -521,7 +524,7 @@ export default function SlotAssignmentModal({
               "& .MuiOutlinedInput-root": {
                 height: 48,
                 borderRadius: "8px",
-                fontSize: 14,
+                fontSize: 24,
                 fontFamily: "Roboto, sans-serif",
                 "& fieldset": {
                   borderColor: "#22c55e",
@@ -556,7 +559,7 @@ export default function SlotAssignmentModal({
               borderRadius: "8px",
               backgroundColor: "#ef4444",
               color: "#fff",
-              fontSize: 16,
+              fontSize: 24,
               fontWeight: 500,
               fontFamily: "Roboto, sans-serif",
               textTransform: "none",
@@ -577,7 +580,7 @@ export default function SlotAssignmentModal({
               borderRadius: "8px",
               backgroundColor: "#22c55e",
               color: "#fff",
-              fontSize: 16,
+              fontSize: 24,
               fontWeight: 500,
               fontFamily: "Roboto, sans-serif",
               textTransform: "none",

@@ -52,6 +52,7 @@ export interface AssignProductRequest {
   productName?: string;
   category?: string;
   retailPrice?: number;
+  imageUrl?: string;
 }
 
 export interface UpdateSlotQuantityRequest {
@@ -110,7 +111,7 @@ export const adminApi = createApi({
 
     // Assign product to slot
     assignProductToSlot: builder.mutation<SyncResponse, AssignProductRequest>({
-      query: ({ slotId, productId, quantity = 0, productName, category, retailPrice }) => ({
+      query: ({ slotId, productId, quantity = 0, productName, category, retailPrice, imageUrl }) => ({
         url: "/slots",
         method: "POST",
         body: { 
@@ -120,6 +121,7 @@ export const adminApi = createApi({
           product_name: productName,
           category: category,
           retail_price: retailPrice,
+          image_url: imageUrl,
         },
       }),
       invalidatesTags: ["Slots", "Products"],

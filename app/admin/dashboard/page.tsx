@@ -117,6 +117,8 @@ export default function AdminDashboardPage() {
       }
       
       console.log("[Admin] Total products from all categories:", allProducts.length);
+      console.log("[Admin] Categories fetched:", categories.length);
+      console.log("[Admin] Main products count:", mainProducts.length);
       setAllCategoryProducts(allProducts);
     };
     
@@ -138,25 +140,57 @@ export default function AdminDashboardPage() {
     }
   }, [router]);
 
+  // Helper function to get total quantity from slots for a product
+  const getProductQuantityFromSlots = (productId: string, productName: string): number => {
+    if (!slotsData) return 0;
+    let totalQuantity = 0;
+    const cleanProductId = productId.replace(/^products\//, '');
+    const searchName = productName?.toUpperCase().trim();
+    
+    Object.values(slotsData).forEach((slot: any) => {
+      if (!slot.product_id) return;
+      const slotProductId = slot.product_id?.toString().replace(/^products\//, '');
+      const slotProductName = slot.product_name?.toUpperCase().trim();
+      
+      // Match by ID or by name prefix
+      const idMatch = slotProductId === cleanProductId || slot.product_id?.toString() === productId;
+      let nameMatch = false;
+      if (searchName && slotProductName) {
+        const searchPrefix = searchName.substring(0, 15);
+        const slotPrefix = slotProductName.substring(0, 15);
+        nameMatch = slotProductName.includes(searchPrefix) || searchName.includes(slotPrefix);
+      }
+      
+      if (idMatch || nameMatch) {
+        totalQuantity += slot.quantity || 0;
+      }
+    });
+    return totalQuantity;
+  };
+
   // Transform admin products data for the table
   const adminProducts = productsData?.map((product: Product) => ({
     id: product.id.toString(),
     name: product.name,
     category: product.category || "Uncategorized",
     price: `Rs.${product.retail_price}`,
-    amount: product.quantity,
+    amount: product.quantity || getProductQuantityFromSlots(product.id.toString(), product.name),
     image: product.image_url,
   })) || [];
   
   // Transform ALL browse products (from all categories) and merge with admin products
-  const browseProducts = allCategoryProducts.map((p: any) => ({
-    id: p._id || p.id,
-    name: p.name,
-    category: p.productCategory?.title || p.category || "Uncategorized",
-    price: `Rs.${p.retailPrice || p.retail_price || 0}`,
-    amount: p.quantity || 0,
-    image: p.images?.[0]?.url || p.image_url || "",
-  }));
+  const browseProducts = allCategoryProducts.map((p: any) => {
+    const productId = p._id || p.id;
+    const productName = p.name;
+    return {
+      id: productId,
+      name: productName,
+      category: p.productCategory?.title || p.category || "Uncategorized",
+      price: `Rs.${p.retailPrice || p.retail_price || 0}`,
+      amount: getProductQuantityFromSlots(productId, productName),
+      image: p.images?.[0]?.url || p.image_url || "",
+    };
+  });
   
   // Merge products - browse products first, then admin products (avoiding duplicates)
   const adminProductIds = new Set(adminProducts.map((p: any) => p.id));
@@ -263,16 +297,33 @@ export default function AdminDashboardPage() {
 
   const handleAssignProduct = async (slotNumber: number, productId: string, quantity: number) => {
     try {
-      // Find the product to get its details
-      const product = productsData?.find((p: Product) => p.id.toString() === productId);
+      // Find the product in admin products first
+      let product = productsData?.find((p: Product) => p.id.toString() === productId);
+      
+      // If not found, search in browse products (allCategoryProducts)
+      let productName = product?.name;
+      let category = product?.category;
+      let retailPrice = product?.retail_price;
+      let imageUrl = product?.image_url;
+      
+      if (!product) {
+        const browseProduct = allCategoryProducts.find((p: any) => (p._id || p.id) === productId);
+        if (browseProduct) {
+          productName = browseProduct.name;
+          category = browseProduct.productCategory?.title || browseProduct.category || "Uncategorized";
+          retailPrice = browseProduct.retailPrice || browseProduct.retail_price || 0;
+          imageUrl = browseProduct.images?.[0]?.url || browseProduct.image_url || "";
+        }
+      }
       
       await assignProduct({ 
         slotId: slotNumber, 
         productId: productId, 
         quantity,
-        productName: product?.name,
-        category: product?.category,
-        retailPrice: product?.retail_price,
+        productName: productName,
+        category: category,
+        retailPrice: retailPrice,
+        imageUrl: imageUrl,
       });
       refetchSlots();
       refetchProducts();
