@@ -324,7 +324,7 @@ export default function SlotAssignmentModal({
             }}
           >
             Select Product
-          </Typography>
+          </Typography> 
           <FormControl fullWidth>
             <Select
               value={selectedProductId}

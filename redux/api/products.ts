@@ -91,6 +91,7 @@ export const productsApi = createApi({
 export const {
   useLazyGetTopSellingProductsQuery,
   useLazyGetFilteredProductsQuery,
+  useGetFilteredProductsQuery,
   useLazyGetProductCategoriesQuery,
   useGetProductCategoriesQuery,
   useGetAllBrandsQuery,

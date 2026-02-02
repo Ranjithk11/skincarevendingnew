@@ -181,8 +181,12 @@
   },
   "23": {
     "slot_id": 23,
-    "quantity": 0,
-    "last_updated": "2026-02-01T15:09:15.278Z"
+    "quantity": 10,
+    "last_updated": "2026-02-02T14:38:42.761Z",
+    "product_id": "products/31830595",
+    "product_name": "PILGRIM 24K GOLD BEAUTY OIL",
+    "category": "",
+    "retail_price": 545
   },
   "24": {
     "slot_id": 24,

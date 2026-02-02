@@ -15,6 +15,7 @@ import {
   VendingSlot,
   Product,
 } from "@/redux/api/adminApi";
+import { useGetFilteredProductsQuery, useGetProductCategoriesQuery } from "@/redux/api/products";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -43,6 +44,84 @@ export default function AdminDashboardPage() {
   // Redux queries
   const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetVendingSlotsQuery();
   const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useGetProductsQuery();
+  
+  // Fetch product categories
+  const { data: categoriesData } = useGetProductCategoriesQuery({});
+  
+  // Fetch Browse Products (same as /products page) - auto-fetches on mount
+  const { data: browseProductsData, isLoading: browseProductsLoading } = useGetFilteredProductsQuery({
+    page: 1,
+    limit: 1000,
+    hasBrand: true,
+    isShopifyAvailable: true,
+  });
+  
+  // State to hold all products from all categories
+  const [allCategoryProducts, setAllCategoryProducts] = useState<any[]>([]);
+  const [hasFetchedAllProducts, setHasFetchedAllProducts] = useState(false);
+  
+  // Fetch products for each category and merge them - runs only once when data is ready
+  useEffect(() => {
+    const fetchAllCategoryProducts = async () => {
+      // Only fetch once when categories and browse products are loaded
+      if (hasFetchedAllProducts || !categoriesData?.data || !browseProductsData) return;
+      
+      setHasFetchedAllProducts(true);
+      const categories = categoriesData.data.filter((cat: any) => cat._id !== "all");
+      const allProducts: any[] = [];
+      const seenIds = new Set<string>();
+      
+      // Add products from the main query first
+      const mainProducts = browseProductsData?.data?.[0]?.products || [];
+      mainProducts.forEach((p: any) => {
+        const id = p._id || p.id;
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          allProducts.push(p);
+        }
+      });
+      
+      // Fetch products for each category
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+      const DB_TOKEN = process.env.NEXT_PUBLIC_DB_TOKEN;
+      
+      for (const category of categories) {
+        try {
+          const params = new URLSearchParams({
+            page: "1",
+            limit: "500",
+            hasBrand: "true",
+            isShopifyAvailable: "true",
+            catId: category._id || category._key,
+          });
+          
+          const headers: Record<string, string> = { "Content-Type": "application/json" };
+          if (DB_TOKEN) headers["x-db-token"] = DB_TOKEN;
+          
+          const response = await fetch(`${API_BASE}/product/fetch-by-filter?${params}`, { headers });
+          if (response.ok) {
+            const result = await response.json();
+            const categoryProducts = result?.data?.[0]?.products || [];
+            
+            categoryProducts.forEach((p: any) => {
+              const id = p._id || p.id;
+              if (!seenIds.has(id)) {
+                seenIds.add(id);
+                allProducts.push(p);
+              }
+            });
+          }
+        } catch (err) {
+          console.error(`Error fetching category ${category.title}:`, err);
+        }
+      }
+      
+      console.log("[Admin] Total products from all categories:", allProducts.length);
+      setAllCategoryProducts(allProducts);
+    };
+    
+    fetchAllCategoryProducts();
+  }, [categoriesData, browseProductsData, hasFetchedAllProducts]);
 
   // Redux mutations
   const [syncQuantities, { isLoading: isSyncing }] = useSyncProductQuantitiesMutation();
@@ -59,8 +138,8 @@ export default function AdminDashboardPage() {
     }
   }, [router]);
 
-  // Transform products data for the table
-  const transformedProducts = productsData?.map((product: Product) => ({
+  // Transform admin products data for the table
+  const adminProducts = productsData?.map((product: Product) => ({
     id: product.id.toString(),
     name: product.name,
     category: product.category || "Uncategorized",
@@ -68,6 +147,21 @@ export default function AdminDashboardPage() {
     amount: product.quantity,
     image: product.image_url,
   })) || [];
+  
+  // Transform ALL browse products (from all categories) and merge with admin products
+  const browseProducts = allCategoryProducts.map((p: any) => ({
+    id: p._id || p.id,
+    name: p.name,
+    category: p.productCategory?.title || p.category || "Uncategorized",
+    price: `Rs.${p.retailPrice || p.retail_price || 0}`,
+    amount: p.quantity || 0,
+    image: p.images?.[0]?.url || p.image_url || "",
+  }));
+  
+  // Merge products - browse products first, then admin products (avoiding duplicates)
+  const adminProductIds = new Set(adminProducts.map((p: any) => p.id));
+  const uniqueBrowseProducts = browseProducts.filter((p: any) => !adminProductIds.has(p.id));
+  const transformedProducts = [...browseProducts, ...adminProducts.filter((p: any) => !browseProducts.some((bp: any) => bp.id === p.id))];
 
   const handleCartClick = () => {
     router.push("/products");
@@ -226,7 +320,7 @@ export default function AdminDashboardPage() {
     };
   }
 
-  // Transform products for modal - include both API products and slot-assigned products
+  // Transform products for modal - include admin products, browse products, and slot-assigned products
   const apiProducts = productsData?.map((product: Product) => ({
     id: product.id.toString(),
     name: product.name,
@@ -236,14 +330,25 @@ export default function AdminDashboardPage() {
     image: product.image_url,
   })) || [];
   
+  // Add browse products (from ALL categories) to modal
+  const browseModalProducts = allCategoryProducts.map((p: any) => ({
+    id: p._id || p.id,
+    name: p.name,
+    category: p.productCategory?.title || p.category || "Uncategorized",
+    price: `₹${p.retailPrice || p.retail_price || 0}`,
+    amount: p.quantity || 0,
+    image: p.images?.[0]?.url || p.image_url || "",
+  }));
+  
   // Add slot-assigned products that aren't in the API list (for slots 1-10 with local products)
   const slotProducts: typeof apiProducts = [];
   if (slotsData) {
     Object.values(slotsData).forEach((slot: any) => {
       if (slot.product_id && slot.product_name) {
         const existsInApi = apiProducts.some(p => p.id === slot.product_id?.toString());
+        const existsInBrowse = browseModalProducts.some((p: any) => p.id === slot.product_id?.toString());
         const existsInSlotProducts = slotProducts.some(p => p.id === slot.product_id?.toString());
-        if (!existsInApi && !existsInSlotProducts) {
+        if (!existsInApi && !existsInBrowse && !existsInSlotProducts) {
           slotProducts.push({
             id: slot.product_id.toString(),
             name: slot.product_name,
@@ -256,7 +361,37 @@ export default function AdminDashboardPage() {
       }
     });
   }
-  const modalProducts = [...apiProducts, ...slotProducts];
+  
+  // Merge all products - browse products first (priority), then admin, then slot products
+  const allProductIds = new Set<string>();
+  const modalProducts: typeof apiProducts = [];
+  
+  // Add browse products first
+  browseModalProducts.forEach((p: any) => {
+    if (!allProductIds.has(p.id)) {
+      allProductIds.add(p.id);
+      modalProducts.push(p);
+    }
+  });
+  
+  // Add admin products
+  apiProducts.forEach((p: any) => {
+    if (!allProductIds.has(p.id)) {
+      allProductIds.add(p.id);
+      modalProducts.push(p);
+    }
+  });
+  
+  // Add slot products
+  slotProducts.forEach((p: any) => {
+    if (!allProductIds.has(p.id)) {
+      allProductIds.add(p.id);
+      modalProducts.push(p);
+    }
+  });
+  
+  // Debug: Log modal products count
+  console.log("[Admin] Modal products count:", modalProducts.length, "browse:", browseModalProducts.length, "admin:", apiProducts.length);
 
   const handleProductHideClick = (productId: string) => {
     // TODO: Implement hide/show product visibility
@@ -307,6 +442,7 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Only wait for slots and admin products, browse products can load async
   if (slotsLoading || productsLoading) {
     return (
       <div style={{ display: "flex",fontSize:"28px", justifyContent: "center", alignItems: "center", height: "100vh" }}>
