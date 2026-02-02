@@ -214,7 +214,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
                 fontSize: "16px",
               }}
             >
-              We'd love to hear your feedback
+              We&apos;d love to hear your feedback
             </Typography>
 
             {/* Star Rating */}
