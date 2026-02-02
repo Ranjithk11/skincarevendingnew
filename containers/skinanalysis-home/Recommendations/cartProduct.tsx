@@ -16,6 +16,9 @@ import { capitalizeWords } from "@/utils/func";
 import { useCart, CartItem } from "./CartContext";
 import RazorpayCheckoutButton from "@/components/payments/RazorpayCheckoutButton";
 import { toast } from "react-toastify";
+import { FeedbackDialog } from "@/components/feedback";
+import { useRouter } from "next/navigation";
+import { APP_ROUTES } from "@/utils/routes";
 
 type CartProductProps = {
     open: boolean;
@@ -34,6 +37,7 @@ const parsePrice = (priceText?: string): number => {
 
 const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) => {
     const theme = useTheme();
+    const router = useRouter();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const { items, setQuantity, removeItem, clear } = useCart();
     const [showPriceDetails, setShowPriceDetails] = useState(false);
@@ -41,6 +45,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [couponApplied, setCouponApplied] = useState(false);
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
     const [isDispensing, setIsDispensing] = useState(false);
+    const [showFeedback, setShowFeedback] = useState(false);
 
     // Function to dispense products via STM32 after successful payment
     const dispenseProducts = useCallback(async (cartItems: CartItem[]) => {
@@ -158,6 +163,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     };
 
     return (
+        <>
         <Dialog
             fullScreen={isMobile}
             open={open}
@@ -353,11 +359,14 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             console.log("[Payment] Calling dispenseProducts with:", itemsToDispense);
                                             await dispenseProducts(itemsToDispense);
                                             
-                                            // Clear cart and close dialog
+                                            // Clear cart
                                             clear();
                                             if (onCheckout) onCheckout();
                                             setStep("cart");
-                                            onClose();
+                                            
+                                            // Show feedback dialog BEFORE closing cart dialog
+                                            // This ensures the component is still mounted
+                                            setShowFeedback(true);
                                         }}
                                         onError={() => {
                                             // keep dialog open so user can retry
@@ -770,6 +779,21 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 </Box>
             </Box>
         </Dialog>
+        
+        {/* Feedback Dialog - shown after successful payment */}
+        <FeedbackDialog
+            open={showFeedback}
+            onClose={() => {
+                setShowFeedback(false);
+                onClose();
+                // Route to home after feedback
+                router.push(APP_ROUTES.HOME);
+            }}
+            onSubmit={(rating, notes) => {
+                console.log("[Feedback] Submitted:", { rating, notes });
+            }}
+        />
+        </>
     );
 };
 

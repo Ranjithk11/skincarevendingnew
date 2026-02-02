@@ -2,6 +2,7 @@ export type Stm32Config = {
   port: string;
   baudRate: number;
   timeoutMs: number;
+  mock: boolean;
 };
 
 function getEnv(name: string): string | undefined {
@@ -9,11 +10,27 @@ function getEnv(name: string): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
 }
 
+function isServerlessEnvironment(): boolean {
+  // Detect Vercel, AWS Lambda, or other serverless environments
+  return !!(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.NETLIFY ||
+    process.env.SERVERLESS
+  );
+}
+
 export function getStm32Config(): Stm32Config {
-  const port = getEnv("STM32_PORT");
-  if (!port) {
-    throw new Error("Missing env STM32_PORT (e.g. COM3)");
+  // Auto-enable mock mode in serverless environments (serialport doesn't work there)
+  const isServerless = isServerlessEnvironment();
+  const mockEnv = getEnv("STM32_MOCK");
+  const mock = isServerless || mockEnv === "true" || mockEnv === "1";
+
+  if (isServerless) {
+    console.log("[STM32] Running in serverless environment - using mock mode");
   }
+
+  const port = getEnv("STM32_PORT") || "COM3";
 
   const baudRateRaw = getEnv("STM32_BAUDRATE");
   const timeoutRaw = getEnv("STM32_TIMEOUT_MS");
@@ -30,7 +47,7 @@ export function getStm32Config(): Stm32Config {
     throw new Error("Invalid env STM32_TIMEOUT_MS");
   }
 
-  return { port, baudRate, timeoutMs };
+  return { port, baudRate, timeoutMs, mock };
 }
 
 type DispenseResult = {
@@ -56,6 +73,17 @@ export async function stm32Dispense(
   const code = typeof productCode === "string" ? productCode.trim() : "";
   if (!code) {
     throw new Error("Invalid productCode");
+  }
+
+  // Mock mode - simulate successful dispense without hardware
+  // Used in serverless environments (Vercel, AWS Lambda) where serialport doesn't work
+  if (cfg.mock) {
+    console.log(`[STM32 Mock] Simulating dispense for product code: ${code}`);
+    await new Promise((resolve) => setTimeout(resolve, 500)); // Simulate small delay
+    return {
+      rawLines: [`[MOCK] Dispensing ${code}`, "[MOCK] Request sequence finished"],
+      okLine: "Request sequence finished",
+    };
   }
 
   const commandPrefix = opts?.commandPrefix ?? "RQ";
