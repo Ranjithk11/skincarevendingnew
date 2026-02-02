@@ -50,8 +50,14 @@ export default function SlotAssignmentModal({
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(10);
   const [quantityAdjustment, setQuantityAdjustment] = useState<number>(0);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const hasCurrentProduct = !!currentProduct;
+  
+  // Filter products based on search query
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     if (open) {
@@ -59,6 +65,7 @@ export default function SlotAssignmentModal({
       // Use current quantity if editing existing slot, otherwise default to 10 for new assignment
       setQuantity(currentQuantity > 0 ? currentQuantity : 10);
       setQuantityAdjustment(0);
+      setSearchQuery(""); // Reset search when modal opens
     }
   }, [open, currentProduct, currentQuantity]);
 
@@ -330,10 +337,16 @@ export default function SlotAssignmentModal({
               value={selectedProductId}
               onChange={(e) => setSelectedProductId(e.target.value)}
               displayEmpty
+              MenuProps={{
+                PaperProps: {
+                  sx: { maxHeight: 500 },
+                },
+                autoFocus: false,
+              }}
               sx={{
                 height: 48,
                 borderRadius: "8px",
-                fontSize: 14,
+                fontSize: 18,
                 fontFamily: "Roboto, sans-serif",
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "#22c55e",
@@ -347,14 +360,50 @@ export default function SlotAssignmentModal({
                 },
               }}
             >
+              {/* Search Input - Sticky at top */}
+              <Box
+                sx={{
+                  position: "sticky",
+                  top: 0,
+                  backgroundColor: "#fff",
+                  zIndex: 1,
+                  p: 1,
+                  borderBottom: "1px solid #e5e5e5",
+                }}
+                onKeyDown={(e) => e.stopPropagation()}
+              >
+                <TextField
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  fullWidth
+                  size="small"
+                  autoFocus
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "6px",
+                      fontSize: 18,
+                    },
+                  }}
+                />
+              </Box>
               <MenuItem value="">
                 <Typography sx={{ color: "#666" }}>-- Select a product --</Typography>
               </MenuItem>
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <MenuItem key={product.id} value={product.id}>
                   {product.name.toUpperCase()}
                 </MenuItem>
               ))}
+              {filteredProducts.length === 0 && searchQuery && (
+                <MenuItem disabled>
+                  <Typography sx={{ color: "#999", fontStyle: "italic" }}>
+                    No products found for "{searchQuery}"
+                  </Typography>
+                </MenuItem>
+              )}
             </Select>
           </FormControl>
         </Box>
