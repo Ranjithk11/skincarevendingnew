@@ -116,11 +116,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Handle DISPENSE command (generic)
+    // Handle DISPENSE command (generic - no slot selected)
     if (command === "DISPENSE") {
+      // In mock mode, return helpful message
+      if (cfg.mock) {
+        return NextResponse.json({
+          success: false,
+          message: "Please select a slot first before dispensing",
+        }, { status: 400 });
+      }
       return NextResponse.json({
         success: false,
-        message: "Please specify a slot number using M,slotId,1 format",
+        message: "Please select a slot first before dispensing",
       }, { status: 400 });
     }
 

@@ -101,15 +101,21 @@ export default function AdminDashboardPage() {
   };
 
   const handleDispenseClick = async () => {
+    // Check if a slot is selected first
+    if (!selectedSlot) {
+      alert("Please select a slot first before dispensing");
+      return;
+    }
+    
     setDispenseModalOpen(true);
     setDispenseLoading(true);
     setDispenseStatus(null);
     
     try {
-      const command = selectedSlot ? `M,${selectedSlot},1` : "DISPENSE";
+      const command = `M,${selectedSlot},1`;
       const result = await motorControl({ command }).unwrap();
       setDispenseStatus(result.success);
-      if (result.success && selectedSlot) {
+      if (result.success) {
         refetchSlots();
       }
     } catch (error) {
