@@ -66,8 +66,8 @@ const BuyNowDialog = ({
       onClose={onClose}
       PaperProps={{
         sx: {
-          width: "70%",
-          height: "550px",
+          width: "75%",
+          height: "750px",
           borderRadius: "13px",
           border: "1px solid rgba(0,0,0,0.12)",
           opacity: 1,
@@ -105,9 +105,9 @@ const BuyNowDialog = ({
           alt={name}
           sx={{
             width: 140,
-            height: 250,
+            height: 200,
             objectFit: "contain",
-            mt:4,
+            mt:10,
             
           }}
         />
@@ -141,6 +141,7 @@ const BuyNowDialog = ({
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
+                fontSize:24,
               }}
             >
               {productUse
@@ -168,6 +169,7 @@ const BuyNowDialog = ({
                   display: "-webkit-box",
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: "vertical",
+                  fontSize:24,
                 }}
               >
                 {productBenefits
@@ -201,7 +203,7 @@ const BuyNowDialog = ({
             )}
 
             {discountValue ? (
-              <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary", textAlign: "left" }}>
+              <Typography variant="body2" sx={{ mt: 0.5, color: "text.secondary", textAlign: "left",fontSize:24 }}>
                 Discount: Flat {discountValue}%
               </Typography>
             ) : null}
@@ -277,13 +279,13 @@ const BuyNowDialog = ({
                 minWidth: 140,
               }}
             >
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1,fontSize:24 }}>
                 <Box component="span">Add To Cart</Box>
                 <Box
                   component="img"
                   src="/icons/buy.svg"
                   alt="Buy"
-                  sx={{ width: 18, height: 18, objectFit: "contain", display: "block" }}
+                  sx={{ width: 24, height: 24, objectFit: "contain", display: "block" }}
                 />
               </Box>
             </Button>

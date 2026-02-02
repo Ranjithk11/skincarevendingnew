@@ -14,6 +14,26 @@ import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { setSkinType } from "@/redux/reducers/analysisSlice";
 
+// Email validation - same as Skincare project
+const isValidateEmail = (input: string): boolean | string => {
+  const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (pattern.test(input)) {
+    return true;
+  }
+  return "Please enter a valid email address";
+};
+
+// Phone validation - validates Indian phone numbers (10 digits)
+const isValidatePhone = (input: string): boolean | string => {
+  // Remove all non-digit characters for validation
+  const digitsOnly = input.replace(/\D/g, '');
+  // Indian phone numbers should be exactly 10 digits
+  if (digitsOnly.length === 10 && /^[6-9]\d{9}$/.test(digitsOnly)) {
+    return true;
+  }
+  return "Please enter a valid 10-digit phone number";
+};
+
 const skinTypeOptions = [
   {
     id: "normal",
@@ -157,13 +177,24 @@ export default function Questionnaire() {
     if (currentSlide === 0) {
       if (!name.trim()) {
         setValidationError("Please enter your name");
-        setTimeout(() => setValidationError(""), 2000);
+        setTimeout(() => setValidationError(""), 3000);
         return;
       }
-      if (!phone.trim() || phone.trim().length < 10) {
-        setValidationError("Please enter a valid phone number");
-        setTimeout(() => setValidationError(""), 2000);
+      // Phone validation using isValidatePhone
+      const phoneValidation = isValidatePhone(phone);
+      if (phoneValidation !== true) {
+        setValidationError(phoneValidation as string);
+        setTimeout(() => setValidationError(""), 3000);
         return;
+      }
+      // Email validation (optional but must be valid if entered)
+      if (email.trim()) {
+        const emailValidation = isValidateEmail(email.trim());
+        if (emailValidation !== true) {
+          setValidationError(emailValidation as string);
+          setTimeout(() => setValidationError(""), 3000);
+          return;
+        }
       }
       setValidationError("");
     }
@@ -199,58 +230,33 @@ export default function Questionnaire() {
     const skinTypeId = skinTypeIdByOption[skinType] ?? skinType;
 
     try {
-      const resp = await saveUserApi({
+      // Use signIn which handles both user save and session creation (single API call)
+      const authResponse = await signIn("credentials", {
+        redirect: false,
+        actionType: "register",
         phoneNumber: formattedPhoneNumber,
         name,
         email,
-        location: "Vending machine",
         countryCode,
-        isValidated: true,
+        location: "Vending machine",
         skinType: skinTypeId,
-        onBoardingQuestions: [
+        onBoardingQuestions: JSON.stringify([
           {
             questionId: "skinType",
             responseId: [skinTypeId],
           },
-        ],
+        ]),
       });
 
-      try {
-        const resolvedUserId =
-          resp?.data?.userId ||
-          resp?.data?._id ||
-          resp?.data?.id ||
-          resp?.userId ||
-          resp?._id ||
-          resp?.id ||
-          null;
-        if (resolvedUserId) {
-          localStorage.setItem("leafwater_userId", String(resolvedUserId));
-        }
-        // Store skinType in Redux
-        dispatch(setSkinType(skinTypeId));
-      } catch {}
-
-      // Create NextAuth session
-      try {
-        await signIn("credentials", {
-          redirect: false,
-          actionType: "register",
-          phoneNumber: formattedPhoneNumber,
-          name,
-          email,
-          countryCode,
-          location: "Vending machine",
-          onBoardingQuestions: JSON.stringify([
-            {
-              questionId: "skinType",
-              responseId: [skinTypeId],
-            },
-          ]),
-        });
-      } catch (e) {
-        console.error("Failed to create NextAuth session", e);
+      if (authResponse?.error) {
+        console.error("Failed to register user", authResponse.error);
+        setValidationError("Registration failed. Please try again.");
+        setTimeout(() => setValidationError(""), 3000);
+        return;
       }
+
+      // Store skinType in Redux
+      dispatch(setSkinType(skinTypeId));
 
       router.push(APP_ROUTES.SELFIE);
     } catch (err) {
@@ -261,6 +267,8 @@ export default function Questionnaire() {
         error: e?.error,
         original: e,
       });
+      setValidationError("Registration failed. Please try again.");
+      setTimeout(() => setValidationError(""), 3000);
     }
   };
 

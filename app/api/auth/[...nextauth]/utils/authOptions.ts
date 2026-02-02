@@ -38,8 +38,10 @@ const authOptions: AuthOptions = {
             email: credentials?.email,
             onBoardingQuestions: JSON.parse(credentials?.onBoardingQuestions),
             countryCode: credentials?.countryCode,
-            isValidated: false,
-            location:credentials?.location
+            isValidated: true,
+            location: credentials?.location,
+            skinType: credentials?.skinType,
+            skipOtp: true, // Skip OTP for vending machine flow
           });
           console.log("User Registration",response);
         }
