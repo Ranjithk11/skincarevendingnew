@@ -178,8 +178,18 @@ export default function EditProductModal({
             <TextField
               fullWidth
               type="number"
-              value={priceValue}
-              onChange={(e) => setPriceValue(parseFloat(e.target.value) || 0)}
+              value={priceValue === 0 ? "" : priceValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  setPriceValue(0);
+                } else {
+                  const parsed = parseFloat(val);
+                  if (!isNaN(parsed) && parsed >= 0) {
+                    setPriceValue(parsed);
+                  }
+                }
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
@@ -199,8 +209,18 @@ export default function EditProductModal({
             <TextField
               fullWidth
               type="number"
-              value={qty}
-              onChange={(e) => setQty(parseInt(e.target.value) || 0)}
+              value={qty === 0 ? "" : qty}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  setQty(0);
+                } else {
+                  const parsed = parseInt(val, 10);
+                  if (!isNaN(parsed) && parsed >= 0) {
+                    setQty(parsed);
+                  }
+                }
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",

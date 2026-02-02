@@ -56,7 +56,8 @@ export default function SlotAssignmentModal({
   useEffect(() => {
     if (open) {
       setSelectedProductId(currentProduct?.id || "");
-      setQuantity(currentQuantity || 10);
+      // Use current quantity if editing existing slot, otherwise default to 10 for new assignment
+      setQuantity(currentQuantity > 0 ? currentQuantity : 10);
       setQuantityAdjustment(0);
     }
   }, [open, currentProduct, currentQuantity]);
@@ -453,8 +454,18 @@ export default function SlotAssignmentModal({
           </Typography>
           <TextField
             type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(Math.max(0, parseInt(e.target.value) || 0))}
+            value={quantity === 0 ? "" : quantity}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "") {
+                setQuantity(0);
+              } else {
+                const parsed = parseInt(val, 10);
+                if (!isNaN(parsed) && parsed >= 0) {
+                  setQuantity(parsed);
+                }
+              }
+            }}
             fullWidth
             sx={{
               mt: 1,

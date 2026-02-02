@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
     Box,
     Button,
+    CircularProgress,
     Collapse,
     Dialog,
     Divider,
@@ -12,8 +13,9 @@ import {
 } from "@mui/material";
 import { Icon } from "@iconify/react";
 import { capitalizeWords } from "@/utils/func";
-import { useCart } from "./CartContext";
+import { useCart, CartItem } from "./CartContext";
 import RazorpayCheckoutButton from "@/components/payments/RazorpayCheckoutButton";
+import { toast } from "react-toastify";
 
 type CartProductProps = {
     open: boolean;
@@ -38,6 +40,89 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
     const [couponApplied, setCouponApplied] = useState(false);
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
+    const [isDispensing, setIsDispensing] = useState(false);
+
+    // Function to dispense products via STM32 after successful payment
+    const dispenseProducts = useCallback(async (cartItems: CartItem[]) => {
+        console.log("[Dispense] Starting dispense for items:", cartItems);
+        setIsDispensing(true);
+        toast.info("Dispensing products...");
+        
+        try {
+            // Get slot IDs for each cart item - we need to fetch slots for each product
+            const productCodes: string[] = [];
+            
+            for (const item of cartItems) {
+                console.log("[Dispense] Processing item:", item.name, "id:", item.id, "slotId:", item.slotId);
+                
+                // If slotId is already in cart item, use it
+                if (item.slotId) {
+                    // Add slot code for each quantity
+                    for (let i = 0; i < (item.quantity || 1); i++) {
+                        productCodes.push(item.slotId.toString());
+                    }
+                } else {
+                    // Fetch slot for this product by name/id
+                    try {
+                        const productId = item.id || "";
+                        const encodedName = encodeURIComponent(item.name);
+                        const cleanProductId = productId.replace(/^products\//, '') || "unknown";
+                        const url = `/api/admin/products/${cleanProductId}/slots?name=${encodedName}`;
+                        console.log("[Dispense] Fetching slots from:", url);
+                        
+                        const response = await fetch(url);
+                        const data = await response.json();
+                        console.log("[Dispense] Slots response:", data);
+                        
+                        if (data.slots && data.slots.length > 0) {
+                            // Use the first available slot with quantity > 0
+                            const availableSlot = data.slots.find((s: any) => s.quantity > 0) || data.slots[0];
+                            console.log("[Dispense] Using slot:", availableSlot.slot_id);
+                            for (let i = 0; i < (item.quantity || 1); i++) {
+                                productCodes.push(availableSlot.slot_id.toString());
+                            }
+                        } else {
+                            console.warn("[Dispense] No slots found for product:", item.name);
+                        }
+                    } catch (err) {
+                        console.error(`[Dispense] Failed to get slot for product ${item.name}:`, err);
+                    }
+                }
+            }
+
+            console.log("[Dispense] Product codes to dispense:", productCodes);
+
+            if (productCodes.length === 0) {
+                toast.error("No slots found for products");
+                return false;
+            }
+
+            // Call STM32 dispense API
+            console.log("[Dispense] Calling /api/stm32/dispense with:", productCodes);
+            const dispenseResponse = await fetch("/api/stm32/dispense", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ productCodes }),
+            });
+
+            const dispenseResult = await dispenseResponse.json();
+            console.log("[Dispense] Dispense result:", dispenseResult);
+
+            if (dispenseResult.success) {
+                toast.success("Products dispensed successfully!");
+                return true;
+            } else {
+                toast.error(dispenseResult.error?.message || "Failed to dispense products");
+                return false;
+            }
+        } catch (error) {
+            console.error("[Dispense] Error:", error);
+            toast.error("Failed to dispense products. Please contact support.");
+            return false;
+        } finally {
+            setIsDispensing(false);
+        }
+    }, []);
 
     const total = useMemo(() => {
         const sum = items.reduce((acc, it) => acc + parsePrice(it.priceText) * (it.quantity || 0), 0);
@@ -259,7 +344,16 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         currency="INR"
                                         mode={paymentMode}
                                         receipt={`cart_${Date.now()}`}
-                                        onVerified={() => {
+                                        onVerified={async () => {
+                                            console.log("[Payment] onVerified called, items:", items);
+                                            // Store items before clearing cart for dispense
+                                            const itemsToDispense = [...items];
+                                            
+                                            // Dispense products via STM32
+                                            console.log("[Payment] Calling dispenseProducts with:", itemsToDispense);
+                                            await dispenseProducts(itemsToDispense);
+                                            
+                                            // Clear cart and close dialog
                                             clear();
                                             if (onCheckout) onCheckout();
                                             setStep("cart");
@@ -268,7 +362,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         onError={() => {
                                             // keep dialog open so user can retry
                                         }}
-                                        label="Pay Now"
+                                        label={isDispensing ? "Dispensing..." : "Pay Now"}
                                         buttonProps={{
                                             fullWidth: true,
                                             sx: {

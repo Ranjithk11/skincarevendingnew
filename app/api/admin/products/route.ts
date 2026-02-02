@@ -18,12 +18,14 @@ function applyOverrides(products: any[]) {
     const totalQuantity = slots.reduce((sum, slot) => sum + slot.quantity, 0);
     
     if (override) {
+      // Use override quantity if explicitly set, otherwise use slot calculation
+      const quantity = override.quantity !== undefined ? override.quantity : (totalQuantity > 0 ? totalQuantity : product.quantity);
       return {
         ...product,
         name: override.name ?? product.name,
         category: override.category ?? product.category,
         retail_price: override.retail_price ?? product.retail_price,
-        quantity: totalQuantity, // Use calculated quantity from slots
+        quantity: quantity,
       };
     }
     return {

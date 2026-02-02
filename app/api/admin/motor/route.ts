@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { stm32Dispense, getStm32Config } from "@/utils/stm32";
 
 // POST motor control command
-// In a real implementation, this would communicate with hardware
+// Connects to real STM32 hardware via serial port
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -14,6 +15,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get STM32 config
+    let cfg;
+    try {
+      cfg = getStm32Config();
+    } catch (envError) {
+      console.error("STM32 config error:", envError);
+      return NextResponse.json(
+        { success: false, message: "STM32 not configured. Check STM32_PORT in .env.local" },
+        { status: 500 }
+      );
+    }
+
     // Parse command (format: "M,slotId,action" where action is 0=test, 1=dispense)
     const parts = command.split(",");
     
@@ -21,8 +34,36 @@ export async function POST(request: NextRequest) {
       const slotId = parts[1];
       const action = parts[2] === "1" ? "dispense" : "test";
       
-      // Simulate motor response
-      console.log(`Motor command: ${action} for slot ${slotId}`);
+      console.log(`[STM32] Motor command: ${action} for slot ${slotId}`);
+      
+      // Send RQ command to STM32 for dispense
+      if (action === "dispense") {
+        try {
+          const result = await stm32Dispense(cfg, slotId);
+          
+          if (result.okLine) {
+            return NextResponse.json({
+              success: true,
+              message: `Motor ${action} command sent for slot ${slotId}`,
+              response: result.okLine,
+              rawLines: result.rawLines,
+            });
+          } else if (result.errorLine) {
+            return NextResponse.json({
+              success: false,
+              message: `STM32 error: ${result.errorLine}`,
+              rawLines: result.rawLines,
+            }, { status: 500 });
+          }
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          console.error("[STM32] Dispense error:", error);
+          return NextResponse.json({
+            success: false,
+            message: error.message,
+          }, { status: 500 });
+        }
+      }
       
       return NextResponse.json({
         success: true,
@@ -31,21 +72,34 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Handle other commands like HOME, DISPENSE
+    // Handle HOME command
     if (command === "HOME") {
-      return NextResponse.json({
-        success: true,
-        message: "Home command sent",
-        response: "200 OK - Machine homed",
-      });
+      try {
+        // Send HOME command to STM32 (no RQ prefix)
+        const result = await stm32Dispense(cfg, "", { commandPrefix: "HOME" });
+        
+        return NextResponse.json({
+          success: true,
+          message: "Home command sent",
+          response: result.okLine || "Homing initiated",
+          rawLines: result.rawLines,
+        });
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error("[STM32] Home error:", error);
+        return NextResponse.json({
+          success: false,
+          message: error.message,
+        }, { status: 500 });
+      }
     }
 
+    // Handle DISPENSE command (generic)
     if (command === "DISPENSE") {
       return NextResponse.json({
-        success: true,
-        message: "Dispense command sent",
-        response: "200 OK - Dispense completed",
-      });
+        success: false,
+        message: "Please specify a slot number using M,slotId,1 format",
+      }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -55,8 +109,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Motor control error:", error);
+    const err = error instanceof Error ? error : new Error(String(error));
     return NextResponse.json(
-      { success: false, message: "Failed to send motor command" },
+      { success: false, message: err.message || "Failed to send motor command" },
       { status: 500 }
     );
   }

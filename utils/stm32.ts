@@ -18,12 +18,14 @@ export function getStm32Config(): Stm32Config {
   const baudRateRaw = getEnv("STM32_BAUDRATE");
   const timeoutRaw = getEnv("STM32_TIMEOUT_MS");
 
-  const baudRate = baudRateRaw ? Number(baudRateRaw) : 9600;
+  // Default to 115200 baud rate (matching STM32 firmware Serial.begin(115200))
+  const baudRate = baudRateRaw ? Number(baudRateRaw) : 115200;
   if (!Number.isFinite(baudRate) || baudRate <= 0) {
     throw new Error("Invalid env STM32_BAUDRATE");
   }
 
-  const timeoutMs = timeoutRaw ? Number(timeoutRaw) : 20000;
+  // Default to 60 seconds timeout (dispense sequence takes time: homing, moving, dispensing, door)
+  const timeoutMs = timeoutRaw ? Number(timeoutRaw) : 60000;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error("Invalid env STM32_TIMEOUT_MS");
   }
@@ -58,7 +60,8 @@ export async function stm32Dispense(
 
   const commandPrefix = opts?.commandPrefix ?? "RQ";
   const commandSuffix = opts?.commandSuffix ?? "\r\n";
-  const okPattern = opts?.okPattern ?? /^OK\b/i;
+  // Match Flask's success patterns: "Request sequence finished" or "200" or "Response 200"
+  const okPattern = opts?.okPattern ?? /Request sequence finished|^200$|Response 200/i;
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
   const command = `${commandPrefix}${code}${commandSuffix}`;

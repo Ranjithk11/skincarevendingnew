@@ -1,10 +1,18 @@
 {
+  "33945035": {
+    "id": "33945035",
+    "name": "Cetaphil Gentle Exfoliating SA Cleanser For Sensitive Skin",
+    "category": "",
+    "retail_price": 1250,
+    "quantity": 40,
+    "updated_at": "2026-02-02T07:05:58.387Z"
+  },
   "33945912": {
     "id": "33945912",
     "name": "Foxtale Skin Radiance Mask",
     "category": "",
     "retail_price": 799,
-    "quantity": 40,
-    "updated_at": "2026-02-01T14:51:36.534Z"
+    "quantity": 150,
+    "updated_at": "2026-02-02T07:11:18.492Z"
   }
 }
