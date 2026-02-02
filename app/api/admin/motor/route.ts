@@ -36,6 +36,17 @@ export async function POST(request: NextRequest) {
       
       console.log(`[STM32] Motor command: ${action} for slot ${slotId}`);
       
+      // In mock mode, simulate success
+      if (cfg.mock) {
+        console.log(`[STM32 Mock] Simulating ${action} for slot ${slotId}`);
+        return NextResponse.json({
+          success: true,
+          message: `Motor ${action} command sent for slot ${slotId} (mock)`,
+          response: `200 OK - ${action.toUpperCase()} completed`,
+          rawLines: [`[MOCK] ${action} slot ${slotId}`, "[MOCK] Request sequence finished"],
+        });
+      }
+      
       // Send RQ command to STM32 for dispense
       if (action === "dispense") {
         try {
@@ -74,9 +85,20 @@ export async function POST(request: NextRequest) {
 
     // Handle HOME command
     if (command === "HOME") {
+      // In mock mode or serverless, simulate success
+      if (cfg.mock) {
+        console.log("[STM32 Mock] Simulating HOME command");
+        return NextResponse.json({
+          success: true,
+          message: "Home command sent (mock)",
+          response: "Homing initiated",
+          rawLines: ["[MOCK] HOME command", "[MOCK] Homing complete"],
+        });
+      }
+      
       try {
-        // Send HOME command to STM32 (no RQ prefix)
-        const result = await stm32Dispense(cfg, "", { commandPrefix: "HOME" });
+        // Send HOME command to STM32 - use "00" as a placeholder code with HOME prefix
+        const result = await stm32Dispense(cfg, "00", { commandPrefix: "HOME" });
         
         return NextResponse.json({
           success: true,

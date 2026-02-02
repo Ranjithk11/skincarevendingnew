@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     const catId = searchParams.get("catId") || "";
     const brandId = searchParams.get("brandId") || "";
     const page = searchParams.get("page") || "1";
-    const limit = searchParams.get("limit") || "50";
+    const limit = searchParams.get("limit") || "1000";
     const hasBrand = searchParams.get("hasBrand") || "false";
 
     const headers: Record<string, string> = {
@@ -81,7 +81,8 @@ export async function GET(request: Request) {
     if (limit) params.append("limit", limit);
     if (catId && catId !== "all") params.append("catId", catId);
     if (brandId && brandId !== "all") params.append("brandId", brandId);
-    params.append("hasBrand", hasBrand);
+    // Match Browse Products page parameters to show same products
+    params.append("hasBrand", "true");
     params.append("isShopifyAvailable", "true");
 
     const response = await fetch(

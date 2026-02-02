@@ -301,15 +301,33 @@ export const adminDb = {
   getSlotsForProduct(productId: string | number, productName?: string): Array<{ slot_id: number; quantity: number }> {
     const slots: Array<{ slot_id: number; quantity: number }> = [];
     const searchId = typeof productId === 'string' ? productId : productId.toString();
-    const searchName = productName?.toUpperCase();
+    // Clean the product ID (remove 'products/' prefix if present)
+    const cleanSearchId = searchId.replace(/^products\//, '');
+    const searchName = productName?.toUpperCase().trim();
     
     vendingSlots.forEach((slot) => {
-      if (slot.product_id !== undefined) {
-        const slotProductId = typeof slot.product_id === 'string' ? slot.product_id : slot.product_id.toString();
-        const slotProductName = slot.product_name?.toUpperCase();
+      if (slot.product_id !== undefined || slot.product_name) {
+        const slotProductId = slot.product_id !== undefined 
+          ? (typeof slot.product_id === 'string' ? slot.product_id : slot.product_id.toString())
+          : '';
+        const cleanSlotProductId = slotProductId.replace(/^products\//, '');
+        const slotProductName = slot.product_name?.toUpperCase().trim();
         
-        // Match by ID or by product name
-        if (slotProductId === searchId || (searchName && slotProductName && slotProductName.includes(searchName.substring(0, 10)))) {
+        // Match by ID (with or without 'products/' prefix)
+        const idMatch = cleanSlotProductId === cleanSearchId || slotProductId === searchId;
+        
+        // Match by product name (partial match - first 15 chars or full name contains)
+        let nameMatch = false;
+        if (searchName && slotProductName) {
+          // Check if names match (partial match for flexibility)
+          const searchPrefix = searchName.substring(0, 15);
+          const slotPrefix = slotProductName.substring(0, 15);
+          nameMatch = slotProductName.includes(searchPrefix) || 
+                      searchName.includes(slotPrefix) ||
+                      slotProductName === searchName;
+        }
+        
+        if (idMatch || nameMatch) {
           slots.push({
             slot_id: slot.slot_id,
             quantity: slot.quantity,
@@ -317,6 +335,9 @@ export const adminDb = {
         }
       }
     });
+    
+    // Sort by slot_id descending (prioritize higher slots like the Flask version)
+    slots.sort((a, b) => b.slot_id - a.slot_id);
     
     return slots;
   },
