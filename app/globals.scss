@@ -90,9 +90,18 @@
   right: -13px;
 }
 
+html,
 body {
-  height: 100vh;
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
   position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .ocrloader p::before {

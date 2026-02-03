@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Box, Typography, Grid, useMediaQuery, useTheme, Chip } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { 
@@ -89,6 +89,11 @@ export default function BrowseProductsPage() {
   const [categoryImages, setCategoryImages] = useState<Record<string, string | undefined>>({});
   const [imagesLoaded, setImagesLoaded] = useState(false);
 
+  const categoryStripRef = useRef<HTMLDivElement | null>(null);
+  const categoryDragRef = useRef<{ dragging: boolean; startX: number; startScrollLeft: number }>(
+    { dragging: false, startX: 0, startScrollLeft: 0 }
+  );
+
   // Fetch products for selected category
   useEffect(() => {
     getFilteredProducts({
@@ -165,7 +170,10 @@ export default function BrowseProductsPage() {
         minHeight: "100vh",
         bgcolor: "#F9F9F9",
         position: "relative",
-        overflow: "hidden",
+        overflowX: "hidden",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-y",
       }}
     >
       {/* Top Logo Bar - similar to newUi.tsx TopLogo */}
@@ -184,8 +192,8 @@ export default function BrowseProductsPage() {
             px: isDesktop ? 4 : 2,
             pb: 4,
             minHeight: "100vh",
-            overflowY: "auto",
             WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y",
             position: "relative",
           }}
         >
@@ -249,6 +257,28 @@ export default function BrowseProductsPage() {
 
           {/* Category Tabs - circular icons with dynamic images */}
           <Box
+            ref={categoryStripRef}
+            onPointerDown={(e) => {
+              const el = categoryStripRef.current;
+              if (!el) return;
+              categoryDragRef.current.dragging = true;
+              categoryDragRef.current.startX = e.clientX;
+              categoryDragRef.current.startScrollLeft = el.scrollLeft;
+              (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              const el = categoryStripRef.current;
+              if (!el) return;
+              if (!categoryDragRef.current.dragging) return;
+              const dx = e.clientX - categoryDragRef.current.startX;
+              el.scrollLeft = categoryDragRef.current.startScrollLeft - dx;
+            }}
+            onPointerUp={() => {
+              categoryDragRef.current.dragging = false;
+            }}
+            onPointerCancel={() => {
+              categoryDragRef.current.dragging = false;
+            }}
             sx={{
               mt: 2,
               mb: 4,
@@ -259,6 +289,8 @@ export default function BrowseProductsPage() {
               WebkitOverflowScrolling: "touch",
               touchAction: "pan-x",
               overscrollBehaviorX: "contain",
+              scrollbarWidth: "none",
+              "&::-webkit-scrollbar": { display: "none" },
               pb: 2,
               width: "100%",
             }}
