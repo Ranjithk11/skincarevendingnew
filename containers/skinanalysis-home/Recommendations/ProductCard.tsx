@@ -211,14 +211,6 @@ const ProductCard = ({
   const showHorizontal = (horizontalLayout || (isDesktop && !compact)) && !minWidth;
   const [openCTA, setOpenCTA] = useState<boolean>(false);
   const [openBuyNow, setOpenBuyNow] = useState<boolean>(false);
-  const handleCardClick = () => {
-    if (enabledMask) return;
-    if (shopifyUrl) {
-      setOpenBuyNow(true);
-    } else {
-      setOpenCTA(true);
-    }
-  };
 
   const handleOpenBuyNow = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -255,7 +247,6 @@ const ProductCard = ({
     <StyledProductCard
       enabledMask={enabledMask}
       minWidth={minWidth}
-      onClick={handleCardClick}
       sx={{
         cursor: "default",
         ...(showHorizontal

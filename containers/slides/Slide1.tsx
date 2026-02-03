@@ -125,7 +125,16 @@ export default function Slide1({
                   borderRadius: 2,
                   bgcolor: "white",
                   minHeight: "72px",
-                  "& fieldset": { borderColor: activeField === "name" ? "#2d5a3d" : "#e5e7eb" },
+                  "& fieldset": {
+                    borderColor: activeField === "name" ? "#2d5a3d" : "#9ca3af",
+                    borderWidth: 2,
+                  },
+                  "&:hover fieldset": {
+                    borderColor: activeField === "name" ? "#2d5a3d" : "#6b7280",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#2d5a3d",
+                  },
                 },
                 "& .MuiOutlinedInput-input": {
                   py: "18px",
@@ -151,7 +160,16 @@ export default function Slide1({
                   borderRadius: 2,
                   bgcolor: "white",
                   minHeight: "72px",
-                  "& fieldset": { borderColor: activeField === "phone" ? "#2d5a3d" : "#e5e7eb" },
+                  "& fieldset": {
+                    borderColor: activeField === "phone" ? "#2d5a3d" : "#9ca3af",
+                    borderWidth: 2,
+                  },
+                  "&:hover fieldset": {
+                    borderColor: activeField === "phone" ? "#2d5a3d" : "#6b7280",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#2d5a3d",
+                  },
                 },
                 "& .MuiOutlinedInput-input": {
                   py: "18px",
@@ -177,7 +195,16 @@ export default function Slide1({
                   borderRadius: 2,
                   bgcolor: "white",
                   minHeight: "72px",
-                  "& fieldset": { borderColor: activeField === "email" ? "#2d5a3d" : "#e5e7eb" },
+                  "& fieldset": {
+                    borderColor: activeField === "email" ? "#2d5a3d" : "#9ca3af",
+                    borderWidth: 2,
+                  },
+                  "&:hover fieldset": {
+                    borderColor: activeField === "email" ? "#2d5a3d" : "#6b7280",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#2d5a3d",
+                  },
                 },
                 "& .MuiOutlinedInput-input": {
                   py: "18px",
