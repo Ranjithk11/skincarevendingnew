@@ -320,8 +320,12 @@
   },
   "46": {
     "slot_id": 46,
-    "quantity": 0,
-    "last_updated": "2026-02-01T15:09:15.279Z"
+    "quantity": 10,
+    "last_updated": "2026-02-03T08:40:49.423Z",
+    "product_id": "products/33945035",
+    "product_name": "Cetaphil Gentle Exfoliating SA Cleanser For Sensitive Skin",
+    "category": "",
+    "retail_price": 1250
   },
   "47": {
     "slot_id": 47,
