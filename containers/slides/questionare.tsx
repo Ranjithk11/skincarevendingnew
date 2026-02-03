@@ -5,7 +5,7 @@ import { Box, IconButton, Typography } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { saveUser as saveUserApi } from "@/redux/api/authApi";
 import Slide1 from "./Slide1";
 import Slide2 from "./Slide2";
@@ -215,9 +215,8 @@ export default function Questionnaire() {
     }
 
     const countryCode = "91";
-    const formattedPhoneNumber = phone.trim().startsWith("+")
-      ? phone.trim()
-      : `+${countryCode} ${phone.trim()}`;
+    const digitsOnlyPhone = phone.replace(/\D/g, "");
+    const formattedPhoneNumber = `+${countryCode}${digitsOnlyPhone}`;
 
     const skinTypeIdByOption: Record<string, string> = {
       normal: "NORMAL_SKIN",
@@ -230,6 +229,7 @@ export default function Questionnaire() {
     const skinTypeId = skinTypeIdByOption[skinType] ?? skinType;
 
     try {
+      await signOut({ redirect: false });
       // Use signIn which handles both user save and session creation (single API call)
       const authResponse = await signIn("credentials", {
         redirect: false,
@@ -240,12 +240,7 @@ export default function Questionnaire() {
         countryCode,
         location: "Vending machine",
         skinType: skinTypeId,
-        onBoardingQuestions: JSON.stringify([
-          {
-            questionId: "skinType",
-            responseId: [skinTypeId],
-          },
-        ]),
+        onBoardingQuestions: JSON.stringify([]),
       });
 
       if (authResponse?.error) {

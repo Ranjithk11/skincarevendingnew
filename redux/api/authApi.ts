@@ -57,8 +57,6 @@ export const saveUser = async (payload: UserLoginPayload) => {
         countryCode: payload.countryCode,
         isValidated: payload.isValidated,
         location: payload.location,
-        skinType: payload.skinType,
-        skipOtp: payload.skipOtp,
       }),
     }
   );
