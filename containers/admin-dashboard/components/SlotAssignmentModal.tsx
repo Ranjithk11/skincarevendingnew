@@ -99,6 +99,7 @@ export default function SlotAssignmentModal({
     <Modal
       open={open}
       onClose={onClose}
+      disableScrollLock
       sx={{
         display: "flex",
         alignItems: "center",
@@ -117,6 +118,8 @@ export default function SlotAssignmentModal({
           width: { xs: "95%", sm: 500 },
           maxHeight: "90vh",
           overflow: "auto",
+          WebkitOverflowScrolling: "touch",
+          touchAction: "pan-y",
           outline: "none",
           p: 3,
         }}
@@ -338,8 +341,19 @@ export default function SlotAssignmentModal({
               onChange={(e) => setSelectedProductId(e.target.value)}
               displayEmpty
               MenuProps={{
+                disableScrollLock: true,
                 PaperProps: {
-                  sx: { maxHeight: 500 },
+                  sx: {
+                    maxHeight: 500,
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "pan-y",
+                  },
+                },
+                MenuListProps: {
+                  sx: {
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "pan-y",
+                  },
                 },
                 autoFocus: false,
               }}

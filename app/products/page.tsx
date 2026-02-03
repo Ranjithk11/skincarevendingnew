@@ -255,6 +255,10 @@ export default function BrowseProductsPage() {
               display: "flex",
               gap: 1,
               overflowX: "auto",
+              overflowY: "hidden",
+              WebkitOverflowScrolling: "touch",
+              touchAction: "pan-x",
+              overscrollBehaviorX: "contain",
               pb: 2,
               width: "100%",
             }}

@@ -88,7 +88,10 @@ export default function AdminDashboard({
         position: "relative",
         minHeight: "100vh",
         backgroundColor: "#f6f6f6",
-        overflow: "hidden",
+        overflowY: "auto",
+        overflowX: "hidden",
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-y",
       }}
     >
       <Box
