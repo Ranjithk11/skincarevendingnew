@@ -47,30 +47,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [isDispensing, setIsDispensing] = useState(false);
     const [isNavigatingToFeedback, setIsNavigatingToFeedback] = useState(false);
 
-    if (isNavigatingToFeedback) {
-        return (
-            <Box sx={{ width: "100vw", height: "100dvh", bgcolor: "#f8f6f0" }}>
-                <TopLogo
-                    isKiosk
-                    onCartClick={() => {}}
-                    onScanAgainClick={() => {}}
-                    cartCount={0}
-                    mode="centered"
-                />
-                <Box
-                    sx={{
-                        height: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                    }}
-                >
-                    <CircularProgress />
-                </Box>
-            </Box>
-        );
-    }
-
     useEffect(() => {
         router.prefetch(APP_ROUTES.FEEDBACK);
     }, [router]);
@@ -206,6 +182,27 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     };
 
     return (
+        isNavigatingToFeedback ? (
+            <Box sx={{ width: "100vw", height: "100dvh", bgcolor: "#f8f6f0" }}>
+                <TopLogo
+                    isKiosk
+                    onCartClick={() => {}}
+                    onScanAgainClick={() => {}}
+                    cartCount={0}
+                    mode="centered"
+                />
+                <Box
+                    sx={{
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <CircularProgress />
+                </Box>
+            </Box>
+        ) : (
         <>
             <Dialog
                 fullScreen={isMobile}
@@ -830,8 +827,8 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                     </Box>
                 </Box>
             </Dialog>
-
         </>
+        )
     );
 };
 

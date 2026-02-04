@@ -15,6 +15,26 @@ function getEnvString(name: string): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
 }
 
+function applySlotOffset(code: string, offset: number): string {
+  if (!Number.isFinite(offset) || offset === 0) return code;
+  const trimmed = code.trim();
+
+  const rqMatch = trimmed.match(/^RQ\s*(\d+)$/i);
+  if (rqMatch) {
+    const n = Number(rqMatch[1]);
+    if (!Number.isFinite(n)) return trimmed;
+    return `RQ${n + offset}`;
+  }
+
+  if (/^\d+$/.test(trimmed)) {
+    const n = Number(trimmed);
+    if (!Number.isFinite(n)) return trimmed;
+    return String(n + offset);
+  }
+
+  return trimmed;
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json().catch(() => null)) as
@@ -39,8 +59,10 @@ export async function POST(req: Request) {
         ? [body.productCode]
         : [];
 
+    const slotOffset = getEnvNumber("STM32_SLOT_ID_OFFSET") ?? 0;
+
     const normalized = codes
-      .map((c) => (typeof c === "string" ? c.trim() : ""))
+      .map((c) => (typeof c === "string" ? applySlotOffset(c, slotOffset) : ""))
       .filter((c) => c.length > 0);
 
     if (normalized.length === 0) {
@@ -74,6 +96,11 @@ export async function POST(req: Request) {
 
       const finalizeMode = (getEnvString("STM32_FINALIZE_MODE") || "once").toLowerCase();
 
+      const rqOkPattern = /Turning off motors/i;
+      const rqErrorPattern = /^(500|501)$|No detection|Sensor already/i;
+      const trayOkPattern = /^200$|Closing door|Waiting 5s for pickup/i;
+      const trayErrorPattern = rqErrorPattern;
+
       if (finalizeMode === "each") {
         const expanded: string[] = [];
         for (const c of normalized) {
@@ -83,6 +110,8 @@ export async function POST(req: Request) {
 
         const batch = await stm32DispenseMany(cfg, expanded, {
           commandPrefix: "",
+          okPattern: /Turning off motors|^200$|Closing door|Waiting 5s for pickup/i,
+          errorPattern: /^(500|501)$|No detection|Sensor already/i,
           delayBetweenCommandsMs,
         });
 
@@ -98,6 +127,10 @@ export async function POST(req: Request) {
       } else {
         const batch = await stm32DispenseMany(cfg, normalized, {
           finalizeCommand: "TRAY",
+          okPattern: rqOkPattern,
+          errorPattern: rqErrorPattern,
+          finalizeOkPattern: trayOkPattern,
+          finalizeErrorPattern: trayErrorPattern,
           delayBetweenCommandsMs,
           delayBeforeFinalizeMs,
         });
