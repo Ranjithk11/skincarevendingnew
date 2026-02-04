@@ -92,7 +92,8 @@ export async function stm32Dispense(
   const okPattern = opts?.okPattern ?? /Request sequence finished|^200$|Response 200/i;
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
-  const command = `${commandPrefix}${code}${commandSuffix}`;
+  const effectiveCode = code.toUpperCase().startsWith(commandPrefix.toUpperCase()) ? code : `${commandPrefix}${code}`;
+  const command = `${effectiveCode}${commandSuffix}`;
 
   // Dynamic import to avoid webpack bundling issues
   const { SerialPort } = await import("serialport");
@@ -175,6 +176,9 @@ export async function stm32DispenseMany(
     commandSuffix?: string;
     okPattern?: RegExp;
     errorPattern?: RegExp;
+    finalizeCommand?: string;
+    finalizeOkPattern?: RegExp;
+    finalizeErrorPattern?: RegExp;
   }
 ): Promise<Array<{ productCode: string; result: DispenseResult }>> {
   const normalized = (Array.isArray(productCodes) ? productCodes : [])
@@ -199,6 +203,11 @@ export async function stm32DispenseMany(
   const okPattern = opts?.okPattern ?? /Request sequence finished|^200$|Response 200/i;
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
+  const finalizeCommandRaw = typeof opts?.finalizeCommand === "string" ? opts?.finalizeCommand.trim() : "";
+  const finalizeCommand = finalizeCommandRaw.length > 0 ? finalizeCommandRaw : undefined;
+  const finalizeOkPattern = opts?.finalizeOkPattern ?? okPattern;
+  const finalizeErrorPattern = opts?.finalizeErrorPattern ?? errorPattern;
+
   const { SerialPort } = await import("serialport");
   const { ReadlineParser } = await import("@serialport/parser-readline");
 
@@ -210,9 +219,19 @@ export async function stm32DispenseMany(
 
   const parser = port.pipe(new ReadlineParser({ delimiter: "\r\n" }));
 
-  const runOne = async (code: string): Promise<DispenseResult> => {
+  const runOne = async (
+    code: string,
+    patterns?: { okPattern?: RegExp; errorPattern?: RegExp },
+    prefixOverride?: string
+  ): Promise<DispenseResult> => {
     const rawLines: string[] = [];
-    const command = `${commandPrefix}${code}${commandSuffix}`;
+    const prefix = typeof prefixOverride === "string" ? prefixOverride : commandPrefix;
+    const effectiveCode =
+      prefix.length > 0 && code.toUpperCase().startsWith(prefix.toUpperCase()) ? code : `${prefix}${code}`;
+    const command = `${effectiveCode}${commandSuffix}`;
+
+    const ok = patterns?.okPattern ?? okPattern;
+    const err = patterns?.errorPattern ?? errorPattern;
 
     await new Promise<void>((resolve, reject) => {
       port.write(command, (err) => {
@@ -270,6 +289,16 @@ export async function stm32DispenseMany(
       results.push({ productCode: code, result: res });
       if (res.errorLine) break;
     }
+
+    if (finalizeCommand && results.length === normalized.length && results.every((r) => Boolean(r.result.okLine) && !r.result.errorLine)) {
+      const finalizeRes = await runOne(
+        finalizeCommand,
+        { okPattern: finalizeOkPattern, errorPattern: finalizeErrorPattern },
+        ""
+      );
+      results.push({ productCode: finalizeCommand, result: finalizeRes });
+    }
+
     return results;
   } finally {
     await new Promise<void>((resolve) => {

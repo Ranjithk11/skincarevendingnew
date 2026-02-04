@@ -285,7 +285,7 @@ export default function FeedbackPage() {
           sx={{
             width: "min(860px, 100%)",
             mt: 2,
-            mb: 2,
+            mb: 0,
             display: "flex",
             flexDirection: "column",
             gap: 1,
@@ -302,7 +302,7 @@ export default function FeedbackPage() {
                 border: "1px solid #e5e7eb",
               }}
             >
-              <Typography sx={{ fontSize: 28, fontWeight: 800, mb:1 }}>
+              <Typography sx={{ alignItems: "center",justifyContent: "center",fontSize: 28, fontWeight: 800, mb:2 , textAlign: "center" }}>
                 Order Summary
               </Typography>
               <Box

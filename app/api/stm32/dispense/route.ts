@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         rawLines: res.rawLines,
       });
     } else {
-      const batch = await stm32DispenseMany(cfg, normalized);
+      const batch = await stm32DispenseMany(cfg, normalized, { finalizeCommand: "TRAY" });
       for (const { productCode, result: res } of batch) {
         results.push({
           productCode,
