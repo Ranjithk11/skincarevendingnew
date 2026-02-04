@@ -83,8 +83,6 @@ export async function POST(req: Request) {
 
         const batch = await stm32DispenseMany(cfg, expanded, {
           commandPrefix: "",
-          okPattern: /Request sequence finished/i,
-          errorPattern: /^ERROR\b/i,
           delayBetweenCommandsMs,
         });
 
@@ -100,8 +98,6 @@ export async function POST(req: Request) {
       } else {
         const batch = await stm32DispenseMany(cfg, normalized, {
           finalizeCommand: "TRAY",
-          okPattern: /Request sequence finished/i,
-          finalizeOkPattern: /Request sequence finished/i,
           delayBetweenCommandsMs,
           delayBeforeFinalizeMs,
         });

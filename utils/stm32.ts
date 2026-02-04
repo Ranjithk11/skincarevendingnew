@@ -89,7 +89,9 @@ export async function stm32Dispense(
   const commandPrefix = opts?.commandPrefix ?? "RQ";
   const commandSuffix = opts?.commandSuffix ?? "\r\n";
   // Match Flask's success patterns: "Request sequence finished" or "200" or "Response 200"
-  const okPattern = opts?.okPattern ?? /Request sequence finished|^200$|Response 200/i;
+  const okPattern =
+    opts?.okPattern ??
+    /Product drop detected|Product detected|Request sequence finished|^200$|Response 200/i;
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
   const effectiveCode = code.toUpperCase().startsWith(commandPrefix.toUpperCase()) ? code : `${commandPrefix}${code}`;
@@ -202,7 +204,9 @@ export async function stm32DispenseMany(
 
   const commandPrefix = opts?.commandPrefix ?? "RQ";
   const commandSuffix = opts?.commandSuffix ?? "\r\n";
-  const okPattern = opts?.okPattern ?? /Request sequence finished|^200$|Response 200/i;
+  const okPattern =
+    opts?.okPattern ??
+    /Product drop detected|Product detected|Request sequence finished|^200$|Response 200/i;
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
   const finalizeCommandRaw = typeof opts?.finalizeCommand === "string" ? opts?.finalizeCommand.trim() : "";
