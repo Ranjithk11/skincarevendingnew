@@ -187,14 +187,17 @@ export default function Questionnaire() {
         setTimeout(() => setValidationError(""), 3000);
         return;
       }
-      // Email validation (optional but must be valid if entered)
-      if (email.trim()) {
-        const emailValidation = isValidateEmail(email.trim());
-        if (emailValidation !== true) {
-          setValidationError(emailValidation as string);
-          setTimeout(() => setValidationError(""), 3000);
-          return;
-        }
+      if (!email.trim()) {
+        setValidationError("Please enter your email address");
+        setTimeout(() => setValidationError(""), 3000);
+        return;
+      }
+
+      const emailValidation = isValidateEmail(email.trim());
+      if (emailValidation !== true) {
+        setValidationError(emailValidation as string);
+        setTimeout(() => setValidationError(""), 3000);
+        return;
       }
       setValidationError("");
     }
@@ -211,6 +214,32 @@ export default function Questionnaire() {
     if (!skinType) {
       setValidationError("Please select your skin type");
       setTimeout(() => setValidationError(""), 2000);
+      return;
+    }
+
+    if (!name.trim()) {
+      setValidationError("Please enter your name");
+      setTimeout(() => setValidationError(""), 3000);
+      return;
+    }
+
+    const phoneValidation = isValidatePhone(phone);
+    if (phoneValidation !== true) {
+      setValidationError(phoneValidation as string);
+      setTimeout(() => setValidationError(""), 3000);
+      return;
+    }
+
+    if (!email.trim()) {
+      setValidationError("Please enter your email address");
+      setTimeout(() => setValidationError(""), 3000);
+      return;
+    }
+
+    const emailValidation = isValidateEmail(email.trim());
+    if (emailValidation !== true) {
+      setValidationError(emailValidation as string);
+      setTimeout(() => setValidationError(""), 3000);
       return;
     }
 

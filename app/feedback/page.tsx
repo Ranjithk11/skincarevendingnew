@@ -15,11 +15,15 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import PageBackground from "@/components/ui/PageBackground";
 import { APP_ROUTES } from "@/utils/routes";
+import { useAppDispatch } from "@/redux/store/store";
+import { clearCart } from "@/redux/reducers/cartSlice";
+import { persistor } from "@/redux/store/store";
 
 export default function FeedbackPage() {
   const theme = useTheme();
   const router = useRouter();
   const { data: session } = useSession();
+  const dispatch = useAppDispatch();
 
   const userId = (session?.user as any)?.id as string | undefined;
 
@@ -43,8 +47,14 @@ export default function FeedbackPage() {
       if (!raw) return;
       const parsed = JSON.parse(raw);
       setCheckoutSummary(parsed);
+      try {
+        window.sessionStorage.removeItem("kiosk_checkout_summary");
+      } catch {
+      }
     } catch {
     }
+    dispatch(clearCart());
+    void persistor.purge();
   }, []);
 
   const checkoutItems = useMemo(() => {
@@ -126,6 +136,14 @@ export default function FeedbackPage() {
   };
 
   const handleClose = () => {
+    dispatch(clearCart());
+    void persistor.purge();
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage.removeItem("kiosk_checkout_summary");
+      } catch {
+      }
+    }
     router.push(APP_ROUTES.HOME);
   };
 
