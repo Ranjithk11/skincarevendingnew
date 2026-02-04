@@ -3,6 +3,13 @@ import { getStm32Config, stm32Dispense, stm32DispenseMany } from "@/utils/stm32"
 
 export const runtime = "nodejs";
 
+function getEnvNumber(name: string): number | undefined {
+  const v = process.env[name];
+  if (typeof v !== "string") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json().catch(() => null)) as
@@ -57,7 +64,16 @@ export async function POST(req: Request) {
         rawLines: res.rawLines,
       });
     } else {
-      const batch = await stm32DispenseMany(cfg, normalized, { finalizeCommand: "TRAY" });
+      const delayBetweenCommandsMs = getEnvNumber("STM32_DELAY_BETWEEN_COMMANDS_MS") ?? 0;
+      const delayBeforeFinalizeMs = getEnvNumber("STM32_DELAY_BEFORE_FINALIZE_MS") ?? 0;
+
+      const batch = await stm32DispenseMany(cfg, normalized, {
+        finalizeCommand: "TRAY",
+        okPattern: /Request sequence finished/i,
+        finalizeOkPattern: /Request sequence finished/i,
+        delayBetweenCommandsMs,
+        delayBeforeFinalizeMs,
+      });
       for (const { productCode, result: res } of batch) {
         results.push({
           productCode,

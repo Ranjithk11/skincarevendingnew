@@ -32,27 +32,50 @@ export async function POST(req: Request) {
     }
 
     // Call the backend feedback API
-    const response = await fetch(`${apiUrl}/feedback/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(dbToken ? { "x-db-token": dbToken } : {}),
-      },
-      body: JSON.stringify({
-        userId: normalizedUserId,
-        rating: Math.round(Number(rating)),
-        notes: typeof notes === "string" ? notes : "",
-      }),
-    });
+    const headers = {
+      "Content-Type": "application/json",
+      ...(dbToken ? { "x-db-token": dbToken } : {}),
+    };
 
-    const rawText = await response.text().catch(() => "");
-    const result = (() => {
-      try {
-        return rawText ? JSON.parse(rawText) : null;
-      } catch {
-        return null;
-      }
-    })();
+    const send = async (payload: any) => {
+      const response = await fetch(`${apiUrl}/feedback/create`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const rawText = await response.text().catch(() => "");
+      const result = (() => {
+        try {
+          return rawText ? JSON.parse(rawText) : null;
+        } catch {
+          return null;
+        }
+      })();
+
+      return { response, rawText, result };
+    };
+
+    const ratingInt = Math.round(Number(rating));
+    const notesStr = typeof notes === "string" ? notes : "";
+
+    let attempt = await send({ userId: normalizedUserId, rating: ratingInt, notes: notesStr });
+
+    const schemaFailed =
+      typeof attempt.rawText === "string" &&
+      attempt.rawText.toLowerCase().includes("schema validation failed");
+
+    if (!attempt.response.ok && schemaFailed) {
+      const userIdRaw = typeof userId === "string" ? userId.trim() : "";
+      attempt = await send({ userId: userIdRaw, rating: ratingInt, notes: notesStr });
+    }
+
+    if (!attempt.response.ok && schemaFailed) {
+      const userIdRaw = typeof userId === "string" ? userId.trim() : "";
+      attempt = await send({ user_id: userIdRaw, rating: ratingInt, comment: notesStr });
+    }
+
+    const { response, rawText, result } = attempt;
 
     if (response.ok && result?.status === "success") {
       return NextResponse.json({

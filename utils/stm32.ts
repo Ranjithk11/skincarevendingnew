@@ -179,6 +179,8 @@ export async function stm32DispenseMany(
     finalizeCommand?: string;
     finalizeOkPattern?: RegExp;
     finalizeErrorPattern?: RegExp;
+    delayBetweenCommandsMs?: number;
+    delayBeforeFinalizeMs?: number;
   }
 ): Promise<Array<{ productCode: string; result: DispenseResult }>> {
   const normalized = (Array.isArray(productCodes) ? productCodes : [])
@@ -207,6 +209,18 @@ export async function stm32DispenseMany(
   const finalizeCommand = finalizeCommandRaw.length > 0 ? finalizeCommandRaw : undefined;
   const finalizeOkPattern = opts?.finalizeOkPattern ?? okPattern;
   const finalizeErrorPattern = opts?.finalizeErrorPattern ?? errorPattern;
+
+  const delayBetweenCommandsMs =
+    typeof opts?.delayBetweenCommandsMs === "number" && Number.isFinite(opts.delayBetweenCommandsMs) && opts.delayBetweenCommandsMs > 0
+      ? Math.floor(opts.delayBetweenCommandsMs)
+      : 0;
+
+  const delayBeforeFinalizeMs =
+    typeof opts?.delayBeforeFinalizeMs === "number" && Number.isFinite(opts.delayBeforeFinalizeMs) && opts.delayBeforeFinalizeMs > 0
+      ? Math.floor(opts.delayBeforeFinalizeMs)
+      : 0;
+
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
   const { SerialPort } = await import("serialport");
   const { ReadlineParser } = await import("@serialport/parser-readline");
@@ -251,12 +265,12 @@ export async function stm32DispenseMany(
         if (!line) return;
         rawLines.push(line);
 
-        if (okPattern.test(line)) {
+        if (ok.test(line)) {
           cleanup();
           return resolve({ rawLines, okLine: line });
         }
 
-        if (errorPattern.test(line)) {
+        if (err.test(line)) {
           cleanup();
           return resolve({ rawLines, errorLine: line });
         }
@@ -288,9 +302,15 @@ export async function stm32DispenseMany(
       const res = await runOne(code);
       results.push({ productCode: code, result: res });
       if (res.errorLine) break;
+      if (delayBetweenCommandsMs > 0) {
+        await sleep(delayBetweenCommandsMs);
+      }
     }
 
     if (finalizeCommand && results.length === normalized.length && results.every((r) => Boolean(r.result.okLine) && !r.result.errorLine)) {
+      if (delayBeforeFinalizeMs > 0) {
+        await sleep(delayBeforeFinalizeMs);
+      }
       const finalizeRes = await runOne(
         finalizeCommand,
         { okPattern: finalizeOkPattern, errorPattern: finalizeErrorPattern },
