@@ -10,6 +10,11 @@ function getEnvNumber(name: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function getEnvString(name: string): string | undefined {
+  const v = process.env[name];
+  return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json().catch(() => null)) as
@@ -67,21 +72,48 @@ export async function POST(req: Request) {
       const delayBetweenCommandsMs = getEnvNumber("STM32_DELAY_BETWEEN_COMMANDS_MS") ?? 0;
       const delayBeforeFinalizeMs = getEnvNumber("STM32_DELAY_BEFORE_FINALIZE_MS") ?? 0;
 
-      const batch = await stm32DispenseMany(cfg, normalized, {
-        finalizeCommand: "TRAY",
-        okPattern: /Request sequence finished/i,
-        finalizeOkPattern: /Request sequence finished/i,
-        delayBetweenCommandsMs,
-        delayBeforeFinalizeMs,
-      });
-      for (const { productCode, result: res } of batch) {
-        results.push({
-          productCode,
-          ok: Boolean(res.okLine) && !res.errorLine,
-          okLine: res.okLine,
-          errorLine: res.errorLine,
-          rawLines: res.rawLines,
+      const finalizeMode = (getEnvString("STM32_FINALIZE_MODE") || "once").toLowerCase();
+
+      if (finalizeMode === "each") {
+        const expanded: string[] = [];
+        for (const c of normalized) {
+          expanded.push(c);
+          expanded.push("TRAY");
+        }
+
+        const batch = await stm32DispenseMany(cfg, expanded, {
+          commandPrefix: "",
+          okPattern: /Request sequence finished/i,
+          errorPattern: /^ERROR\b/i,
+          delayBetweenCommandsMs,
         });
+
+        for (const { productCode, result: res } of batch) {
+          results.push({
+            productCode,
+            ok: Boolean(res.okLine) && !res.errorLine,
+            okLine: res.okLine,
+            errorLine: res.errorLine,
+            rawLines: res.rawLines,
+          });
+        }
+      } else {
+        const batch = await stm32DispenseMany(cfg, normalized, {
+          finalizeCommand: "TRAY",
+          okPattern: /Request sequence finished/i,
+          finalizeOkPattern: /Request sequence finished/i,
+          delayBetweenCommandsMs,
+          delayBeforeFinalizeMs,
+        });
+        for (const { productCode, result: res } of batch) {
+          results.push({
+            productCode,
+            ok: Boolean(res.okLine) && !res.errorLine,
+            okLine: res.okLine,
+            errorLine: res.errorLine,
+            rawLines: res.rawLines,
+          });
+        }
       }
     }
 
