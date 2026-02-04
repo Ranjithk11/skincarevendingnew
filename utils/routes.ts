@@ -8,5 +8,6 @@ export const APP_ROUTES = {
   SELFIE: "/skinanalysis/selfie",
   BROCHURE: "/skinanalysis/brochure",
   RECOMMENDATIONS: "/skinanalysis/recommendations",
+  FEEDBACK: "/feedback",
   VIEW_SKINCARE_REC_VIA_PUBLIC_URL:"/user/view-skincare-recommnedations",
 };

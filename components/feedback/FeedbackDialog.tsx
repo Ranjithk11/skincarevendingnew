@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
+import PageBackground from "@/components/ui/PageBackground";
 
 interface FeedbackDialogProps {
   open: boolean;
@@ -50,23 +51,29 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Call the feedback API
-      const response = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userId || localStorage.getItem("leafwater_userId") || "",
-          rating,
-          notes,
-        }),
-      });
+      if (userId) {
+        const response = await fetch("/api/feedback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            rating,
+            notes,
+          }),
+        });
 
-      const result = await response.json();
-      
-      if (result.success || result.status === "success") {
+        const result = await response.json();
+
+        if (result.success || result.status === "success") {
+          setSubmitted(true);
+          onSubmit?.(rating, notes);
+          setTimeout(() => {
+            handleClose();
+          }, 2000);
+        }
+      } else if (onSubmit) {
         setSubmitted(true);
-        onSubmit?.(rating, notes);
-        // Auto close after showing thank you
+        onSubmit(rating, notes);
         setTimeout(() => {
           handleClose();
         }, 2000);
@@ -91,254 +98,283 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({
   };
 
   const displayRating = hoveredRating || rating;
+  const canSubmit = rating > 0 && !isSubmitting && (!!userId || !!onSubmit);
 
   return (
     <Dialog
       open={open}
       onClose={handleClose}
+      fullScreen
+      sx={{ zIndex: (t) => t.zIndex.modal + 50 }}
       PaperProps={{
         sx: {
-          width: "90%",
-          maxWidth: "500px",
-          borderRadius: "24px",
+          width: "100%",
+          height: "100%",
+          borderRadius: 0,
           overflow: "hidden",
-          bgcolor: "#fff",
+          bgcolor: "transparent",
         },
       }}
     >
-      <Box sx={{ position: "relative", p: 3 }}>
-        {/* Close Button */}
-        <IconButton
-          onClick={handleClose}
+      <PageBackground fitParent>
+        <Box
           sx={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-            bgcolor: "#f5f5f5",
-            "&:hover": { bgcolor: "#e0e0e0" },
+            position: "relative",
+            width: "100%",
+            height: "100%",
+            minHeight: "100dvh",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            px: 3,
+            pt: 3,
+            pb: 4,
+            boxSizing: "border-box",
           }}
         >
-          <Icon icon="mdi:close" width={24} />
-        </IconButton>
+          <IconButton
+            onClick={handleClose}
+            sx={{
+              position: "absolute",
+              top: 18,
+              right: 18,
+              width: 40,
+              height: 40,
+              bgcolor: "#ffffff",
+              border: "1px solid #d1d5db",
+              "&:hover": { bgcolor: "#ffffff" },
+            }}
+          >
+            <Icon icon="mdi:help-circle-outline" width={22} />
+          </IconButton>
 
-        {submitted ? (
-          // Thank You Screen
           <Box
             sx={{
+              width: "100%",
               display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              py: 4,
+              justifyContent: "center",
+              mt: 5,
+              mb: 5,
             }}
           >
             <Box
               sx={{
-                width: 80,
+                border: "2px solid #1976d2",
+                bgcolor: "#ffffff",
+                px: 2.5,
+                py: 1,
+                borderRadius: 0,
+                width: "min(520px, 100%)",
                 height: 80,
-                borderRadius: "50%",
-                bgcolor: "#2d5a3d",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                mb: 3,
-              }}
-            >
-              <Icon icon="mdi:check" width={48} color="#fff" />
-            </Box>
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 700,
-                color: "#2d5a3d",
-                mb: 1,
-                textAlign: "center",
-              }}
-            >
-              Thank You!
-            </Typography>
-            <Typography
-              sx={{
-                color: "#666",
-                textAlign: "center",
-                fontSize: "16px",
-              }}
-            >
-              Your feedback helps us improve our service.
-            </Typography>
-          </Box>
-        ) : (
-          // Feedback Form
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
-            {/* Logo */}
-            <Box
-              sx={{
                 position: "relative",
-                width: 100,
-                height: 100,
-                mb: 2,
               }}
             >
               <Image
                 src="/wending/goldlog.svg"
-                alt="Leaf Water Logo"
+                alt="Leaf Water"
                 fill
+                sizes="520px"
                 style={{ objectFit: "contain" }}
+                priority
               />
             </Box>
+          </Box>
 
-            {/* Title */}
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: 700,
-                color: "#1a1a1a",
-                mb: 1,
-                textAlign: "center",
-                fontSize: "28px",
-              }}
-            >
-              How was your experience?
-            </Typography>
-
-            <Typography
-              sx={{
-                color: "#666",
-                textAlign: "center",
-                mb: 3,
-                fontSize: "16px",
-              }}
-            >
-              We&apos;d love to hear your feedback
-            </Typography>
-
-            {/* Star Rating */}
+          <Box sx={{ width: "min(860px, 100%)",mt:5}}>
             <Box
               sx={{
+                width: "100%",
+                bgcolor: "#1f4d3d",
+                borderRadius: 3,
+                px: 3,
+                py: 2.5,
                 display: "flex",
-                gap: 1,
-                mb: 3,
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 2,
+                boxShadow: "0 10px 24px rgba(0,0,0,0.08)",
               }}
             >
+              <Box sx={{ color: "#ffffff", minWidth: 0 }}>
+                <Typography sx={{ fontSize: 24, opacity: 0.85, letterSpacing: 0.5, pb: 2 }}>
+                  LEARN MORE
+                </Typography>
+                <Typography sx={{ fontSize: 32, fontWeight: 700, mt: 0.5, pb: 2 }}>
+                  About Leafwater
+                </Typography>
+                <Typography sx={{ fontSize: 24, opacity: 0.9, mt: 0.5, maxWidth: 520 }}>
+                  Deep insights into your skin, powered by intelligent diagnostics,
+                </Typography>
+              </Box>
+              <Box sx={{ bgcolor: "#ffffff", borderRadius: 2, p: 1, flexShrink: 0 }}>
+                <Image src="/wending/qr.svg" alt="QR" width={74} height={74} />
+              </Box>
+            </Box>
+          </Box>
+
+          <Box
+            sx={{
+              width: "min(860px, 100%)",
+              mt: 5,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+              gap: 0.5,
+              mb:5
+            }}
+          >
+            <Typography sx={{ fontWeight: 800, letterSpacing: 3, fontSize: 32,pb:2,pt:4 }}>
+              THANK YOU!
+            </Typography>
+            <Typography sx={{ fontSize: 24, color: "#111827" }}>
+              Please remember to retrieve your item!
+            </Typography>
+            <Typography sx={{ fontSize: 24, color: "#111827" }}>
+              Have a nice day!
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              width: "min(860px, 100%)",
+              mt: 5,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+            }}
+          >
+            <Typography sx={{ fontSize: 28, fontWeight: 700 ,pb:2}}>Quick Favour?</Typography>
+            <Typography sx={{ fontSize: 24, color: "#374151", mt: 0.5 }}>
+              Kindly rate your experience with us so far.
+            </Typography>
+
+            <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
               {[1, 2, 3, 4, 5].map((star) => (
                 <IconButton
                   key={star}
                   onClick={() => handleStarClick(star)}
                   onMouseEnter={() => handleStarHover(star)}
                   onMouseLeave={handleStarLeave}
-                  sx={{
-                    p: 0.5,
-                    transition: "transform 0.2s",
-                    "&:hover": {
-                      transform: "scale(1.2)",
-                      bgcolor: "transparent",
-                    },
-                  }}
+                  sx={{ p: 1, bgcolor: "transparent" }}
                 >
                   <Icon
                     icon={star <= displayRating ? "mdi:star" : "mdi:star-outline"}
-                    width={48}
-                    color={star <= displayRating ? "#FFD700" : "#ccc"}
+                    width={60}
+                    color={star <= displayRating ? "#f59e0b" : "#cfcfcf"}
                   />
                 </IconButton>
               ))}
             </Box>
 
-            {/* Rating Label */}
-            <Typography
-              sx={{
-                color: "#2d5a3d",
-                fontWeight: 600,
-                mb: 3,
-                fontSize: "18px",
-                minHeight: "27px",
-              }}
-            >
-              {displayRating === 1 && "Poor"}
-              {displayRating === 2 && "Fair"}
-              {displayRating === 3 && "Good"}
-              {displayRating === 4 && "Very Good"}
-              {displayRating === 5 && "Excellent"}
-            </Typography>
+            <Box sx={{ width: "min(520px, 100%)", mt: 2.5 }}>
+              <TextField
+                fullWidth
+                multiline
+                rows={2}
+                placeholder="Tell us more (optional)"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "12px",
+                    bgcolor: "#ffffff",
+                    fontSize: 24,
+                    "& textarea": {
+                      fontSize: 24,
+                    },
+                    "& textarea::placeholder": {
+                      fontSize: 24,
+                      opacity: 0.8,
+                    },
+                    "& fieldset": {
+                      borderColor: "#d1d5db",
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#9ca3af",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#9ca3af",
+                    },
+                  },
+                }}
+              />
 
-            {/* Notes TextField */}
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Tell us more about your experience (optional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              sx={{
-                mb: 3,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "12px",
-                  bgcolor: "#f8f8f8",
-                  "& fieldset": {
-                    borderColor: "#e0e0e0",
-                  },
-                  "&:hover fieldset": {
-                    borderColor: "#2d5a3d",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#2d5a3d",
-                  },
-                },
-              }}
-            />
-
-            {/* Submit Button */}
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={handleSubmit}
-              disabled={rating === 0 || isSubmitting}
-              sx={{
-                bgcolor: "#2d5a3d",
-                color: "#fff",
-                py: 1.5,
-                borderRadius: "12px",
-                fontSize: "18px",
-                fontWeight: 600,
-                textTransform: "none",
-                mb: 2,
-                "&:hover": {
-                  bgcolor: "#1e3d2a",
-                },
-                "&:disabled": {
-                  bgcolor: "#ccc",
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                sx={{
+                  mt: 2,
+                  bgcolor: "#1f4d3d",
                   color: "#fff",
-                },
-              }}
-            >
-              {isSubmitting ? "Submitting..." : "Submit Feedback"}
-            </Button>
-
-            {/* Skip Button */}
-            <Button
-              fullWidth
-              variant="text"
-              onClick={handleSkip}
-              sx={{
-                color: "#666",
-                fontSize: "16px",
-                textTransform: "none",
-                "&:hover": {
-                  bgcolor: "transparent",
-                  color: "#333",
-                },
-              }}
-            >
-              Skip for now
-            </Button>
+                  py: 1.25,
+                  borderRadius: "12px",
+                  fontSize: 24,
+                  fontWeight: 700,
+                  textTransform: "none",
+                  "&:hover": {
+                    bgcolor: "#16362c",
+                  },
+                  "&:disabled": {
+                    bgcolor: "#d1d5db",
+                    color: "#ffffff",
+                  },
+                }}
+              >
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
+            </Box>
           </Box>
-        )}
-      </Box>
+
+          <Box
+            sx={{
+              width: "min(860px, 100%)",
+              mt: 5,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <Typography sx={{ fontSize: 28, fontWeight: 800, mb: 2 }}>Need Help?</Typography>
+            <Box
+              sx={{
+                width: "100%",
+                display: "grid",
+                gridTemplateColumns: "1fr 1px 1fr",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <Box sx={{ textAlign: "center" }}>
+                <Typography sx={{ fontSize: 24, color: "#374151" ,pb:2}}>WhatsApp us:</Typography>
+                <Typography sx={{ fontSize: 24, color: "#111827", fontWeight: 700 }}>
+                  +91 9179077990
+                </Typography>
+              </Box>
+              <Box sx={{ height: 120, bgcolor: "#000" ,display:"flex",alignItems:"center",justifyContent:"center"}} />
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 1,
+                }}
+              >
+                <Typography sx={{ fontSize: 24, color: "#374151" }}>
+                  Scan this <br /> QR Code
+                </Typography>
+                <Box sx={{ bgcolor: "#ffffff", borderRadius: 1, p: 0.75, flexShrink: 0 }}>
+                  <Image src="/wending/qr.svg" alt="QR" width={92} height={92} />
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </PageBackground>
     </Dialog>
   );
 };

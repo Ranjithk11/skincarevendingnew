@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getStm32Config, stm32Dispense } from "@/utils/stm32";
+import { getStm32Config, stm32Dispense, stm32DispenseMany } from "@/utils/stm32";
 
 export const runtime = "nodejs";
 
@@ -46,7 +46,8 @@ export async function POST(req: Request) {
       rawLines: string[];
     }> = [];
 
-    for (const productCode of normalized) {
+    if (normalized.length === 1) {
+      const productCode = normalized[0];
       const res = await stm32Dispense(cfg, productCode);
       results.push({
         productCode,
@@ -55,9 +56,16 @@ export async function POST(req: Request) {
         errorLine: res.errorLine,
         rawLines: res.rawLines,
       });
-
-      if (res.errorLine) {
-        break;
+    } else {
+      const batch = await stm32DispenseMany(cfg, normalized);
+      for (const { productCode, result: res } of batch) {
+        results.push({
+          productCode,
+          ok: Boolean(res.okLine) && !res.errorLine,
+          okLine: res.okLine,
+          errorLine: res.errorLine,
+          rawLines: res.rawLines,
+        });
       }
     }
 

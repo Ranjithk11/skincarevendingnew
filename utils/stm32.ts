@@ -166,3 +166,115 @@ export async function stm32Dispense(
     });
   }
 }
+
+export async function stm32DispenseMany(
+  cfg: Stm32Config,
+  productCodes: string[],
+  opts?: {
+    commandPrefix?: string;
+    commandSuffix?: string;
+    okPattern?: RegExp;
+    errorPattern?: RegExp;
+  }
+): Promise<Array<{ productCode: string; result: DispenseResult }>> {
+  const normalized = (Array.isArray(productCodes) ? productCodes : [])
+    .map((c) => (typeof c === "string" ? c.trim() : ""))
+    .filter((c) => c.length > 0);
+
+  if (normalized.length === 0) {
+    throw new Error("Missing productCode(s)");
+  }
+
+  if (cfg.mock) {
+    const results: Array<{ productCode: string; result: DispenseResult }> = [];
+    for (const code of normalized) {
+      const res = await stm32Dispense(cfg, code, opts);
+      results.push({ productCode: code, result: res });
+    }
+    return results;
+  }
+
+  const commandPrefix = opts?.commandPrefix ?? "RQ";
+  const commandSuffix = opts?.commandSuffix ?? "\r\n";
+  const okPattern = opts?.okPattern ?? /Request sequence finished|^200$|Response 200/i;
+  const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
+
+  const { SerialPort } = await import("serialport");
+  const { ReadlineParser } = await import("@serialport/parser-readline");
+
+  const port = new SerialPort({
+    path: cfg.port,
+    baudRate: cfg.baudRate,
+    autoOpen: false,
+  });
+
+  const parser = port.pipe(new ReadlineParser({ delimiter: "\r\n" }));
+
+  const runOne = async (code: string): Promise<DispenseResult> => {
+    const rawLines: string[] = [];
+    const command = `${commandPrefix}${code}${commandSuffix}`;
+
+    await new Promise<void>((resolve, reject) => {
+      port.write(command, (err) => {
+        if (err) return reject(err);
+        port.drain((drainErr) => (drainErr ? reject(drainErr) : resolve()));
+      });
+    });
+
+    return await new Promise<DispenseResult>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error("STM32 response timeout"));
+      }, cfg.timeoutMs);
+
+      const onData = (data: string | Buffer) => {
+        const line = normalizeLine(typeof data === "string" ? data : data.toString("utf8"));
+        if (!line) return;
+        rawLines.push(line);
+
+        if (okPattern.test(line)) {
+          cleanup();
+          return resolve({ rawLines, okLine: line });
+        }
+
+        if (errorPattern.test(line)) {
+          cleanup();
+          return resolve({ rawLines, errorLine: line });
+        }
+      };
+
+      const onError = (err: unknown) => {
+        cleanup();
+        reject(err instanceof Error ? err : new Error("Serial error"));
+      };
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        parser.off("data", onData);
+        port.off("error", onError);
+      };
+
+      parser.on("data", onData);
+      port.on("error", onError);
+    });
+  };
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      port.open((err) => (err ? reject(err) : resolve()));
+    });
+
+    const results: Array<{ productCode: string; result: DispenseResult }> = [];
+    for (const code of normalized) {
+      const res = await runOne(code);
+      results.push({ productCode: code, result: res });
+      if (res.errorLine) break;
+    }
+    return results;
+  } finally {
+    await new Promise<void>((resolve) => {
+      if (!port.isOpen) return resolve();
+      port.close(() => resolve());
+    });
+  }
+}

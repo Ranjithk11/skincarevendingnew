@@ -12,8 +12,24 @@ export async function POST(req: Request) {
       );
     }
 
+    if (typeof userId !== "string" || userId.trim().length === 0) {
+      return NextResponse.json(
+        { success: false, error: { message: "Missing userId" } },
+        { status: 400 }
+      );
+    }
+
+    const normalizedUserId = userId.includes("/") ? userId : `users/${userId}`;
+
     const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    if (!apiUrl) {
+      return NextResponse.json(
+        { success: false, error: { message: "Missing NEXT_PUBLIC_API_URL" } },
+        { status: 500 }
+      );
+    }
 
     // Call the backend feedback API
     const response = await fetch(`${apiUrl}/feedback/create`, {
@@ -23,15 +39,22 @@ export async function POST(req: Request) {
         ...(dbToken ? { "x-db-token": dbToken } : {}),
       },
       body: JSON.stringify({
-        userId: userId || "",
-        rating: Number(rating),
-        notes: notes || "",
+        userId: normalizedUserId,
+        rating: Math.round(Number(rating)),
+        notes: typeof notes === "string" ? notes : "",
       }),
     });
 
-    const result = await response.json();
+    const rawText = await response.text().catch(() => "");
+    const result = (() => {
+      try {
+        return rawText ? JSON.parse(rawText) : null;
+      } catch {
+        return null;
+      }
+    })();
 
-    if (result.status === "success") {
+    if (response.ok && result?.status === "success") {
       return NextResponse.json({
         success: true,
         data: result.data,
@@ -39,7 +62,14 @@ export async function POST(req: Request) {
       });
     } else {
       return NextResponse.json(
-        { success: false, error: { message: result.message || "Failed to submit feedback" } },
+        {
+          success: false,
+          error: {
+            message:
+              result?.message ||
+              (rawText ? `Failed to submit feedback (${response.status}): ${rawText}` : "Failed to submit feedback"),
+          },
+        },
         { status: 400 }
       );
     }
