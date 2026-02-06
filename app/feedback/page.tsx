@@ -40,6 +40,21 @@ export default function FeedbackPage() {
     | { status: "error"; message: string }
   >({ status: "idle" });
 
+  const goHome = async () => {
+    try {
+      if (typeof window !== "undefined") {
+        try {
+          window.sessionStorage.removeItem("kiosk_checkout_summary");
+        } catch {
+        }
+      }
+      dispatch(clearCart());
+      await persistor.purge();
+    } finally {
+      router.push(APP_ROUTES.HOME);
+    }
+  };
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
@@ -238,14 +253,28 @@ export default function FeedbackPage() {
               position: "relative",
             }}
           >
-            <Image
-              src="/wending/goldlog.svg"
-              alt="Leaf Water"
-              fill
-              sizes="520px"
-              style={{ objectFit: "contain" }}
-              priority
-            />
+            <Box
+              component="button"
+              type="button"
+              onClick={goHome}
+              sx={{
+                all: "unset",
+                cursor: "pointer",
+                display: "block",
+                width: "100%",
+                height: "100%",
+                position: "relative",
+              }}
+            >
+              <Image
+                src="/wending/goldlog.svg"
+                alt="Leaf Water"
+                fill
+                sizes="520px"
+                style={{ objectFit: "contain" }}
+                priority
+              />
+            </Box>
           </Box>
         </Box>
 

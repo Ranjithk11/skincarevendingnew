@@ -110,8 +110,11 @@ export async function POST(req: Request) {
       rawLines: string[];
     }> = [];
 
+    let sentCommands: string[] = [];
+
     if (normalized.length === 1) {
       const productCode = normalized[0];
+      sentCommands = [productCode];
       const res = await stm32Dispense(cfg, productCode, {
         okPattern: /Turning off motors/i,
         errorPattern: /^(500|501)$|No detection|Sensor already/i,
@@ -126,6 +129,7 @@ export async function POST(req: Request) {
 
       const shouldAutoTray = getEnvBoolean("STM32_AUTO_TRAY_AFTER_SINGLE");
       if (shouldAutoTray && Boolean(res.okLine) && !res.errorLine) {
+        sentCommands = [...sentCommands, "TRAY"];
         const trayRes = await stm32Dispense(cfg, "TRAY", {
           commandPrefix: "",
           okPattern: /^200$|Closing door|Waiting 5s for pickup/i,
@@ -177,6 +181,8 @@ export async function POST(req: Request) {
           expanded.push("TRAY");
         }
 
+        sentCommands = expanded;
+
         const batch = await stm32DispenseMany(cfg, expanded, {
           commandPrefix: "",
           okPattern: /Turning off motors|^200$|Closing door|Waiting 5s for pickup/i,
@@ -194,6 +200,7 @@ export async function POST(req: Request) {
           });
         }
       } else {
+        sentCommands = [...normalized, "TRAY"];
         const batch = await stm32DispenseMany(cfg, normalized, {
           finalizeCommand: "TRAY",
           okPattern: rqOkPattern,
@@ -220,6 +227,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success,
       data: {
+        sentCommands,
         results,
       },
     });
