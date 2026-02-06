@@ -22,6 +22,17 @@ function getEnvBoolean(name: string): boolean {
   return n === "1" || n === "true" || n === "yes";
 }
 
+function getRqMotorNumber(code: string): number | undefined {
+  const m = code.trim().match(/^RQ\s*(\d+)$/i);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function getMotorColumn(motorNum: number): number {
+  return ((motorNum % 10) + 10) % 10;
+}
+
 function applySlotOffset(code: string, offset: number): string {
   if (!Number.isFinite(offset) || offset === 0) return code;
   const trimmed = code.trim();
@@ -120,7 +131,27 @@ export async function POST(req: Request) {
       const delayBetweenCommandsMs = getEnvNumber("STM32_DELAY_BETWEEN_COMMANDS_MS") ?? 0;
       const delayBeforeFinalizeMs = getEnvNumber("STM32_DELAY_BEFORE_FINALIZE_MS") ?? 0;
 
-      const finalizeMode = (getEnvString("STM32_FINALIZE_MODE") || "once").toLowerCase();
+      const finalizeModeRaw = (getEnvString("STM32_FINALIZE_MODE") || "once").toLowerCase();
+
+      let finalizeMode = finalizeModeRaw;
+      if (finalizeModeRaw === "smart") {
+        const cols = normalized
+          .map((c) => getRqMotorNumber(c))
+          .filter((n): n is number => typeof n === "number")
+          .map((n) => getMotorColumn(n));
+
+        const seen = new Set<number>();
+        let hasDuplicateColumn = false;
+        for (const c of cols) {
+          if (seen.has(c)) {
+            hasDuplicateColumn = true;
+            break;
+          }
+          seen.add(c);
+        }
+
+        finalizeMode = hasDuplicateColumn ? "each" : "once";
+      }
 
       const rqOkPattern = /Turning off motors/i;
       const rqErrorPattern = /^(500|501)$|No detection|Sensor already/i;
