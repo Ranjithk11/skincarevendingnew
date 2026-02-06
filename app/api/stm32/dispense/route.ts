@@ -177,7 +177,10 @@ export async function POST(req: Request) {
       if (finalizeMode === "each") {
         const expanded: string[] = [];
         for (const c of normalized) {
-          expanded.push(c);
+          const trimmed = c.trim();
+          const isRq = /^RQ\s*\d+$/i.test(trimmed);
+          const isNumeric = /^\d+$/.test(trimmed);
+          expanded.push(isRq ? trimmed : isNumeric ? `RQ${trimmed}` : trimmed);
           expanded.push("TRAY");
         }
 
