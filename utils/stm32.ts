@@ -107,7 +107,7 @@ export async function stm32Dispense(
     autoOpen: false,
   });
 
-  const parser = port.pipe(new ReadlineParser({ delimiter: "\r\n" }));
+  const parser = port.pipe(new ReadlineParser({ delimiter: "\n" }));
 
   const rawLines: string[] = [];
 
@@ -235,7 +235,7 @@ export async function stm32DispenseMany(
     autoOpen: false,
   });
 
-  const parser = port.pipe(new ReadlineParser({ delimiter: "\r\n" }));
+  const parser = port.pipe(new ReadlineParser({ delimiter: "\n" }));
 
   const runOne = async (
     code: string,

@@ -15,6 +15,13 @@ function getEnvString(name: string): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
 }
 
+function getEnvBoolean(name: string): boolean {
+  const v = getEnvString(name);
+  if (!v) return false;
+  const n = v.toLowerCase();
+  return n === "1" || n === "true" || n === "yes";
+}
+
 function applySlotOffset(code: string, offset: number): string {
   if (!Number.isFinite(offset) || offset === 0) return code;
   const trimmed = code.trim();
@@ -82,7 +89,10 @@ export async function POST(req: Request) {
 
     if (normalized.length === 1) {
       const productCode = normalized[0];
-      const res = await stm32Dispense(cfg, productCode);
+      const res = await stm32Dispense(cfg, productCode, {
+        okPattern: /Turning off motors/i,
+        errorPattern: /^(500|501)$|No detection|Sensor already/i,
+      });
       results.push({
         productCode,
         ok: Boolean(res.okLine) && !res.errorLine,
@@ -90,6 +100,22 @@ export async function POST(req: Request) {
         errorLine: res.errorLine,
         rawLines: res.rawLines,
       });
+
+      const shouldAutoTray = getEnvBoolean("STM32_AUTO_TRAY_AFTER_SINGLE");
+      if (shouldAutoTray && Boolean(res.okLine) && !res.errorLine) {
+        const trayRes = await stm32Dispense(cfg, "TRAY", {
+          commandPrefix: "",
+          okPattern: /^200$|Closing door|Waiting 5s for pickup/i,
+          errorPattern: /^(500|501)$|No detection|Sensor already/i,
+        });
+        results.push({
+          productCode: "TRAY",
+          ok: Boolean(trayRes.okLine) && !trayRes.errorLine,
+          okLine: trayRes.okLine,
+          errorLine: trayRes.errorLine,
+          rawLines: trayRes.rawLines,
+        });
+      }
     } else {
       const delayBetweenCommandsMs = getEnvNumber("STM32_DELAY_BETWEEN_COMMANDS_MS") ?? 0;
       const delayBeforeFinalizeMs = getEnvNumber("STM32_DELAY_BEFORE_FINALIZE_MS") ?? 0;
