@@ -23,10 +23,22 @@ function getEnvBoolean(name: string): boolean {
 }
 
 function getRqMotorNumber(code: string): number | undefined {
-  const m = code.trim().match(/^RQ\s*(\d+)$/i);
-  if (!m) return undefined;
-  const n = Number(m[1]);
-  return Number.isFinite(n) ? n : undefined;
+  const trimmed = code.trim();
+  const rq = trimmed.match(/^RQ\s*(\d+)$/i);
+  if (rq) {
+    const n = Number(rq[1]);
+    return Number.isFinite(n) ? n : undefined;
+  }
+
+  // In our app, cart/checkout often sends raw slot IDs like "14".
+  // Treat numeric-only codes as motor numbers as well.
+  const numeric = trimmed.match(/^(\d+)$/);
+  if (numeric) {
+    const n = Number(numeric[1]);
+    return Number.isFinite(n) ? n : undefined;
+  }
+
+  return undefined;
 }
 
 function getMotorColumn(motorNum: number): number {

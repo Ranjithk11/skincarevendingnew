@@ -299,7 +299,8 @@ export const adminDb = {
 
   // Get all slots for a specific product
   getSlotsForProduct(productId: string | number, productName?: string): Array<{ slot_id: number; quantity: number }> {
-    const slots: Array<{ slot_id: number; quantity: number }> = [];
+    const idMatchedSlots: Array<{ slot_id: number; quantity: number }> = [];
+    const nameMatchedSlots: Array<{ slot_id: number; quantity: number }> = [];
     const searchId = typeof productId === 'string' ? productId : productId.toString();
     // Clean the product ID (remove 'products/' prefix if present)
     const cleanSearchId = searchId.replace(/^products\//, '');
@@ -327,8 +328,13 @@ export const adminDb = {
                       slotProductName === searchName;
         }
         
-        if (idMatch || nameMatch) {
-          slots.push({
+        if (idMatch) {
+          idMatchedSlots.push({
+            slot_id: slot.slot_id,
+            quantity: slot.quantity,
+          });
+        } else if (nameMatch) {
+          nameMatchedSlots.push({
             slot_id: slot.slot_id,
             quantity: slot.quantity,
           });
@@ -336,9 +342,11 @@ export const adminDb = {
       }
     });
     
+    const slots = idMatchedSlots.length > 0 ? idMatchedSlots : nameMatchedSlots;
+
     // Sort by slot_id descending (prioritize higher slots like the Flask version)
     slots.sort((a, b) => b.slot_id - a.slot_id);
-    
+
     return slots;
   },
 

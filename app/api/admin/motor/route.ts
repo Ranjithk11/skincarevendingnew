@@ -97,8 +97,13 @@ export async function POST(request: NextRequest) {
       }
       
       try {
-        // Send HOME command to STM32 - use "00" as a placeholder code with HOME prefix
-        const result = await stm32Dispense(cfg, "00", { commandPrefix: "HOME" });
+        // Firmware expects HOME<axisNumber>. Home tray axis (0) for "Home Machine".
+        // Treat homing prints as success so UI doesn't show false errors.
+        const result = await stm32Dispense(cfg, "HOME0", {
+          commandPrefix: "",
+          okPattern: /Homed axis successfully|Moving toward endstop|Endstop already trigerred/i,
+          errorPattern: /Endstop error|Invalid stepper Motor selected|Unknown command/i,
+        });
         
         return NextResponse.json({
           success: true,
