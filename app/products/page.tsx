@@ -4,7 +4,6 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { Box, Typography, Grid, useMediaQuery, useTheme, Chip } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { 
-  useLazyGetFilteredProductsQuery, 
   useGetProductCategoriesQuery,
   useGetAllBrandsQuery 
 } from "@/redux/api/products";
@@ -50,23 +49,38 @@ const PageBackground = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const mapProductToCardProps = (product: any) => ({
-  _id: product._id,
-  name: product.name,
-  productBenefits: product.productBenefits || "",
-  productUse: product.productUse || "",
-  retailPrice: product.retailPrice,
-  matches: product.matches || [],
-  images: product.images || [],
-  shopifyUrl: product.shopifyUrl || "#buy",
-  isShopifyAvailable: product.isShopifyAvailable,
-  discount: product.discount || null,
-  enabledMask: false,
-  category: product.productCategory?.title || "",
-  compact: false,
-  horizontalLayout: true,
-  cardSx: { width: "100%" },
-});
+const mapProductToCardProps = (product: any) => {
+  const imageUrl =
+    product?.images?.[0]?.url ||
+    product?.image_url ||
+    product?.images?.[0] ||
+    "";
+
+  const retailPrice =
+    product?.retailPrice ??
+    product?.retail_price ??
+    0;
+
+  const productId = product?._id || product?.id;
+
+  return {
+    _id: productId,
+    name: product?.name,
+    productBenefits: product?.productBenefits || product?.description || "",
+    productUse: product?.productUse || "",
+    retailPrice,
+    matches: product?.matches || [],
+    images: imageUrl ? [{ url: imageUrl }] : [],
+    shopifyUrl: product?.shopifyUrl || product?.shopify_url || "#buy",
+    isShopifyAvailable: product?.isShopifyAvailable ?? product?.in_stock ?? true,
+    discount: product?.discount || null,
+    enabledMask: false,
+    category: product?.productCategory?.title || product?.category || "",
+    compact: false,
+    horizontalLayout: true,
+    cardSx: { width: "100%" },
+  };
+};
 
 export default function BrowseProductsPage() {
   const router = useRouter();
@@ -78,7 +92,8 @@ export default function BrowseProductsPage() {
   const { count: cartCount } = useCart();
   const isKiosk = false;
 
-  const [getFilteredProducts, { data, isLoading }] = useLazyGetFilteredProductsQuery();
+  const [products, setProducts] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const { data: categoriesData } = useGetProductCategoriesQuery({});
   const { data: brandsData } = useGetAllBrandsQuery({});
 
@@ -96,17 +111,51 @@ export default function BrowseProductsPage() {
 
   // Fetch products for selected category
   useEffect(() => {
-    getFilteredProducts({
-      page: 1,
-      limit: 100,
-      hasBrand: true,
-      isShopifyAvailable: true,
-      ...(selectedCategory !== "all" && { catId: selectedCategory }),
-      ...(selectedBrand !== "all" && { brandId: selectedBrand }),
-    });
-  }, [selectedCategory, selectedBrand]);
+    let cancelled = false;
 
-  const products = data?.data?.[0]?.products || [];
+    const run = async () => {
+      try {
+        setIsLoading(true);
+
+        const params = new URLSearchParams();
+        params.set("page", "1");
+        params.set("limit", "100");
+        params.set("hasBrand", "true");
+        params.set("isShopifyAvailable", "true");
+        if (selectedCategory !== "all") params.set("catId", selectedCategory);
+        if (selectedBrand !== "all") params.set("brandId", selectedBrand);
+
+        const res = await fetch(`/api/admin/products?${params.toString()}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || `Failed to load products: ${res.status}`);
+        }
+
+        const json = await res.json();
+        if (cancelled) return;
+
+        setProducts(Array.isArray(json) ? json : json?.data?.[0]?.products || []);
+      } catch (e) {
+        if (!cancelled) {
+          setProducts([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCategory, selectedBrand]);
 
   // Fetch all category images in parallel once categories are loaded
   useEffect(() => {
