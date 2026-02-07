@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -25,6 +25,9 @@ export default function FeedbackPage() {
   const { data: session } = useSession();
   const dispatch = useAppDispatch();
 
+  const autoHomeTimerRef = useRef<number | null>(null);
+  const hasCompletedRef = useRef(false);
+
   const userId = (session?.user as any)?.id as string | undefined;
 
   const [rating, setRating] = useState<number>(0);
@@ -41,6 +44,11 @@ export default function FeedbackPage() {
   >({ status: "idle" });
 
   const goHome = async () => {
+    hasCompletedRef.current = true;
+    if (autoHomeTimerRef.current !== null) {
+      window.clearTimeout(autoHomeTimerRef.current);
+      autoHomeTimerRef.current = null;
+    }
     try {
       if (typeof window !== "undefined") {
         try {
@@ -57,6 +65,18 @@ export default function FeedbackPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    if (autoHomeTimerRef.current !== null) {
+      window.clearTimeout(autoHomeTimerRef.current);
+      autoHomeTimerRef.current = null;
+    }
+
+    autoHomeTimerRef.current = window.setTimeout(() => {
+      if (hasCompletedRef.current) return;
+      if (isSubmitting) return;
+      void goHome();
+    }, 60_000);
+
     try {
       const raw = window.sessionStorage.getItem("kiosk_checkout_summary");
       if (!raw) return;
@@ -70,6 +90,13 @@ export default function FeedbackPage() {
     }
     dispatch(clearCart());
     void persistor.purge();
+
+    return () => {
+      if (autoHomeTimerRef.current !== null) {
+        window.clearTimeout(autoHomeTimerRef.current);
+        autoHomeTimerRef.current = null;
+      }
+    };
   }, []);
 
   const checkoutItems = useMemo(() => {
@@ -151,6 +178,11 @@ export default function FeedbackPage() {
   };
 
   const handleClose = () => {
+    hasCompletedRef.current = true;
+    if (autoHomeTimerRef.current !== null) {
+      window.clearTimeout(autoHomeTimerRef.current);
+      autoHomeTimerRef.current = null;
+    }
     dispatch(clearCart());
     void persistor.purge();
     if (typeof window !== "undefined") {
@@ -164,6 +196,12 @@ export default function FeedbackPage() {
 
   const handleSubmit = async () => {
     if (rating === 0) return;
+
+    hasCompletedRef.current = true;
+    if (autoHomeTimerRef.current !== null) {
+      window.clearTimeout(autoHomeTimerRef.current);
+      autoHomeTimerRef.current = null;
+    }
 
     setIsSubmitting(true);
     try {

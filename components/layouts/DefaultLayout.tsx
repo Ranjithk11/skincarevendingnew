@@ -228,7 +228,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
       >
         <SideMenuComponent />
       </Drawer> */}
-      <IdleVideoOverlay idleMs={30_000} src="/videos/leafwater_promo_video.mp4" />
+      <IdleVideoOverlay idleMs={120_000} src="/videos/leafwater_promo_video.mp4" />
     </Fragment>
   );
 };

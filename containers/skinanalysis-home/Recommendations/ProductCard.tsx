@@ -243,6 +243,8 @@ const ProductCard = ({
     }
   };
 
+  const matchLabel = matches?.[0]?.name?.replace("_", " ") || "";
+
   return (
     <StyledProductCard
       enabledMask={enabledMask}
@@ -323,16 +325,18 @@ const ProductCard = ({
       <Box flexGrow={1} width="100%" sx={{ minWidth: 0, mr: 2 }}>
         <Grid container spacing={compact ? 1 : 2}>
           <Grid item xs={12}>
-            <Box mb={1}>
-              <Chip
-                variant="outlined"
-                className="chip"
-                style={{ borderRadius: 5 }}
-                color="primary"
-                size="small"
-                label={matches?.[0]?.name?.replace("_", " ")}
-              />
-            </Box>
+            {matchLabel ? (
+              <Box mb={1}>
+                <Chip
+                  variant="outlined"
+                  className="chip"
+                  style={{ borderRadius: 5 }}
+                  color="primary"
+                  size="small"
+                  label={matchLabel}
+                />
+              </Box>
+            ) : null}
             <Typography
               sx={{
                 fontFamily:
