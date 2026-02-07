@@ -177,18 +177,25 @@ export default function AdminDashboardPage() {
     amount: product.quantity || getProductQuantityFromSlots(product.id.toString(), product.name),
     image: product.image_url,
   })) || [];
+
+  const adminProductsById = new Map<string, (typeof adminProducts)[number]>();
+  adminProducts.forEach((p) => {
+    adminProductsById.set(p.id, p);
+    adminProductsById.set(String(p.id).replace(/^products\//, ""), p);
+  });
   
   // Transform ALL browse products (from all categories) and merge with admin products
   const browseProducts = allCategoryProducts.map((p: any) => {
     const productId = p._id || p.id;
     const productName = p.name;
+    const adminMatch = adminProductsById.get(String(productId)) || adminProductsById.get(String(productId).replace(/^products\//, ""));
     return {
       id: productId,
-      name: productName,
-      category: p.productCategory?.title || p.category || "Uncategorized",
-      price: `Rs.${p.retailPrice || p.retail_price || 0}`,
-      amount: getProductQuantityFromSlots(productId, productName),
-      image: p.images?.[0]?.url || p.image_url || "",
+      name: adminMatch?.name ?? productName,
+      category: adminMatch?.category ?? (p.productCategory?.title || p.category || "Uncategorized"),
+      price: adminMatch?.price ?? `Rs.${p.retailPrice || p.retail_price || 0}`,
+      amount: adminMatch?.amount ?? getProductQuantityFromSlots(productId, productName),
+      image: adminMatch?.image ?? (p.images?.[0]?.url || p.image_url || ""),
     };
   });
   
@@ -384,11 +391,25 @@ export default function AdminDashboardPage() {
   // Add browse products (from ALL categories) to modal
   const browseModalProducts = allCategoryProducts.map((p: any) => ({
     id: p._id || p.id,
-    name: p.name,
-    category: p.productCategory?.title || p.category || "Uncategorized",
-    price: `₹${p.retailPrice || p.retail_price || 0}`,
-    amount: p.quantity || 0,
-    image: p.images?.[0]?.url || p.image_url || "",
+    name:
+      (adminProductsById.get(String(p._id || p.id)) ||
+        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.name ?? p.name,
+    category:
+      (adminProductsById.get(String(p._id || p.id)) ||
+        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.category ??
+      (p.productCategory?.title || p.category || "Uncategorized"),
+    price:
+      (adminProductsById.get(String(p._id || p.id)) ||
+        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.price ??
+      `₹${p.retailPrice || p.retail_price || 0}`,
+    amount:
+      (adminProductsById.get(String(p._id || p.id)) ||
+        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.amount ??
+      (p.quantity || 0),
+    image:
+      (adminProductsById.get(String(p._id || p.id)) ||
+        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.image ??
+      (p.images?.[0]?.url || p.image_url || ""),
   }));
   
   // Add slot-assigned products that aren't in the API list (for slots 1-10 with local products)

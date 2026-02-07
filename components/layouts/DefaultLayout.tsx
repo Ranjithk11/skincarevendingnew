@@ -22,6 +22,7 @@ import SideMenuComponent from "@/views/home/selfie/SideMenu";
 import { APP_ROUTES } from "@/utils/routes";
 import { SOCIAL_LINKS } from "@/utils/constants";
 import { AiFillFacebook, AiFillInstagram, AiFillYoutube } from "react-icons/ai";
+import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
 
 interface DefaultLayoutProps {
   children?: React.ReactNode;
@@ -227,6 +228,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
       >
         <SideMenuComponent />
       </Drawer> */}
+      <IdleVideoOverlay idleMs={30_000} src="/videos/leafwater_promo_video.mp4" />
     </Fragment>
   );
 };
