@@ -9,7 +9,7 @@ type IdleVideoOverlayProps = {
 };
 
 export default function IdleVideoOverlay({
-  idleMs = 30_000,
+  idleMs = 120_000,
   src = "/videos/leafwater_promo_video.mp4",
 }: IdleVideoOverlayProps) {
   const [open, setOpen] = useState(false);

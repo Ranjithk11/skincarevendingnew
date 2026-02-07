@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 const getFirstEnv = (keys: string[]) => {
   for (const key of keys) {
     const value = process.env[key];
-    if (value) return value;
+    if (value) return { key, value };
   }
   throw new Error(`Missing environment variable: ${keys[0]}`);
 };
@@ -18,6 +18,7 @@ export async function POST(req: Request) {
           razorpay_payment_id?: string;
           razorpay_order_id?: string;
           razorpay_signature?: string;
+          mode?: "test" | "live";
         }
       | null;
 
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
     const paymentId = body.razorpay_payment_id;
     const orderId = body.razorpay_order_id;
     const signature = body.razorpay_signature;
+    const mode = body.mode;
 
     if (!paymentId || !orderId || !signature) {
       return NextResponse.json(
@@ -39,11 +41,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const keySecret = getFirstEnv([
-      "RAZORPAY_KEY_SECRET",
-      "RAZORPAY_TEST_KEY_SECRET",
-      "RAZORPAY_LIVE_KEY_SECRET",
-    ]);
+    const secretEnvKeys =
+      mode === "live"
+        ? ["RAZORPAY_LIVE_KEY_SECRET", "RAZORPAY_KEY_SECRET"]
+        : mode === "test"
+          ? ["RAZORPAY_TEST_KEY_SECRET", "RAZORPAY_KEY_SECRET"]
+          : [
+              "RAZORPAY_TEST_KEY_SECRET",
+              "RAZORPAY_LIVE_KEY_SECRET",
+              "RAZORPAY_KEY_SECRET",
+            ];
+
+    const { key: keySecretKey, value: keySecret } = getFirstEnv(secretEnvKeys);
 
     const expectedSignature = crypto
       .createHmac("sha256", keySecret)
@@ -55,7 +64,26 @@ export async function POST(req: Request) {
 
     if (expected.length !== provided.length) {
       return NextResponse.json(
-        { success: false, error: { message: "Payment verification failed" } },
+        {
+          success: false,
+          error:
+            process.env.NODE_ENV === "production"
+              ? { message: "Payment verification failed" }
+              : {
+                  message: "Payment verification failed",
+                  debug: {
+                    reason: "signature_length_mismatch",
+                    mode,
+                    keySecretKey,
+                    orderId,
+                    paymentId,
+                    expectedSignature,
+                    providedSignature: signature,
+                    expectedLength: expected.length,
+                    providedLength: provided.length,
+                  },
+                },
+        },
         { status: 400 }
       );
     }
@@ -67,7 +95,24 @@ export async function POST(req: Request) {
 
     if (!isValid) {
       return NextResponse.json(
-        { success: false, error: { message: "Payment verification failed" } },
+        {
+          success: false,
+          error:
+            process.env.NODE_ENV === "production"
+              ? { message: "Payment verification failed" }
+              : {
+                  message: "Payment verification failed",
+                  debug: {
+                    reason: "signature_mismatch",
+                    mode,
+                    keySecretKey,
+                    orderId,
+                    paymentId,
+                    expectedSignature,
+                    providedSignature: signature,
+                  },
+                },
+        },
         { status: 400 }
       );
     }
