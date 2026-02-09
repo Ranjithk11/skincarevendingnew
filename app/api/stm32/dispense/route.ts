@@ -45,6 +45,10 @@ function getMotorColumn(motorNum: number): number {
   return ((motorNum % 10) + 10) % 10;
 }
 
+function getMotorRow(motorNum: number): number {
+  return Math.floor(motorNum / 10);
+}
+
 function applySlotOffset(code: string, offset: number): string {
   if (!Number.isFinite(offset) || offset === 0) return code;
   const trimmed = code.trim();
@@ -147,26 +151,31 @@ export async function POST(req: Request) {
       const delayBetweenCommandsMs = getEnvNumber("STM32_DELAY_BETWEEN_COMMANDS_MS") ?? 0;
       const delayBeforeFinalizeMs = getEnvNumber("STM32_DELAY_BEFORE_FINALIZE_MS") ?? 0;
 
-      const finalizeModeRaw = (getEnvString("STM32_FINALIZE_MODE") || "once").toLowerCase();
+      const finalizeModeRaw = (getEnvString("STM32_FINALIZE_MODE") || "row").toLowerCase();
+
+      // Check if any products share the same column (last digit of slot ID)
+      const cols = normalized
+        .map((c) => getRqMotorNumber(c))
+        .filter((n): n is number => typeof n === "number")
+        .map((n) => getMotorColumn(n));
+
+      const seenCols = new Set<number>();
+      let hasDuplicateColumn = false;
+      for (const c of cols) {
+        if (seenCols.has(c)) {
+          hasDuplicateColumn = true;
+          break;
+        }
+        seenCols.add(c);
+      }
 
       let finalizeMode = finalizeModeRaw;
       if (finalizeModeRaw === "smart") {
-        const cols = normalized
-          .map((c) => getRqMotorNumber(c))
-          .filter((n): n is number => typeof n === "number")
-          .map((n) => getMotorColumn(n));
-
-        const seen = new Set<number>();
-        let hasDuplicateColumn = false;
-        for (const c of cols) {
-          if (seen.has(c)) {
-            hasDuplicateColumn = true;
-            break;
-          }
-          seen.add(c);
-        }
-
+        // smart mode: use 'each' if same column, otherwise 'once'
         finalizeMode = hasDuplicateColumn ? "each" : "once";
+      } else if (finalizeModeRaw === "row") {
+        // row mode: only use row grouping if same-column products, otherwise 'once'
+        finalizeMode = hasDuplicateColumn ? "row" : "once";
       }
 
       const rqOkPattern = /Turning off motors/i;
@@ -174,7 +183,56 @@ export async function POST(req: Request) {
       const trayOkPattern = /^200$|Closing door|Waiting 5s for pickup/i;
       const trayErrorPattern = rqErrorPattern;
 
-      if (finalizeMode === "each") {
+      if (finalizeMode === "row") {
+        // Group products by row (first digit of slot ID), dispense all from one row, TRAY, then next row
+        const motorNums = normalized.map((c) => ({
+          code: c,
+          motor: getRqMotorNumber(c),
+        }));
+
+        // Group by row
+        const rowGroups = new Map<number, string[]>();
+        for (const { code, motor } of motorNums) {
+          const row = motor !== undefined ? getMotorRow(motor) : 0;
+          if (!rowGroups.has(row)) rowGroups.set(row, []);
+          rowGroups.get(row)!.push(code);
+        }
+
+        // Sort rows ascending so we process row 1 before row 2, etc.
+        const sortedRows = Array.from(rowGroups.keys()).sort((a, b) => a - b);
+
+        const expanded: string[] = [];
+        for (const row of sortedRows) {
+          const codes = rowGroups.get(row) || [];
+          for (const c of codes) {
+            const trimmed = c.trim();
+            const isRq = /^RQ\s*\d+$/i.test(trimmed);
+            const isNumeric = /^\d+$/.test(trimmed);
+            expanded.push(isRq ? trimmed : isNumeric ? `RQ${trimmed}` : trimmed);
+          }
+          // TRAY after each row
+          expanded.push("TRAY");
+        }
+
+        sentCommands = expanded;
+
+        const batch = await stm32DispenseMany(cfg, expanded, {
+          commandPrefix: "",
+          okPattern: /Turning off motors|^200$|Closing door|Waiting 5s for pickup/i,
+          errorPattern: /^(500|501)$|No detection|Sensor already/i,
+          delayBetweenCommandsMs,
+        });
+
+        for (const { productCode, result: res } of batch) {
+          results.push({
+            productCode,
+            ok: Boolean(res.okLine) && !res.errorLine,
+            okLine: res.okLine,
+            errorLine: res.errorLine,
+            rawLines: res.rawLines,
+          });
+        }
+      } else if (finalizeMode === "each") {
         const expanded: string[] = [];
         for (const c of normalized) {
           const trimmed = c.trim();

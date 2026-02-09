@@ -66,17 +66,6 @@ export default function FeedbackPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    if (autoHomeTimerRef.current !== null) {
-      window.clearTimeout(autoHomeTimerRef.current);
-      autoHomeTimerRef.current = null;
-    }
-
-    autoHomeTimerRef.current = window.setTimeout(() => {
-      if (hasCompletedRef.current) return;
-      if (isSubmitting) return;
-      void goHome();
-    }, 60_000);
-
     try {
       const raw = window.sessionStorage.getItem("kiosk_checkout_summary");
       if (!raw) return;
@@ -90,6 +79,23 @@ export default function FeedbackPage() {
     }
     dispatch(clearCart());
     void persistor.purge();
+  }, []);
+
+  // Start 60s auto-home timer only after dispense succeeds
+  useEffect(() => {
+    if (dispenseState.status !== "done") return;
+    if (typeof window === "undefined") return;
+
+    if (autoHomeTimerRef.current !== null) {
+      window.clearTimeout(autoHomeTimerRef.current);
+      autoHomeTimerRef.current = null;
+    }
+
+    autoHomeTimerRef.current = window.setTimeout(() => {
+      if (hasCompletedRef.current) return;
+      if (isSubmitting) return;
+      void goHome();
+    }, 60_000);
 
     return () => {
       if (autoHomeTimerRef.current !== null) {
@@ -97,7 +103,7 @@ export default function FeedbackPage() {
         autoHomeTimerRef.current = null;
       }
     };
-  }, []);
+  }, [dispenseState.status]);
 
   const checkoutItems = useMemo(() => {
     const items = checkoutSummary?.items;
