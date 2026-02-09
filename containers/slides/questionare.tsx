@@ -267,7 +267,7 @@ export default function Questionnaire() {
         name,
         email,
         countryCode,
-        location: "Vending machine",
+        location: "vendingMachine_Airport001",
         skinType: skinTypeId,
         onBoardingQuestions: JSON.stringify([]),
       });
