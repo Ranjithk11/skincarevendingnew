@@ -74,12 +74,22 @@ export default function Questionnaire() {
   const [isNumeric, setIsNumeric] = useState(false);
   const [selectedSkinType, setSelectedSkinType] = useState<string>("");
   const [validationError, setValidationError] = useState<string>("");
+  const [machineLocation, setMachineLocation] = useState<string>("vendingMachine_Default");
 
   const nameRef = useRef<HTMLInputElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
 
   const totalSlides = 2;
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedLocation = localStorage.getItem("kiosk_machine_location");
+      if (storedLocation) {
+        setMachineLocation(storedLocation);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (currentSlide !== 0) return;
@@ -267,7 +277,7 @@ export default function Questionnaire() {
         name,
         email,
         countryCode,
-        location: "vendingMachine_Airport001",
+        location: machineLocation,
         skinType: skinTypeId,
         onBoardingQuestions: JSON.stringify([]),
       });
