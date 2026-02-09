@@ -359,13 +359,14 @@ export default function Questionnaire() {
           }}
         >
           <IconButton onClick={handleBack} sx={{ color: "#1a1a1a" }}>
-            <ArrowBack />
+            {/* <ArrowBack /> */}
+            <img src="/images/back.svg" alt="Back" />
           </IconButton>
           <Box
             sx={{
               position: "relative",
-              width: 140,
-              height: 140,
+              width: 250,
+              height: 120,
               flexShrink: 0,
             }}
           >
