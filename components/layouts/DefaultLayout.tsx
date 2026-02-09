@@ -23,6 +23,7 @@ import { APP_ROUTES } from "@/utils/routes";
 import { SOCIAL_LINKS } from "@/utils/constants";
 import { AiFillFacebook, AiFillInstagram, AiFillYoutube } from "react-icons/ai";
 import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
+import IdleRedirect from "@/components/ui/IdleRedirect";
 
 interface DefaultLayoutProps {
   children?: React.ReactNode;
@@ -229,6 +230,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
         <SideMenuComponent />
       </Drawer> */}
       <IdleVideoOverlay idleMs={120_000} src="/videos/leafwater2.mp4" />
+      <IdleRedirect idleMs={60_000} excludePaths={["/", "/admin", "/feedback"]} />
     </Fragment>
   );
 };
