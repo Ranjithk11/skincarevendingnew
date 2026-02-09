@@ -14,6 +14,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import PageBackground from "@/components/ui/PageBackground";
+import { HelpDialog } from "@/components/ui";
 import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { clearCart } from "@/redux/reducers/cartSlice";
@@ -34,6 +35,7 @@ export default function FeedbackPage() {
   const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
 
   const [checkoutSummary, setCheckoutSummary] = useState<any>(null);
   const [dispenseState, setDispenseState] = useState<
@@ -95,7 +97,7 @@ export default function FeedbackPage() {
       if (hasCompletedRef.current) return;
       if (isSubmitting) return;
       void goHome();
-    }, 60_000);
+    }, 180_000);
 
     return () => {
       if (autoHomeTimerRef.current !== null) {
@@ -322,7 +324,7 @@ export default function FeedbackPage() {
           </Box>
         </Box>
 
-        <Box sx={{ width: "min(860px, 100%)", mt: 5 }}>
+        <Box sx={{ width: "min(860px, 100%)", mt: 3 }}>
           <Box
             sx={{
               width: "100%",
@@ -548,7 +550,29 @@ export default function FeedbackPage() {
             alignItems: "center",
           }}
         >
-          <Typography sx={{ fontSize: 28, fontWeight: 800, mb: 2 }}>Need Help?</Typography>
+          <Box sx={{ display: "flex", alignItems: "center",  mb: 2,flexWrap: "nowrap", gap: 2 }}>
+            <Typography sx={{ fontSize: 28, fontWeight: 800 , whiteSpace: "nowrap", }}>Need Help?</Typography>
+            <Button
+              variant="outlined"
+              onClick={() => setHelpDialogOpen(true)}
+              sx={{
+                borderRadius: 2,
+                borderColor: "#2d5a3d",
+                color: "#2d5a3d",
+                fontSize: 18,
+                fontWeight: 600,
+                textTransform: "none",
+                px: 1,
+                py: 1,
+                "&:hover": {
+                  borderColor: "#1e3d2a",
+                  bgcolor: "#f0fdf4",
+                },
+              }}
+            >
+              Click Here
+            </Button>
+          </Box>
           <Box
             sx={{
               width: "100%",
@@ -592,6 +616,9 @@ export default function FeedbackPage() {
           </Box>
         </Box>
       </Box>
+
+      {/* Help Dialog */}
+      <HelpDialog open={helpDialogOpen} onClose={() => setHelpDialogOpen(false)} />
     </PageBackground>
   );
 }
