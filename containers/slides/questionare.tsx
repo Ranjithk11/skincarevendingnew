@@ -124,18 +124,31 @@ export default function Questionnaire() {
 
       if (e.key === " ") {
         e.preventDefault();
-        setValue(currentValue + " ");
+        // Only allow space for name and email fields
+        if (activeField !== "phone") {
+          setValue(currentValue + " ");
+        }
         return;
       }
 
       if (e.key.length !== 1) return;
 
-      if (activeField === "phone") {
-        if (!/^[0-9+\-() ]$/.test(e.key)) return;
-      }
-
       e.preventDefault();
-      setValue(currentValue + e.key);
+      
+      // Validation based on active field
+      if (activeField === "name") {
+        // Name: only letters (no special characters or numbers)
+        if (!/^[a-zA-Z]$/.test(e.key)) return;
+        setValue(currentValue + e.key);
+      } else if (activeField === "phone") {
+        // Phone: only digits, max 10 characters
+        if (!/^[0-9]$/.test(e.key)) return;
+        if (currentValue.length >= 10) return;
+        setValue(currentValue + e.key);
+      } else {
+        // Email: allow all characters
+        setValue(currentValue + e.key);
+      }
     };
 
     window.addEventListener("keydown", handler);
@@ -160,7 +173,10 @@ export default function Questionnaire() {
     if (key === "backspace") {
       setValue(currentValue.slice(0, -1));
     } else if (key === "space") {
-      setValue(currentValue + " ");
+      // Only allow space for name and email fields
+      if (activeField !== "phone") {
+        setValue(currentValue + " ");
+      }
     } else if (key === "shift") {
       setIsShift(!isShift);
     } else if (key === "123" || key === "ABC") {
@@ -176,9 +192,24 @@ export default function Questionnaire() {
         emailRef.current?.focus();
       }
     } else {
-      const char = isShift && !isNumeric ? key.toUpperCase() : key.toLowerCase();
-      setValue(currentValue + char);
-      if (isShift && !isNumeric) setIsShift(false);
+      // Validation based on active field
+      if (activeField === "name") {
+        // Name: only letters (no special characters or numbers)
+        if (!/^[a-zA-Z]$/.test(key)) return;
+        const char = isShift ? key.toUpperCase() : key.toLowerCase();
+        setValue(currentValue + char);
+        if (isShift) setIsShift(false);
+      } else if (activeField === "phone") {
+        // Phone: only digits, max 10 characters
+        if (!/^[0-9]$/.test(key)) return;
+        if (currentValue.length >= 10) return;
+        setValue(currentValue + key);
+      } else {
+        // Email: allow all characters
+        const char = isShift && !isNumeric ? key.toUpperCase() : key.toLowerCase();
+        setValue(currentValue + char);
+        if (isShift && !isNumeric) setIsShift(false);
+      }
     }
   };
 
