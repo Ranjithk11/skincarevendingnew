@@ -544,7 +544,8 @@ const TakeSelfie = () => {
         if (_res) {
           setCroppedFace(null);
           setIsImageUploading(false);
-          update({
+          // Update session with the new image
+          await update({
             ...session,
             user: {
               ...session?.user,
@@ -552,6 +553,48 @@ const TakeSelfie = () => {
               selfyImagePath: _res?.config?.url,
             },
           });
+          // Auto-start skin analysis after successful upload
+          const formValues = getValues();
+          getRecommnedSkinAttributes({
+            userId: resolvedUserId,
+            fileName: fileName,
+            skinType: formValues?.skinType as string,
+          })
+            .then((response: any) => {
+              console.log("Skin analysis response:", response);
+              if (response?.error?.data?.error) {
+                setSkinAttributeStatus({
+                  type: "ERROR",
+                  message: response?.error?.data?.error,
+                });
+              } else if (response?.error) {
+                setSkinAttributeStatus({
+                  type: "ERROR",
+                  message: response?.error?.message || "Analysis failed",
+                });
+              } else {
+                update({
+                  ...session,
+                  user: {
+                    ...session?.user,
+                    selfyImage: fileName,
+                    selfyImagePath: _res?.config?.url,
+                    skinTypes: formValues?.skinType?.replace("_", " "),
+                  },
+                });
+                setSkinAttributeStatus({
+                  type: "SUCCESS",
+                  message: response?.data?.message || "Analysis completed successfully!",
+                });
+              }
+            })
+            .catch((error) => {
+              console.error("Auto skin analysis error:", error);
+              setSkinAttributeStatus({
+                type: "ERROR",
+                message: "Analysis failed. Please try again.",
+              });
+            });
         }
       }
     } catch (error) {
@@ -667,17 +710,6 @@ const TakeSelfie = () => {
                     component="div"
                     className="selfy_image"
                   >
-                    <Card component="div" className="camera_icon">
-                      <IconButton
-                        onClick={() => {
-                          setSkinAttributeStatus(null);
-                          setOpenCamera(true);
-                        }}
-                        color="primary"
-                      >
-                        <Icon width={20} icon="bxs:camera" />
-                      </IconButton>
-                    </Card>
                     {skinAttributeStatus?.type === "ERROR" && (
                       <Box component="div" className="errorInfo">
                         <Icon width={55} color="white" icon="bx:error" />
@@ -747,25 +779,40 @@ const TakeSelfie = () => {
                           options={skinTypes}
                         />
                       </Box>
-                      <Button
-                        color={
-                          skinAttributeStatus?.type === "SUCCESS"
-                            ? "primary"
-                            : "secondary"
-                        }
-                        fullWidth
-                        onClick={() => {
-                          if (skinAttributeStatus?.type === "SUCCESS") {
-                            handleGetSkinRecommendations();
-                          } else {
-                            handleSkinAnalysis();
-                          }
-                        }}
-                      >
-                        {skinAttributeStatus?.type === "SUCCESS"
-                          ? "Get Our Recommendations"
-                          : "Start Skin Analysis"}
-                      </Button>
+                      {/* Only show button after analysis completes (SUCCESS or ERROR) */}
+                      {skinAttributeStatus?.type === "SUCCESS" && (
+                        <Button
+                          color="primary"
+                          fullWidth
+                          onClick={handleGetSkinRecommendations}
+                        >
+                          Get Our Recommendations
+                        </Button>
+                      )}
+                      {skinAttributeStatus?.type === "ERROR" && (
+                        <Button
+                          color="secondary"
+                          fullWidth
+                          onClick={handleSkinAnalysis}
+                        >
+                          Retry Analysis
+                        </Button>
+                      )}
+                      {/* Retake Button - only show after analysis completes */}
+                      {(skinAttributeStatus?.type === "SUCCESS" || skinAttributeStatus?.type === "ERROR") && (
+                        <Button
+                          color="inherit"
+                          variant="outlined"
+                          fullWidth
+                          sx={{ mt: 2, borderColor: "#9ca3af", color: "#1a1a1a" }}
+                          onClick={() => {
+                            setSkinAttributeStatus(null);
+                            setOpenCamera(true);
+                          }}
+                        >
+                          Retake Photo
+                        </Button>
+                      )}
                     </Box>
                   )}
                 </Fragment>

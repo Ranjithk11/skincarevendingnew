@@ -149,11 +149,25 @@ export default function Slide1({
             <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Phone Number</Typography>
             <MuiTelInput
               value={phone}
-              onChange={(value) => {
-                // Limit to 10 digits after country code
-                const parts = value.split(' ');
-                const nationalNumber = parts.slice(1).join('').replace(/\D/g, '');
-                if (nationalNumber.length <= 10) {
+              onChange={(value, info) => {
+                // Use country-specific validation
+                // Different countries have different phone number lengths
+                // India: 10 digits, US: 10 digits, UK: 10-11 digits, etc.
+                const nationalNumber = info.nationalNumber || '';
+                const countryCode = info.countryCallingCode || '';
+                
+                // Define max lengths per country code
+                const maxLengthByCountry: { [key: string]: number } = {
+                  '91': 10,  // India
+                  '1': 10,   // US/Canada
+                  '44': 11,  // UK
+                  '61': 9,   // Australia
+                  '86': 11,  // China
+                };
+                
+                const maxLength = maxLengthByCountry[countryCode] || 15; // Default to 15 for unknown countries
+                
+                if (nationalNumber.length <= maxLength) {
                   setPhone(value);
                 }
               }}

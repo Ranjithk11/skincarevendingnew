@@ -63,7 +63,7 @@ export default function VirtualKeyboard({
       sx={{
         width: "100%",
         bgcolor: "#d1d5db",
-        px: 2,
+        px: 1,
         py: 2,
         pb: 4,
         "& .simple-keyboard": {
@@ -72,7 +72,7 @@ export default function VirtualKeyboard({
           fontFamily: "Roboto, sans-serif",
         },
         "& .hg-button": {
-          height: "90px",
+          height: "70px",
           fontSize: "24px",
           fontWeight: 500,
           backgroundColor: "#f3f4f6",
@@ -93,7 +93,7 @@ export default function VirtualKeyboard({
           minWidth: "200px",
         },
         "& .hg-row": {
-          marginBottom: "12px",
+          marginBottom: "8px",
         },
       }}
     >

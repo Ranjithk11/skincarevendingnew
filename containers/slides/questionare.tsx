@@ -71,7 +71,7 @@ export default function Questionnaire() {
   const dispatch = useAppDispatch();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+91");
   const [email, setEmail] = useState("");
   const [activeField, setActiveField] = useState<"name" | "phone" | "email">("name");
   const [cursorPosition, setCursorPosition] = useState<number | null>(null); // null = end of text
@@ -153,17 +153,32 @@ export default function Questionnaire() {
         setCursorPosition(pos + 1);
         if (isShift) setIsShift(false);
       } else if (activeField === "phone") {
-        // Phone: only digits, max 10 digits after country code
+        // Phone: only digits
         if (!/^[0-9]$/.test(key)) return;
-        // MuiTelInput format: "+91 98765 43210" - extract national number (after country code)
-        // Remove all non-digits to get full number, then remove country code (first 2 digits for India)
+        // Extract country code and national number from phone
+        // Phone format: "+91 XXXXX" or "+1 XXX XXX XXXX"
         const allDigits = phone.replace(/\D/g, '');
-        // Country code is typically 1-3 digits, for India it's 91
-        // The phone value starts with country code, so we need to find where national number starts
-        // For simplicity, count digits after the first space (which separates country code from number)
-        const parts = phone.split(' ');
-        const nationalNumber = parts.slice(1).join('').replace(/\D/g, '');
-        if (nationalNumber.length >= 10) return; // Max 10 digits for national number
+        
+        // Determine country code length and max national number length
+        let countryCodeLength = 2; // Default for India (91)
+        let maxNationalLength = 10; // Default for India
+        
+        if (phone.startsWith('+1')) {
+          countryCodeLength = 1; // US/Canada
+          maxNationalLength = 10;
+        } else if (phone.startsWith('+44')) {
+          countryCodeLength = 2;
+          maxNationalLength = 11; // UK
+        } else if (phone.startsWith('+61')) {
+          countryCodeLength = 2;
+          maxNationalLength = 9; // Australia
+        } else if (phone.startsWith('+86')) {
+          countryCodeLength = 2;
+          maxNationalLength = 11; // China
+        }
+        
+        const nationalDigits = allDigits.length - countryCodeLength;
+        if (nationalDigits >= maxNationalLength) return;
         setPhone(phone + key);
       } else {
         // Email: allow all characters
