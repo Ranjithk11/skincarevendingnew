@@ -79,6 +79,7 @@
     "react-modal-video": "^2.0.2",
     "react-otp-input": "^3.1.0",
     "react-redux": "^8.1.2",
+    "react-simple-keyboard": "^3.8.155",
     "react-slick": "^0.29.0",
     "react-spinners": "^0.13.8",
     "react-sticky-el": "^2.1.1",

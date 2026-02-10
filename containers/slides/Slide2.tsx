@@ -110,8 +110,8 @@ export default function Slide2({
                   cursor: "pointer",
                   border:
                     selectedSkinType === option.id
-                      ? "2px solid #2d5a3d"
-                      : "1px solid #e5e7eb",
+                      ? "5px solid #2d5a3d"
+                      : "5px solid #c4c6c9ff",
                   transition: "all 0.2s ease",
                   display: "flex",
                   alignItems: "flex-start",

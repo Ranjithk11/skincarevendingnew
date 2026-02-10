@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Box, IconButton, Typography } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
 import Image from "next/image";
@@ -23,15 +23,19 @@ const isValidateEmail = (input: string): boolean | string => {
   return "Please enter a valid email address";
 };
 
-// Phone validation - validates Indian phone numbers (10 digits)
+// Phone validation - validates phone numbers from MuiTelInput (includes country code)
 const isValidatePhone = (input: string): boolean | string => {
-  // Remove all non-digit characters for validation
-  const digitsOnly = input.replace(/\D/g, '');
-  // Indian phone numbers should be exactly 10 digits
-  if (digitsOnly.length === 10 && /^[6-9]\d{9}$/.test(digitsOnly)) {
+  // MuiTelInput format: "+91 98765 43210" or "+1 555 123 4567"
+  // Remove spaces for validation
+  const cleanPhone = input.replace(/\s/g, '');
+  // Extract digits only (without the +)
+  const digitsOnly = cleanPhone.replace(/\D/g, '');
+  // Must have at least 10 digits (country code + phone number)
+  // e.g., +91 9876543210 = 12 digits, +1 5551234567 = 11 digits
+  if (digitsOnly.length >= 10) {
     return true;
   }
-  return "Please enter a valid 10-digit phone number";
+  return "Please enter a valid phone number";
 };
 
 const skinTypeOptions = [
@@ -70,15 +74,12 @@ export default function Questionnaire() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [activeField, setActiveField] = useState<"name" | "phone" | "email">("name");
+  const [cursorPosition, setCursorPosition] = useState<number | null>(null); // null = end of text
   const [isShift, setIsShift] = useState(true);
   const [isNumeric, setIsNumeric] = useState(false);
   const [selectedSkinType, setSelectedSkinType] = useState<string>("");
   const [validationError, setValidationError] = useState<string>("");
   const [machineLocation, setMachineLocation] = useState<string>("vendingMachine_Default");
-
-  const nameRef = useRef<HTMLInputElement>(null);
-  const phoneRef = useRef<HTMLInputElement>(null);
-  const emailRef = useRef<HTMLInputElement>(null);
 
   const totalSlides = 2;
 
@@ -91,91 +92,41 @@ export default function Questionnaire() {
     }
   }, []);
 
-  useEffect(() => {
-    if (currentSlide !== 0) return;
-
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      const setValue =
-        activeField === "name" ? setName : activeField === "phone" ? setPhone : setEmail;
-      const currentValue =
-        activeField === "name" ? name : activeField === "phone" ? phone : email;
-
-      if (e.key === "Backspace") {
-        e.preventDefault();
-        setValue(currentValue.slice(0, -1));
-        return;
-      }
-
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (activeField === "name") {
-          setActiveField("phone");
-          setIsNumeric(true);
-          phoneRef.current?.focus();
-        } else if (activeField === "phone") {
-          setActiveField("email");
-          setIsNumeric(false);
-          emailRef.current?.focus();
-        }
-        return;
-      }
-
-      if (e.key === " ") {
-        e.preventDefault();
-        // Only allow space for name and email fields
-        if (activeField !== "phone") {
-          setValue(currentValue + " ");
-        }
-        return;
-      }
-
-      if (e.key.length !== 1) return;
-
-      e.preventDefault();
-      
-      // Validation based on active field
-      if (activeField === "name") {
-        // Name: only letters (no special characters or numbers)
-        if (!/^[a-zA-Z]$/.test(e.key)) return;
-        setValue(currentValue + e.key);
-      } else if (activeField === "phone") {
-        // Phone: only digits, max 10 characters
-        if (!/^[0-9]$/.test(e.key)) return;
-        if (currentValue.length >= 10) return;
-        setValue(currentValue + e.key);
-      } else {
-        // Email: allow all characters
-        setValue(currentValue + e.key);
-      }
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [
-    activeField,
-    currentSlide,
-    email,
-    name,
-    phone,
-    setActiveField,
-    setEmail,
-    setIsNumeric,
-    setName,
-    setPhone,
-  ]);
-
-  const handleKeyPress = (key: string) => {
+  const handleKeyPress = useCallback((key: string) => {
     const setValue = activeField === "name" ? setName : activeField === "phone" ? setPhone : setEmail;
     const currentValue = activeField === "name" ? name : activeField === "phone" ? phone : email;
+    
+    // Get effective cursor position (null means end of text)
+    const pos = cursorPosition !== null ? cursorPosition : currentValue.length;
 
     if (key === "backspace") {
-      setValue(currentValue.slice(0, -1));
+      if (activeField === "phone") {
+        // For phone, just remove last character
+        setValue(currentValue.slice(0, -1));
+      } else {
+        // For name/email, remove character at cursor position
+        if (pos > 0) {
+          const newValue = currentValue.slice(0, pos - 1) + currentValue.slice(pos);
+          setValue(newValue);
+          setCursorPosition(pos - 1);
+        }
+      }
+    } else if (key === "arrowleft") {
+      // Move cursor left (only for name/email)
+      if (activeField !== "phone" && pos > 0) {
+        setCursorPosition(pos - 1);
+      }
+    } else if (key === "arrowright") {
+      // Move cursor right (only for name/email)
+      if (activeField !== "phone" && pos < currentValue.length) {
+        setCursorPosition(pos + 1);
+      }
     } else if (key === "space") {
       // Only allow space for name and email fields
       if (activeField !== "phone") {
-        setValue(currentValue + " ");
+        const newValue = currentValue.slice(0, pos) + " " + currentValue.slice(pos);
+        setValue(newValue);
+        setCursorPosition(pos + 1);
       }
     } else if (key === "shift") {
       setIsShift(!isShift);
@@ -185,11 +136,11 @@ export default function Questionnaire() {
       if (activeField === "name") {
         setActiveField("phone");
         setIsNumeric(true);
-        phoneRef.current?.focus();
+        setCursorPosition(null); // Reset cursor for new field
       } else if (activeField === "phone") {
         setActiveField("email");
         setIsNumeric(false);
-        emailRef.current?.focus();
+        setCursorPosition(null); // Reset cursor for new field
       }
     } else {
       // Validation based on active field
@@ -197,21 +148,80 @@ export default function Questionnaire() {
         // Name: only letters (no special characters or numbers)
         if (!/^[a-zA-Z]$/.test(key)) return;
         const char = isShift ? key.toUpperCase() : key.toLowerCase();
-        setValue(currentValue + char);
+        const newValue = currentValue.slice(0, pos) + char + currentValue.slice(pos);
+        setValue(newValue);
+        setCursorPosition(pos + 1);
         if (isShift) setIsShift(false);
       } else if (activeField === "phone") {
-        // Phone: only digits, max 10 characters
+        // Phone: only digits, max 10 digits after country code
         if (!/^[0-9]$/.test(key)) return;
-        if (currentValue.length >= 10) return;
-        setValue(currentValue + key);
+        // MuiTelInput format: "+91 98765 43210" - extract national number (after country code)
+        // Remove all non-digits to get full number, then remove country code (first 2 digits for India)
+        const allDigits = phone.replace(/\D/g, '');
+        // Country code is typically 1-3 digits, for India it's 91
+        // The phone value starts with country code, so we need to find where national number starts
+        // For simplicity, count digits after the first space (which separates country code from number)
+        const parts = phone.split(' ');
+        const nationalNumber = parts.slice(1).join('').replace(/\D/g, '');
+        if (nationalNumber.length >= 10) return; // Max 10 digits for national number
+        setPhone(phone + key);
       } else {
         // Email: allow all characters
         const char = isShift && !isNumeric ? key.toUpperCase() : key.toLowerCase();
-        setValue(currentValue + char);
+        const newValue = currentValue.slice(0, pos) + char + currentValue.slice(pos);
+        setValue(newValue);
+        setCursorPosition(pos + 1);
         if (isShift && !isNumeric) setIsShift(false);
       }
     }
-  };
+  }, [activeField, name, phone, email, isShift, isNumeric, cursorPosition]);
+
+  // Physical keyboard support
+  useEffect(() => {
+    if (currentSlide !== 0) return;
+
+    const handlePhysicalKeyboard = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key === "Backspace") {
+        e.preventDefault();
+        handleKeyPress("backspace");
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleKeyPress("return");
+        return;
+      }
+
+      if (e.key === " ") {
+        e.preventDefault();
+        handleKeyPress("space");
+        return;
+      }
+
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handleKeyPress("arrowleft");
+        return;
+      }
+
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleKeyPress("arrowright");
+        return;
+      }
+
+      if (e.key.length === 1) {
+        e.preventDefault();
+        handleKeyPress(e.key);
+      }
+    };
+
+    window.addEventListener("keydown", handlePhysicalKeyboard);
+    return () => window.removeEventListener("keydown", handlePhysicalKeyboard);
+  }, [currentSlide, handleKeyPress]);
 
   const handleNext = async (overrideSkinType?: string) => {
     // Validate fields on Slide 1
@@ -284,9 +294,9 @@ export default function Questionnaire() {
       return;
     }
 
-    const countryCode = "91";
-    const digitsOnlyPhone = phone.replace(/\D/g, "");
-    const formattedPhoneNumber = `+${countryCode}${digitsOnlyPhone}`;
+    // MuiTelInput already includes country code in the phone value (e.g., "+91 98765 43210")
+    // Remove spaces and format for API
+    const formattedPhoneNumber = phone.replace(/\s/g, "");
 
     const skinTypeIdByOption: Record<string, string> = {
       normal: "NORMAL_SKIN",
@@ -307,7 +317,6 @@ export default function Questionnaire() {
         phoneNumber: formattedPhoneNumber,
         name,
         email,
-        countryCode,
         location: machineLocation,
         skinType: skinTypeId,
         onBoardingQuestions: JSON.stringify([]),
@@ -405,13 +414,12 @@ export default function Questionnaire() {
             phone={phone}
             email={email}
             activeField={activeField}
-            isShift={isShift}
+            cursorPosition={cursorPosition}
             isNumeric={isNumeric}
-            nameRef={nameRef}
-            phoneRef={phoneRef}
-            emailRef={emailRef}
             setActiveField={setActiveField}
+            setCursorPosition={setCursorPosition}
             setIsNumeric={setIsNumeric}
+            setPhone={setPhone}
             handleKeyPress={handleKeyPress}
             handleNext={handleNext}
             currentSlide={currentSlide}

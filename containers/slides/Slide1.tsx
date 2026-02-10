@@ -1,58 +1,43 @@
 "use client";
 
 import { Box, Typography, TextField } from "@mui/material";
-import { Backspace } from "@mui/icons-material";
-import { RefObject } from "react";
+import { MuiTelInput } from "mui-tel-input";
 import PageBackground from "@/components/ui/PageBackground";
+import { VirtualKeyboard } from "@/components/ui";
 
 interface Slide1Props {
   name: string;
   phone: string;
   email: string;
   activeField: "name" | "phone" | "email";
-  isShift: boolean;
+  cursorPosition: number | null;
   isNumeric: boolean;
-  nameRef: RefObject<HTMLInputElement | null>;
-  phoneRef: RefObject<HTMLInputElement | null>;
-  emailRef: RefObject<HTMLInputElement | null>;
   setActiveField: (field: "name" | "phone" | "email") => void;
+  setCursorPosition: (pos: number | null) => void;
   setIsNumeric: (value: boolean) => void;
+  setPhone: (value: string) => void;
   handleKeyPress: (key: string) => void;
   handleNext: () => void;
   currentSlide: number;
   validationError?: string;
 }
 
-const letterKeys = [
-  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-  ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-  ["Z", "X", "C", "V", "B", "N", "M"],
-];
-
-const numericKeys = [
-  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-  ["-", "/", ":", ";", "(", ")", "$", "&", "@", '"'],
-  [".", ",", "?", "!", "'"],
-];
-
 export default function Slide1({
   name,
   phone,
   email,
   activeField,
-  isShift,
+  cursorPosition,
   isNumeric,
-  nameRef,
-  phoneRef,
-  emailRef,
   setActiveField,
+  setCursorPosition,
   setIsNumeric,
+  setPhone,
   handleKeyPress,
   handleNext,
   currentSlide,
   validationError,
 }: Slide1Props) {
-  const keys = isNumeric ? numericKeys : letterKeys;
 
   return (
     <Box
@@ -70,7 +55,7 @@ export default function Slide1({
     >
       <PageBackground showGreenCurve fitParent>
         {/* Form Content */}
-        <Box sx={{ px: 3, pt: 3, pb: 2, flex: 1, overflow: "auto" }}>
+        <Box sx={{ px: 3, pt: 3, pb: 2 }}>
           <Box
             sx={{
               width: "894px",
@@ -110,108 +95,162 @@ export default function Slide1({
 
             {/* Name Field */}
             <Typography sx={{ color: "#000", fontSize: "36px", mb: 0.5 }}>Name</Typography>
-            <TextField
-              inputRef={nameRef}
-              fullWidth
-              value={name}
-              onFocus={() => {
+            <Box
+              onClick={() => {
                 setActiveField("name");
                 setIsNumeric(false);
+                setCursorPosition(null); // Set cursor to end when clicking
               }}
-              InputProps={{ readOnly: true }}
               sx={{
-                mb: 0,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                  bgcolor: "white",
-                  minHeight: "72px",
-                  "& fieldset": {
-                    borderColor: activeField === "name" ? "#2d5a3d" : "#9ca3af",
-                    borderWidth: 2,
-                  },
-                  "&:hover fieldset": {
-                    borderColor: activeField === "name" ? "#2d5a3d" : "#6b7280",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#2d5a3d",
-                  },
-                },
-                "& .MuiOutlinedInput-input": {
-                  py: "18px",
-                  fontSize: "28px",
+                display: "flex",
+                alignItems: "center",
+                borderRadius: 2,
+                bgcolor: "white",
+                minHeight: "72px",
+                border: `5px solid ${activeField === "name" ? "#2d5a3d" : "#9ca3af"}`,
+                px: 2,
+                cursor: "text",
+                "&:hover": {
+                  borderColor: activeField === "name" ? "#2d5a3d" : "#6b7280",
                 },
               }}
-            />
+            >
+              <Typography sx={{ fontSize: "28px", color: name ? "#1a1a1a" : "#9ca3af", display: "flex", alignItems: "center" }}>
+                {activeField === "name" ? (
+                  <>
+                    {name.length === 0 && cursorPosition === null && (
+                      <Box component="span" sx={{ color: "#9ca3af", position: "absolute" }}>Enter your name</Box>
+                    )}
+                    {name.slice(0, cursorPosition !== null ? cursorPosition : name.length)}
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "inline-block",
+                        width: "2px",
+                        height: "28px",
+                        bgcolor: "#2d5a3d",
+                        mx: 0.25,
+                        animation: "blink 1s step-end infinite",
+                        "@keyframes blink": {
+                          "0%, 100%": { opacity: 1 },
+                          "50%": { opacity: 0 },
+                        },
+                      }}
+                    />
+                    {name.slice(cursorPosition !== null ? cursorPosition : name.length)}
+                  </>
+                ) : (
+                  name || <Box component="span" sx={{ color: "#9ca3af" }}>Enter your name</Box>
+                )}
+              </Typography>
+            </Box>
 
             {/* Phone Number Field */}
             <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Phone Number</Typography>
-            <TextField
-              inputRef={phoneRef}
-              fullWidth
+            <MuiTelInput
               value={phone}
+              onChange={(value) => {
+                // Limit to 10 digits after country code
+                const parts = value.split(' ');
+                const nationalNumber = parts.slice(1).join('').replace(/\D/g, '');
+                if (nationalNumber.length <= 10) {
+                  setPhone(value);
+                }
+              }}
+              defaultCountry="IN"
+              focusOnSelectCountry
+              forceCallingCode
               onFocus={() => {
                 setActiveField("phone");
                 setIsNumeric(true);
               }}
-              InputProps={{ readOnly: true }}
               sx={{
-                mb: 0,
                 "& .MuiOutlinedInput-root": {
                   borderRadius: 2,
                   bgcolor: "white",
-                  minHeight: "72px",
+                  minHeight: "80px",
                   "& fieldset": {
                     borderColor: activeField === "phone" ? "#2d5a3d" : "#9ca3af",
-                    borderWidth: 2,
+                    borderWidth: 5,
                   },
                   "&:hover fieldset": {
                     borderColor: activeField === "phone" ? "#2d5a3d" : "#6b7280",
                   },
                   "&.Mui-focused fieldset": {
                     borderColor: "#2d5a3d",
+                    borderWidth: 5, 
                   },
                 },
                 "& .MuiOutlinedInput-input": {
-                  py: "18px",
+                  py: "20px",
                   fontSize: "28px",
+                },
+                "& .MuiTelInput-Flag": {
+                  width: "36px",
+                  height: "36px",
+                },
+                "& .MuiTelInput-IconButton": {
+                  "& svg": {
+                    fontSize: "28px",
+                  },
+                },
+                "& .MuiTelInput-Typography": {
+                  fontSize: "24px",
                 },
               }}
             />
 
             {/* Email Field */}
             <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Email </Typography>
-            <TextField
-              inputRef={emailRef}
-              fullWidth
-              value={email}
-              onFocus={() => {
+            <Box
+              onClick={() => {
                 setActiveField("email");
                 setIsNumeric(false);
+                setCursorPosition(null); // Set cursor to end when clicking
               }}
-              InputProps={{ readOnly: true }}
               sx={{
-                mb: 0,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                  bgcolor: "white",
-                  minHeight: "72px",
-                  "& fieldset": {
-                    borderColor: activeField === "email" ? "#2d5a3d" : "#9ca3af",
-                    borderWidth: 2,
-                  },
-                  "&:hover fieldset": {
-                    borderColor: activeField === "email" ? "#2d5a3d" : "#6b7280",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#2d5a3d",
-                  },
-                },
-                "& .MuiOutlinedInput-input": {
-                  py: "18px",
-                  fontSize: "28px",
+                display: "flex",
+                alignItems: "center",
+                borderRadius: 2,
+                bgcolor: "white",
+                minHeight: "72px",
+                border: `5px solid ${activeField === "email" ? "#2d5a3d" : "#9ca3af"}`,
+                px: 2,
+                cursor: "text",
+                "&:hover": {
+                  borderColor: activeField === "email" ? "#2d5a3d" : "#6b7280",
                 },
               }}
-            />
+            >
+              <Typography sx={{ fontSize: "28px", color: email ? "#1a1a1a" : "#9ca3af", display: "flex", alignItems: "center" }}>
+                {activeField === "email" ? (
+                  <>
+                    {email.length === 0 && cursorPosition === null && (
+                      <Box component="span" sx={{ color: "#9ca3af", position: "absolute" }}>Enter your email</Box>
+                    )}
+                    {email.slice(0, cursorPosition !== null ? cursorPosition : email.length)}
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "inline-block",
+                        width: "2px",
+                        height: "28px",
+                        bgcolor: "#2d5a3d",
+                        mx: 0.25,
+                        animation: "blink 1s step-end infinite",
+                        "@keyframes blink": {
+                          "0%, 100%": { opacity: 1 },
+                          "50%": { opacity: 0 },
+                        },
+                      }}
+                    />
+                    {email.slice(cursorPosition !== null ? cursorPosition : email.length)}
+                  </>
+                ) : (
+                  email || <Box component="span" sx={{ color: "#9ca3af" }}>Enter your email</Box>
+                )}
+              </Typography>
+            </Box>
           </Box>
         </Box>
 
@@ -233,134 +272,18 @@ export default function Slide1({
             textAlign: "center",
             cursor: "pointer",
             flexShrink: 0,
+            marginTop: "auto",
           }}
           onClick={handleNext}
         >
           <Typography sx={{ color: "white", fontWeight: 600, fontSize: "30px" }}>Next</Typography>
         </Box>
 
-        {/* Custom Keyboard */}
-        <Box
-          sx={{
-            bgcolor: "#d1d5db",
-            px: 2,
-            py: 6,
-            pb: 12,
-            flexShrink: 0,
-          }}
-        >
-          {keys.map((row, rowIndex) => (
-            <Box key={rowIndex} sx={{ display: "flex", justifyContent: "center", gap: 1, mb: 1 }}>
-              {rowIndex === 2 && !isNumeric && (
-                <Box
-                  onClick={() => handleKeyPress("shift")}
-                  sx={{
-                    width: 100,
-                    height: 100,
-                    bgcolor: isShift ? "#9ca3af" : "#f3f4f6",
-                    borderRadius: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <Typography sx={{ fontSize: "1.2rem" }}>⇧</Typography>
-                </Box>
-              )}
-              {row.map((key) => (
-                <Box
-                  key={key}
-                  onClick={() => handleKeyPress(key)}
-                  sx={{
-                    width: 60,
-                    height: 80,
-                    bgcolor: "#f3f4f6",
-                    borderRadius: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <Typography sx={{ fontSize: "1.2rem", fontWeight: 500 }}>
-                    {isShift && !isNumeric ? key : key.toLowerCase()}
-                  </Typography>
-                </Box>
-              ))}
-              {rowIndex === 2 && (
-                <Box
-                  onClick={() => handleKeyPress("backspace")}
-                  sx={{
-                    width: 60,
-                    height: 80,
-                    bgcolor: "#f3f4f6",
-                    borderRadius: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <Backspace sx={{ fontSize: "1.1rem", color: "#374151" }} />
-                </Box>
-              )}
-            </Box>
-          ))}
-
-          {/* Bottom Row */}
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5, mt: 1 }}>
-            <Box
-              onClick={() => handleKeyPress(isNumeric ? "ABC" : "123")}
-              sx={{
-                width: 100,
-                height: 80,
-                bgcolor: "#9ca3af",
-                borderRadius: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>{isNumeric ? "ABC" : "123"}</Typography>
-            </Box>
-            <Box
-              onClick={() => handleKeyPress("space")}
-              sx={{
-                flex: 1,
-                maxWidth: 200,
-                height: 80,
-                bgcolor: "#f3f4f6",
-                borderRadius: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Typography sx={{ fontSize: "0.85rem", color: "#6b7280" }}>space</Typography>
-            </Box>
-            <Box
-              onClick={() => handleKeyPress("return")}
-              sx={{
-                width: 100,
-                height: 80,
-                bgcolor: "#9ca3af",
-                borderRadius: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>return</Typography>
-            </Box>
-          </Box>
-        </Box>
+        {/* Virtual Keyboard */}
+        <VirtualKeyboard
+          onKeyPress={handleKeyPress}
+          layout={activeField === "email" ? "email" : isNumeric ? "numeric" : "default"}
+        />
       </PageBackground>
     </Box>
   ); 
