@@ -225,13 +225,13 @@ const SkinAnalysisRecommendation = () => {
       )}
 
       <Box component="div" className="floating-actions">
-        <Paper
+        {/* <Paper
           onClick={handleWhatsAppClick}
           component="div"
           className="whatsapp-button"
         >
           <Icon icon="logos:whatsapp-icon" />
-        </Paper>
+        </Paper> */}
         <Paper
           onClick={handleScrollToTop}
           component="div"

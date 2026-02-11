@@ -136,6 +136,7 @@ body {
   transform: none;
   // top: 22%;
   backface-visibility: hidden;
+  z-index: 10;
 }
 
 .ocrloader span {
@@ -143,13 +144,21 @@ body {
   left: 0;
   top: 0;
   width: 100%;
-  height: 2px;
+  height: 4px;
   background-color: #18c89b;
-  box-shadow: 0 0 10px 1px #18c89b, 0 0 1px 1px #18c89b;
-  z-index: 1;
+  box-shadow: 0 0 15px 2px #18c89b, 0 0 5px 2px #18c89b;
+  z-index: 100;
   transform: translateY(0);
-  animation: move 1.7s ease-in-out;
-  animation-iteration-count: infinite;
+  animation: scanning 4s ease-in-out infinite;
+}
+
+@keyframes scanning {
+  0%, 100% {
+    top: 0;
+  }
+  50% {
+    top: calc(100% - 4px);
+  }
 }
 
 .ocrloader:before,

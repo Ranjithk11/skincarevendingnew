@@ -13,6 +13,7 @@ import { PageBackground } from "@/components/ui";
 import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { setSkinType } from "@/redux/reducers/analysisSlice";
+import { clearCart } from "@/redux/reducers/cartSlice";
 
 // Email validation - same as Skincare project
 const isValidateEmail = (input: string): boolean | string => {
@@ -324,6 +325,8 @@ export default function Questionnaire() {
     const skinTypeId = skinTypeIdByOption[skinType] ?? skinType;
 
     try {
+      // Clear cart before signing out to ensure new user gets empty cart
+      dispatch(clearCart());
       await signOut({ redirect: false });
       // Use signIn which handles both user save and session creation (single API call)
       const authResponse = await signIn("credentials", {

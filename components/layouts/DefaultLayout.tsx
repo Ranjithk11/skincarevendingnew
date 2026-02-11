@@ -20,6 +20,8 @@ import { useRouter, usePathname } from "next/navigation";
 import LoginIcon from "@mui/icons-material/Login";
 import SideMenuComponent from "@/views/home/selfie/SideMenu";
 import { APP_ROUTES } from "@/utils/routes";
+import { useAppDispatch } from "@/redux/store/store";
+import { clearCart } from "@/redux/reducers/cartSlice";
 import { SOCIAL_LINKS } from "@/utils/constants";
 import { AiFillFacebook, AiFillInstagram, AiFillYoutube } from "react-icons/ai";
 import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
@@ -44,6 +46,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<boolean>(false);
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const dispatch = useAppDispatch();
   const handleSocialLinkNavigation = (url: string) => {
     window.open(url, "_blank");
   };
@@ -160,6 +163,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
             <Grid item paddingLeft={isMobile ? 0 : 5}>
               <IconButton
                 onClick={() => {
+                  dispatch(clearCart());
                   signOut().then(() => {
                     router.push("https://leafwater.in/");
                   });
@@ -178,6 +182,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
               <Button
                 variant="text"
                 onClick={() => {
+                  dispatch(clearCart());
                   signOut().then(() => {
                     router.push("https://leafwater.in/");
                   });
@@ -205,6 +210,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
               <Grid item paddingLeft={isMobile ? 0 : 5}>
                 <IconButton
                   onClick={() => {
+                    dispatch(clearCart());
                     signOut().then(() => {
                       router.push("/");
                     });

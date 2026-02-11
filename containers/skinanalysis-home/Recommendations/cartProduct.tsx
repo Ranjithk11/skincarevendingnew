@@ -652,7 +652,14 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                     >
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => setQuantity(key, Math.max(1, (item.quantity || 1) - 1))}
+                                                            onClick={() => {
+                                                                const newQty = (item.quantity || 1) - 1;
+                                                                if (newQty <= 0) {
+                                                                    removeItem(key);
+                                                                } else {
+                                                                    setQuantity(key, newQty);
+                                                                }
+                                                            }}
                                                             sx={{ borderRadius: 0, width: 30, height: 30 }}
                                                         >
                                                             <Icon icon="mdi:minus" />

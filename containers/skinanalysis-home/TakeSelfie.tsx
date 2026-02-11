@@ -303,6 +303,7 @@ const TakeSelfie = () => {
   const [initializing, setInitializing] = useState(false);
   const [croppedFace, setCroppedFace] = useState(null);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
+  const [isAutoAnalyzing, setIsAutoAnalyzing] = useState<boolean>(false);
   const [openCamera, setOpenCamera] = useState<boolean>(true);
   const [image, setImage] = useState<any>(null);
   const imageRef = useRef<any>();
@@ -555,6 +556,7 @@ const TakeSelfie = () => {
           });
           // Auto-start skin analysis after successful upload
           const formValues = getValues();
+          setIsAutoAnalyzing(true);
           getRecommnedSkinAttributes({
             userId: resolvedUserId,
             fileName: fileName,
@@ -562,6 +564,7 @@ const TakeSelfie = () => {
           })
             .then((response: any) => {
               console.log("Skin analysis response:", response);
+              setIsAutoAnalyzing(false);
               if (response?.error?.data?.error) {
                 setSkinAttributeStatus({
                   type: "ERROR",
@@ -590,6 +593,7 @@ const TakeSelfie = () => {
             })
             .catch((error) => {
               console.error("Auto skin analysis error:", error);
+              setIsAutoAnalyzing(false);
               setSkinAttributeStatus({
                 type: "ERROR",
                 message: "Analysis failed. Please try again.",
@@ -698,11 +702,11 @@ const TakeSelfie = () => {
               return (
                 <>
             {(isImageUploading ||
-              (isLoadingImageInfo && !dataImageInfo?.data?.url)) && (
+              (isLoadingImageInfo && !dataImageInfo?.data?.url && !isAutoAnalyzing && !image)) && (
               <LoadingComponent />
             )}
             {!isImageUploading &&
-              !isLoadingImageInfo &&
+              (!isLoadingImageInfo || isAutoAnalyzing) &&
               previewUrl && (
                 <Fragment>
                   <Box
@@ -750,7 +754,7 @@ const TakeSelfie = () => {
                         </Button> */}
                       </Box>
                     )}
-                    {isLoadingSkinAttributes && (
+                    {(isLoadingSkinAttributes || isAutoAnalyzing) && (
                       <div className="ocrloader">
                         <p>Analysing...</p>
                         <em></em>
@@ -758,7 +762,7 @@ const TakeSelfie = () => {
                       </div>
                     )}
                   </Box>
-                  {!isLoadingSkinAttributes && (
+                  {!isLoadingSkinAttributes && !isAutoAnalyzing && (
                     <Box
                       mt={3}
                       sx={{
