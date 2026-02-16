@@ -31,19 +31,53 @@ type RazorpayPaymentSuccessResponse = {
   razorpay_signature: string;
 };
 
-const loadRazorpayScript = () => {
+const loadRazorpayScript = (retries = 3): Promise<boolean> => {
   return new Promise<boolean>((resolve) => {
     if (typeof window === "undefined") return resolve(false);
 
-    if (document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]')) {
+    // Check if Razorpay is already loaded
+    if (typeof window.Razorpay === "function") {
       return resolve(true);
+    }
+
+    // Check if script tag exists
+    const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existingScript) {
+      // Script exists but Razorpay not loaded - wait a bit
+      setTimeout(() => {
+        if (typeof window.Razorpay === "function") {
+          resolve(true);
+        } else if (retries > 0) {
+          // Remove failed script and retry
+          existingScript.remove();
+          loadRazorpayScript(retries - 1).then(resolve);
+        } else {
+          resolve(false);
+        }
+      }, 1000);
+      return;
     }
 
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
+    script.onload = () => {
+      // Verify Razorpay is actually available
+      setTimeout(() => {
+        resolve(typeof window.Razorpay === "function");
+      }, 100);
+    };
+    script.onerror = () => {
+      console.error("[Razorpay] Script failed to load, retries left:", retries - 1);
+      if (retries > 1) {
+        script.remove();
+        setTimeout(() => {
+          loadRazorpayScript(retries - 1).then(resolve);
+        }, 1000);
+      } else {
+        resolve(false);
+      }
+    };
     document.body.appendChild(script);
   });
 };
@@ -118,7 +152,7 @@ export default function RazorpayCheckoutButton({
 
       const loaded = await loadRazorpayScript();
       if (!loaded || typeof window.Razorpay !== "function") {
-        reportError("Failed to load Razorpay checkout");
+        reportError("Failed to load Razorpay checkout. Please check your internet connection.");
         return;
       }
 
