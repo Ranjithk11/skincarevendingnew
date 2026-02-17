@@ -409,9 +409,36 @@
                                                 currency="INR"
                                                 mode={paymentMode}
                                                 receipt={`cart_${Date.now()}`}
-                                                onVerified={async () => {
-                                                    console.log("[Payment] onVerified called, items:", items);
+                                                onVerified={async (payload) => {
+                                                    console.log("[Payment] onVerified called, items:", items, "payload:", payload);
                                                     const itemsToDispense = [...items];
+
+                                                    // Record the sale/order
+                                                    try {
+                                                        const orderItems = itemsToDispense.map(item => ({
+                                                            productId: item.id || "",
+                                                            productName: item.name,
+                                                            quantity: item.quantity || 1,
+                                                            price: parsePrice(item.priceText),
+                                                            slotId: item.slotId,
+                                                        }));
+
+                                                        const orderResponse = await fetch("/api/admin/orders", {
+                                                            method: "POST",
+                                                            headers: { "Content-Type": "application/json" },
+                                                            body: JSON.stringify({
+                                                                items: orderItems,
+                                                                totalAmount: payableTotal,
+                                                                paymentId: payload?.paymentId,
+                                                                razorpayOrderId: payload?.orderId,
+                                                                paymentMode,
+                                                            }),
+                                                        });
+                                                        const orderData = await orderResponse.json();
+                                                        console.log("[Payment] Order recorded:", orderData);
+                                                    } catch (err) {
+                                                        console.error("[Payment] Failed to record order:", err);
+                                                    }
 
                                                     if (typeof window !== "undefined") {
                                                         try {

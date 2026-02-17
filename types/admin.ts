@@ -91,3 +91,54 @@ export interface MotorControlResponse {
   message: string;
   response?: string;
 }
+
+// Order/Sales tracking types
+export interface OrderItem {
+  productId: string;
+  productName: string;
+  quantity: number;
+  price: number;
+  slotId?: number;
+  dispensed: boolean;
+  dispenseError?: string;
+}
+
+export interface Order {
+  id: string;
+  userId?: string;
+  items: OrderItem[];
+  totalAmount: number;
+  paymentId?: string;
+  razorpayOrderId?: string;
+  status: 'pending' | 'completed' | 'failed' | 'partial';
+  paymentMode: 'test' | 'live';
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface CreateOrderRequest {
+  userId?: string;
+  items: Array<{
+    productId: string;
+    productName: string;
+    quantity: number;
+    price: number;
+    slotId?: number;
+  }>;
+  totalAmount: number;
+  paymentId?: string;
+  razorpayOrderId?: string;
+  paymentMode: 'test' | 'live';
+}
+
+export interface OrdersListResponse {
+  success: boolean;
+  orders: Order[];
+  total: number;
+}
+
+export interface OrderResponse {
+  success: boolean;
+  order?: Order;
+  message?: string;
+}

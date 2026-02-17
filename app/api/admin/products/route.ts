@@ -35,19 +35,11 @@ function applyOverrides(products: any[]) {
   });
 }
 
-// Fallback local products when API is unavailable
+// Fallback - return empty array when API is unavailable
+// Products should always come from external API
 function getLocalProducts() {
-  return adminDb.getAllProducts().map((p) => ({
-    id: p.id.toString(),
-    name: p.name,
-    description: p.description || "",
-    retail_price: p.retail_price,
-    category: p.category || "",
-    image_url: p.image_url || "",
-    quantity: p.quantity,
-    in_stock: p.in_stock,
-    shopify_url: "",
-  }));
+  console.warn('[Admin Products API] External API unavailable, returning empty products list');
+  return [];
 }
 
 // GET all products from main backend API
