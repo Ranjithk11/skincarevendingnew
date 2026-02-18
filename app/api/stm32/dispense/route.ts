@@ -185,27 +185,35 @@ export async function POST(req: Request) {
 
       if (finalizeMode === "row") {
         // Group products by row (first digit of slot ID), dispense all from one row, TRAY, then next row
-        const motorNums = normalized.map((c) => ({
+        // Preserve original order within each row
+        const motorNums = normalized.map((c, idx) => ({
           code: c,
           motor: getRqMotorNumber(c),
+          originalIndex: idx,
         }));
 
-        // Group by row
-        const rowGroups = new Map<number, string[]>();
-        for (const { code, motor } of motorNums) {
+        // Group by row, preserving original order
+        const rowGroups = new Map<number, Array<{ code: string; originalIndex: number }>>();
+        for (const { code, motor, originalIndex } of motorNums) {
           const row = motor !== undefined ? getMotorRow(motor) : 0;
           if (!rowGroups.has(row)) rowGroups.set(row, []);
-          rowGroups.get(row)!.push(code);
+          rowGroups.get(row)!.push({ code, originalIndex });
         }
 
-        // Sort rows ascending so we process row 1 before row 2, etc.
-        const sortedRows = Array.from(rowGroups.keys()).sort((a, b) => a - b);
+        // Sort rows by the minimum original index in each row (preserves order of first appearance)
+        const sortedRows = Array.from(rowGroups.keys()).sort((a, b) => {
+          const minA = Math.min(...(rowGroups.get(a)?.map(x => x.originalIndex) || [0]));
+          const minB = Math.min(...(rowGroups.get(b)?.map(x => x.originalIndex) || [0]));
+          return minA - minB;
+        });
 
         const expanded: string[] = [];
         for (const row of sortedRows) {
-          const codes = rowGroups.get(row) || [];
-          for (const c of codes) {
-            const trimmed = c.trim();
+          const items = rowGroups.get(row) || [];
+          // Sort items within row by original index
+          items.sort((a, b) => a.originalIndex - b.originalIndex);
+          for (const { code } of items) {
+            const trimmed = code.trim();
             const isRq = /^RQ\s*\d+$/i.test(trimmed);
             const isNumeric = /^\d+$/.test(trimmed);
             expanded.push(isRq ? trimmed : isNumeric ? `RQ${trimmed}` : trimmed);
