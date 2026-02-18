@@ -239,6 +239,27 @@
                                         sx={{ height: isMobile ? 70 : 70, width: "auto", display: "block" }}
                                     />
                                 </Box>
+                           
+                            </Box>
+                            {/* Title row with buttons side by side */}
+                            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+                                <Typography
+                                    sx={{
+                                        fontFamily:
+                                            'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                        fontWeight: 510,
+                                        fontSize: isMobile ? 28 : 36,
+                                        lineHeight: "100%",
+                                        letterSpacing: "0%",
+                                        whiteSpace: "nowrap",
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        textAlign: "left",
+                                        pb: 2
+                                    }}
+                                >
+                                    {step === "cart" ? `My Cart (${items.length})` : step === "checkout" ? "Checkout" : "Payment"}
+                                </Typography>
                                 {step === "cart" && (
                                     <Button
                                         variant="contained"
@@ -249,7 +270,7 @@
                                             fontSize: 24,
                                             px: 8,
                                             py: 4,
-                                            minWidth: "unset",     // 🔥 remove default 64px
+                                            minWidth: "unset",
                                             width: "auto",  
                                             borderRadius: "8px",
                                             bgcolor: "#316D52",
@@ -269,7 +290,7 @@
                                             fontSize: 24,
                                             px: 8,
                                             py: 4,
-                                            minWidth: "unset",     // 🔥 remove default 64px
+                                            minWidth: "unset",
                                             width: "auto",  
                                             borderRadius: "8px",
                                             bgcolor: "#316D52",
@@ -280,22 +301,6 @@
                                     </Button>
                                 )}
                             </Box>
-                            {/* Title row */}
-                            <Typography
-                                sx={{
-                                    fontFamily:
-                                        'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
-                                    fontWeight: 510,
-                                    fontSize: isMobile ? 28 : 36,
-                                    lineHeight: "100%",
-                                    letterSpacing: "0%",
-                                    whiteSpace: "nowrap",
-                                    overflow: "hidden",
-                                    textOverflow: "ellipsis",
-                                }}
-                            >
-                                {step === "cart" ? `My Cart (${items.length})` : step === "checkout" ? "Checkout" : "Payment"}
-                            </Typography>
                         </Box>
 
                         <Box sx={{ flex: 1, overflowY: "auto", px: 2, py: 2, pb: 0 }}>

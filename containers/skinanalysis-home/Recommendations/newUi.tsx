@@ -14,6 +14,7 @@ import VendingProducts from "./vendingproducts";
 import VendingServices from "./vendingServices";
 import DietChart from "./DietChart";
 import SkincareRoutine from "./skincareRoutine";
+import ReportQRCode from "./ReportQRCode";
 
 type RecTabKey = "products" | "services" | "diet";
 
@@ -113,8 +114,8 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                     typeof m?.label === "string"
                         ? m.label
                         : typeof m?.key === "string"
-                          ? toLabel(m.key)
-                          : `Metric ${idx + 1}`;
+                            ? toLabel(m.key)
+                            : `Metric ${idx + 1}`;
                 const score = m?.score;
                 const level = m?.level;
                 return {
@@ -350,15 +351,17 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                             out of 100
                                         </Box>
                                     </Typography>
-                                    <Typography sx={{ fontSize: "26px", color: "#000", fontWeight: 400,mt:2 }}>
+                                    <Typography sx={{ fontSize: "26px", color: "#000", fontWeight: 400, mt: 2 }}>
                                         Overall skincare health score
                                     </Typography>
                                 </Box>
                             </Box>
 
-                          
+
                         </Box>
                     </Box>
+
+
 
                     <Box sx={{ mt: 5 }}>
                         <Typography
@@ -387,113 +390,113 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                         >
                             Defects picked up by the scan
                         </Typography>
-                          <Box
-                                sx={{
-                                    mt: 3,
-                                    width: "100%",
-                                    border: "1px solid #d1d5db",
-                                    borderRadius: "18px",
-                                    p: 2,
-                                    gap: 2,
-                                    bgcolor: "#ffffff",
-                                    boxSizing: "border-box",
-                                }}
-                            >
-                                {(() => {
-                                    const seenLabels = new Set<string>();
-                                    
-                                    const attributeCards = attributeCodeItems
-                                        .filter((item: any) => {
-                                            const label = item?.attribute
-                                                ? String(item.attribute).replace(/_/g, " ").toLowerCase().trim()
-                                                : "";
-                                            if (!label || seenLabels.has(label)) return false;
-                                            seenLabels.add(label);
-                                            return true;
-                                        })
-                                        .map((item: any, idx: number) => ({
-                                            key: `attr-${item?.code ?? idx}-${item?.attribute ?? idx}`,
-                                            label: item?.attribute
-                                                ? String(item.attribute).replace(/_/g, " ")
-                                                : "--",
-                                            value: typeof item?.confidence === "number"
-                                                ? `${item.confidence}%`
-                                                : "--",
-                                            level: typeof item?.confidence === "number"
-                                                ? (item.confidence >= 80 ? "Good" : "Moderate")
-                                                : undefined,
-                                            levelColor: typeof item?.confidence === "number"
-                                                ? (item.confidence >= 80 ? "#2ac78fff" : "#f59e0b")
-                                                : "#6b7280",
-                                        }));
+                        <Box
+                            sx={{
+                                mt: 3,
+                                width: "100%",
+                                border: "1px solid #d1d5db",
+                                borderRadius: "18px",
+                                p: 2,
+                                gap: 2,
+                                bgcolor: "#ffffff",
+                                boxSizing: "border-box",
+                            }}
+                        >
+                            {(() => {
+                                const seenLabels = new Set<string>();
 
-                                    const metricCards = skinMetricCards
-                                        .filter((m) => {
-                                            const label = m.label.toLowerCase().trim();
-                                            if (seenLabels.has(label)) return false;
-                                            seenLabels.add(label);
-                                            return true;
-                                        })
-                                        .map((m, idx) => ({
-                                            key: `metric-${m.label}-${idx}`,
-                                            label: m.label,
-                                            value: m.value,
-                                            level: m.level,
-                                            levelColor: m.levelColor,
-                                        }));
+                                const attributeCards = attributeCodeItems
+                                    .filter((item: any) => {
+                                        const label = item?.attribute
+                                            ? String(item.attribute).replace(/_/g, " ").toLowerCase().trim()
+                                            : "";
+                                        if (!label || seenLabels.has(label)) return false;
+                                        seenLabels.add(label);
+                                        return true;
+                                    })
+                                    .map((item: any, idx: number) => ({
+                                        key: `attr-${item?.code ?? idx}-${item?.attribute ?? idx}`,
+                                        label: item?.attribute
+                                            ? String(item.attribute).replace(/_/g, " ")
+                                            : "--",
+                                        value: typeof item?.confidence === "number"
+                                            ? `${item.confidence}%`
+                                            : "--",
+                                        level: typeof item?.confidence === "number"
+                                            ? (item.confidence >= 80 ? "Good" : "Moderate")
+                                            : undefined,
+                                        levelColor: typeof item?.confidence === "number"
+                                            ? (item.confidence >= 80 ? "#2ac78fff" : "#f59e0b")
+                                            : "#6b7280",
+                                    }));
 
-                                    const allCards = [...attributeCards, ...metricCards];
+                                const metricCards = skinMetricCards
+                                    .filter((m) => {
+                                        const label = m.label.toLowerCase().trim();
+                                        if (seenLabels.has(label)) return false;
+                                        seenLabels.add(label);
+                                        return true;
+                                    })
+                                    .map((m, idx) => ({
+                                        key: `metric-${m.label}-${idx}`,
+                                        label: m.label,
+                                        value: m.value,
+                                        level: m.level,
+                                        levelColor: m.levelColor,
+                                    }));
 
-                                    return (
-                                        <Box
-                                            sx={{
-                                                width: "100%",
-                                                display: "grid",
-                                                gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
-                                                gap: 2,
-                                            }}
-                                        >
-                                            {allCards.map((card) => (
-                                                <Box
-                                                    key={card.key}
-                                                    sx={{
-                                                        border: "2px solid #f0d89a",
-                                                        borderRadius: "12px",
-                                                        p: 3,
-                                                        textAlign: "center",
-                                                        bgcolor: "#ffffff",
-                                                        minHeight: { xs: 90, sm: 110 },
-                                                        display: "flex",
-                                                        flexDirection: "column",
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                    }}
-                                                >
-                                                    <Typography sx={{ fontSize: "24px", fontWeight: 300 }}>
-                                                        {card.label}
+                                const allCards = [...attributeCards, ...metricCards];
+
+                                return (
+                                    <Box
+                                        sx={{
+                                            width: "100%",
+                                            display: "grid",
+                                            gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
+                                            gap: 2,
+                                        }}
+                                    >
+                                        {allCards.map((card) => (
+                                            <Box
+                                                key={card.key}
+                                                sx={{
+                                                    border: "2px solid #f0d89a",
+                                                    borderRadius: "12px",
+                                                    p: 3,
+                                                    textAlign: "center",
+                                                    bgcolor: "#ffffff",
+                                                    minHeight: { xs: 90, sm: 110 },
+                                                    display: "flex",
+                                                    flexDirection: "column",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                }}
+                                            >
+                                                <Typography sx={{ fontSize: "24px", fontWeight: 300 }}>
+                                                    {card.label}
+                                                </Typography>
+                                                <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
+                                                    {card.value}
+                                                </Typography>
+                                                {card.level && (
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: "20px",
+                                                            fontWeight: 600,
+                                                            mt: 1,
+                                                            color: card.levelColor,
+                                                            textTransform: "capitalize",
+                                                        }}
+                                                    >
+                                                        {String(card.level).replace(/_/g, " ").toLowerCase()}
                                                     </Typography>
-                                                    <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
-                                                        {card.value}
-                                                    </Typography>
-                                                    {card.level && (
-                                                        <Typography
-                                                            sx={{
-                                                                fontSize: "20px",
-                                                                fontWeight: 600,
-                                                                mt: 1,
-                                                                color: card.levelColor,
-                                                                textTransform: "capitalize",
-                                                            }}
-                                                        >
-                                                            {String(card.level).replace(/_/g, " ").toLowerCase()}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            ))}
-                                        </Box>
-                                    );
-                                })()}
-                            </Box>
+                                                )}
+                                            </Box>
+                                        ))}
+                                    </Box>
+                                );
+                            })()}
+                        </Box>
 
                         {/* <Grid container spacing={{ xs: 2, md: 3 }}>
                             {keyConcerns.map((c) => (
@@ -618,7 +621,14 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                                 Recommendations
                             </Box>
                         </Box> */}
-
+                        {/* QR Code for Report with Analysis Summary */}
+                        <Box sx={{ mt: 5 }}>
+                            <ReportQRCode
+                                title="View Your Report"
+                                subtitle="Scan to view on your phone"
+                                analysisSummary={reportSource?.analysisAiSummary || []}
+                            />
+                        </Box>
                         <Box
                             sx={{
                                 mt: 4,

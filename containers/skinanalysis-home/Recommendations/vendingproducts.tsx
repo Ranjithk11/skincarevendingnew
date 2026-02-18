@@ -1,8 +1,15 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { Box, Grid, Typography, useMediaQuery, useTheme } from "@mui/material";
+import React, { useEffect, useMemo, useState } from "react";
+import { Box, Divider, Grid, Typography, useMediaQuery, useTheme } from "@mui/material";
 import ProductCard from "./ProductCard";
+
+interface Brand {
+  _id: string;
+  _key: string;
+  name: string;
+  label: string;
+}
 
 type Props = {
   data: any;
@@ -55,14 +62,49 @@ export default function VendingProducts({ data }: Props) {
   }, [data]);
 
   const [categoryIndex, setCategoryIndex] = useState(0);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+
+  // Extract unique brands from product data
+  useEffect(() => {
+    if (!categories || categories.length === 0) return;
+    
+    const brandMap = new Map<string, Brand>();
+    
+    categories.forEach((cat: any) => {
+      const prods = cat?.products || [];
+      prods.forEach((p: any) => {
+        const brand = p?.brand;
+        if (brand?.name && !brandMap.has(brand.name)) {
+          brandMap.set(brand.name, {
+            _id: brand._id || brand.name,
+            _key: brand._key || brand.name,
+            name: brand.name,
+            label: brand.label || brand.name,
+          });
+        }
+      });
+    });
+    
+    setBrands(Array.from(brandMap.values()));
+  }, [categories]);
+
   const activeCategory = categories?.[categoryIndex];
   const products = Array.isArray(activeCategory?.products)
     ? activeCategory.products
     : [];
 
   const visibleProducts = useMemo(() => {
-    return products.filter(Boolean);
-  }, [products]);
+    let filtered = products.filter(Boolean);
+    // Filter by brand if selected
+    if (selectedBrand) {
+      filtered = filtered.filter((p: any) => 
+        p?.brand?.name?.toLowerCase() === selectedBrand.toLowerCase() ||
+        p?.brand?.label?.toLowerCase() === selectedBrand.toLowerCase()
+      );
+    }
+    return filtered;
+  }, [products, selectedBrand]);
 
   return (
     <PageBackground>
@@ -166,6 +208,69 @@ export default function VendingProducts({ data }: Props) {
             </Box>
           );
         })}
+      </Box>
+
+      {/* Horizontal Divider */}
+      <Divider sx={{ my: 3, borderColor: "#e5e7eb" }} />
+
+      {/* Brand Filters */}
+      <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#000", mb: 2 }}>
+        FILTER BY BRAND
+      </Typography>
+      <Box
+        sx={{
+          mb: 4,
+          display: "flex",
+          gap: 2,
+          overflowX: "auto",
+          flexWrap: "nowrap",
+          pb: 1,
+        }}
+      >
+        {/* All Brands option */}
+        <Box
+          onClick={() => setSelectedBrand(null)}
+          sx={{
+            flex: "0 0 auto",
+            px: 3,
+            py: 1.5,
+            borderRadius: "999px",
+            cursor: "pointer",
+            bgcolor: selectedBrand === null ? "#316D52" : "#f3f4f6",
+            color: selectedBrand === null ? "#fff" : "#374151",
+            fontWeight: 600,
+            fontSize: "20px",
+            transition: "all 0.2s ease",
+            "&:hover": {
+              bgcolor: selectedBrand === null ? "#234a31" : "#e5e7eb",
+            },
+          }}
+        >
+          All
+        </Box>
+        {brands.map((brand) => (
+          <Box
+            key={brand._key}
+            onClick={() => setSelectedBrand(brand.name)}
+            sx={{
+              flex: "0 0 auto",
+              px: 3,
+              py: 1.5,
+              borderRadius: "999px",
+              cursor: "pointer",
+              bgcolor: selectedBrand === brand.name ? "#316D52" : "#f3f4f6",
+              color: selectedBrand === brand.name ? "#fff" : "#374151",
+              fontWeight: 600,
+              fontSize: "20px",
+              transition: "all 0.2s ease",
+              "&:hover": {
+                bgcolor: selectedBrand === brand.name ? "#234a31" : "#e5e7eb",
+              },
+            }}
+          >
+            {brand.name}
+          </Box>
+        ))}
       </Box>
 
       <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 1 }}>
