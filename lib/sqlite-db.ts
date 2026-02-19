@@ -235,6 +235,24 @@ function initDb() {
     console.log('Initialized 60 vending slots');
   }
 
+  // Initialize default admin user if none exists
+  const adminCount = db.prepare('SELECT COUNT(*) as count FROM admin_users').get() as { count: number };
+  if (adminCount.count === 0) {
+    db.prepare('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)').run('admin', 'admin123');
+    console.log('Created default admin user: admin/admin123');
+  }
+
+  // Initialize default app settings if none exist
+  const settingsCount = db.prepare('SELECT COUNT(*) as count FROM app_settings').get() as { count: number };
+  if (settingsCount.count === 0) {
+    db.prepare(`INSERT INTO app_settings (setting_key, setting_value, description) VALUES 
+      ('razorpay_mode', 'test', 'Razorpay payment mode: test or live'),
+      ('machine_id', 'SKINCARE_VM_001', 'Vending machine identifier'),
+      ('auto_dispense', 'true', 'Auto dispense after payment')
+    `).run();
+    console.log('Initialized default app settings');
+  }
+
   console.log('SQLite database initialized:', DB_FILE);
 }
 
@@ -529,6 +547,67 @@ export const sqliteDb = {
       totalRevenue: stats.total_revenue || 0,
       todayOrders: stats.today_orders || 0,
       todayRevenue: stats.today_revenue || 0,
+    };
+  },
+
+  getUsersCount(): number {
+    const result = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+    return result.count || 0;
+  },
+
+  getScansCount(): number {
+    const result = db.prepare('SELECT COUNT(*) as count FROM scan_records').get() as { count: number };
+    return result.count || 0;
+  },
+
+  getDashboardStats(): {
+    usersCount: number;
+    scansCount: number;
+    ordersCount: number;
+    completedOrders: number;
+    totalRevenue: number;
+    todayOrders: number;
+    todayRevenue: number;
+    todayScans: number;
+    slotsAssigned: number;
+    totalSlots: number;
+  } {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
+
+    const usersCount = (db.prepare('SELECT COUNT(*) as count FROM users').get() as any).count || 0;
+    const scansCount = (db.prepare('SELECT COUNT(*) as count FROM scan_records').get() as any).count || 0;
+    const todayScans = (db.prepare('SELECT COUNT(*) as count FROM scan_records WHERE created_at >= ?').get(todayStr) as any).count || 0;
+    
+    const orderStats = db.prepare(`
+      SELECT 
+        COUNT(*) as total_orders,
+        SUM(CASE WHEN status IN ('completed', 'partial') THEN 1 ELSE 0 END) as completed_orders,
+        SUM(CASE WHEN status IN ('completed', 'partial') THEN total_amount ELSE 0 END) as total_revenue,
+        SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today_orders,
+        SUM(CASE WHEN status IN ('completed', 'partial') AND created_at >= ? THEN total_amount ELSE 0 END) as today_revenue
+      FROM orders
+    `).get(todayStr, todayStr) as any;
+
+    const slotStats = db.prepare(`
+      SELECT 
+        COUNT(*) as total_slots,
+        SUM(CASE WHEN product_id IS NOT NULL THEN 1 ELSE 0 END) as slots_assigned
+      FROM vending_slots
+    `).get() as any;
+
+    return {
+      usersCount,
+      scansCount,
+      ordersCount: orderStats.total_orders || 0,
+      completedOrders: orderStats.completed_orders || 0,
+      totalRevenue: orderStats.total_revenue || 0,
+      todayOrders: orderStats.today_orders || 0,
+      todayRevenue: orderStats.today_revenue || 0,
+      todayScans,
+      slotsAssigned: slotStats.slots_assigned || 0,
+      totalSlots: slotStats.total_slots || 60,
     };
   },
 

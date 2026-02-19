@@ -63,6 +63,9 @@ export const adminDb = {
   getOrdersByStatus: sqliteDb.getOrdersByStatus.bind(sqliteDb),
   getOrdersByDateRange: sqliteDb.getOrdersByDateRange.bind(sqliteDb),
   getSalesStats: sqliteDb.getSalesStats.bind(sqliteDb),
+  getUsersCount: sqliteDb.getUsersCount.bind(sqliteDb),
+  getScansCount: sqliteDb.getScansCount.bind(sqliteDb),
+  getDashboardStats: sqliteDb.getDashboardStats.bind(sqliteDb),
 
   // Dispense history tracking
   logDispenseEvent: sqliteDb.logDispenseEvent.bind(sqliteDb),
