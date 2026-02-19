@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import Image from "next/image";
+import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 
 interface Product {
   id: string;
@@ -47,13 +48,19 @@ export default function SlotAssignmentModal({
   onRemove,
   onUpdateQuantity,
 }: SlotAssignmentModalProps) {
+  const KEYBOARD_HEIGHT_PX = 340;
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(10);
   const [quantityAdjustment, setQuantityAdjustment] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  const keyboardContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputContainerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const hasCurrentProduct = !!currentProduct;
-  
+
   // Filter products based on search query
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -66,8 +73,31 @@ export default function SlotAssignmentModal({
       setQuantity(currentQuantity > 0 ? currentQuantity : 10);
       setQuantityAdjustment(0);
       setSearchQuery(""); // Reset search when modal opens
+      setIsKeyboardOpen(false);
     }
   }, [open, currentProduct, currentQuantity]);
+
+
+  const handleKeyboardKeyPress = (key: string) => {
+    if (key === "backspace") {
+      setSearchQuery((prev) => prev.slice(0, -1));
+      return;
+    }
+    if (key === "space") {
+      setSearchQuery((prev) => `${prev} `);
+      return;
+    }
+    if (key === "return") {
+      setIsKeyboardOpen(false);
+      return;
+    }
+   if (["shift", "arrowleft", "arrowright", "123", "ABC"].includes(key)) {
+  return;
+}
+
+
+    setSearchQuery((prev) => `${prev}${key}`);
+  };
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
 
@@ -102,8 +132,9 @@ export default function SlotAssignmentModal({
       disableScrollLock
       sx={{
         display: "flex",
-        alignItems: "center",
+        alignItems: isKeyboardOpen ? "flex-start" : "center",
         justifyContent: "center",
+        pt: isKeyboardOpen ? 2 : 0,
       }}
       BackdropProps={{
         sx: {
@@ -111,71 +142,357 @@ export default function SlotAssignmentModal({
         },
       }}
     >
-      <Box
-        sx={{
-          backgroundColor: "#fff",
-          borderRadius: "12px",
-          width: { xs: "95%", sm: 500 },
-          maxHeight: "90vh",
-          overflow: "auto",
-          WebkitOverflowScrolling: "touch",
-          touchAction: "pan-y",
-          outline: "none",
-          p: 3,
-        }}
-      >
-        {/* Header */}
+      <>
         <Box
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 3,
+            backgroundColor: "#fff",
+            borderRadius: "12px",
+            width: { xs: "95%", sm: 500 },
+            maxHeight: isKeyboardOpen
+              ? `calc(90vh - ${KEYBOARD_HEIGHT_PX}px)`
+              : "90vh",
+            overflow: "auto",
+            WebkitOverflowScrolling: "touch",
+            touchAction: "pan-y",
+            outline: "none",
+            p: 3,
+            mb: isKeyboardOpen ? `${KEYBOARD_HEIGHT_PX}px` : 0,
           }}
         >
-          <Typography
-            sx={{
-              fontSize: 32,
-              fontWeight: 600,
-              fontFamily: "Roboto, sans-serif",
-              color: "#22c55e",
-            }}
-          >
-            Assign Product to Slot {slotNumber}
-          </Typography>
-          <IconButton onClick={onClose} sx={{ p: 0 }}>
-            <CloseIcon sx={{ fontSize: 24, color: "#666" }} />
-          </IconButton>
-        </Box>
-
-        {/* Currently Assigned Product Section */}
-        {hasCurrentProduct && (
+          {/* Header */}
           <Box
             sx={{
-              backgroundColor: "#f9f9f9",
-              borderRadius: "8px",
-              p: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
               mb: 3,
-              border: "1px solid #e5e5e5",
             }}
           >
             <Typography
               sx={{
-                fontSize: 24,
+                fontSize: 32,
                 fontWeight: 600,
                 fontFamily: "Roboto, sans-serif",
-                color: "#000",
-                mb: 1.5,
+                color: "#22c55e",
               }}
             >
-              Currently Assigned Product
+              Assign Product to Slot {slotNumber}
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-              {currentProduct?.image && (
+            <IconButton onClick={onClose} sx={{ p: 0 }}>
+              <CloseIcon sx={{ fontSize: 24, color: "#666" }} />
+            </IconButton>
+          </Box>
+
+          {/* Currently Assigned Product Section */}
+          {hasCurrentProduct && (
+            <Box
+              sx={{
+                backgroundColor: "#f9f9f9",
+                borderRadius: "8px",
+                p: 2,
+                mb: 3,
+                border: "1px solid #e5e5e5",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 24,
+                  fontWeight: 600,
+                  fontFamily: "Roboto, sans-serif",
+                  color: "#000",
+                  mb: 1.5,
+                }}
+              >
+                Currently Assigned Product
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+                {currentProduct?.image && (
+                  <Box
+                    sx={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: "6px",
+                      overflow: "hidden",
+                      flexShrink: 0,
+                      border: "1px solid #e5e5e5",
+                    }}
+                  >
+                    <Image
+                      src={currentProduct.image}
+                      alt={currentProduct.name}
+                      width={50}
+                      height={50}
+                      style={{ objectFit: "cover" }}
+                    />
+                  </Box>
+                )}
+                <Box sx={{ flex: 1 }}>
+                  <Typography
+                    sx={{
+                      fontSize: 24,
+                      fontWeight: 600,
+                      fontFamily: "Roboto, sans-serif",
+                      color: "#000",
+                      textTransform: "uppercase",
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {currentProduct?.name}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 24,
+                      fontFamily: "Roboto, sans-serif",
+                      color: "#666",
+                    }}
+                  >
+                    Quantity: {currentQuantity}
+                  </Typography>
+                </Box>
+              </Box>
+
+              {/* Update Quantity Controls */}
+              <Typography
+                sx={{
+                  fontSize: 24,
+                  fontWeight: 600,
+                  fontFamily: "Roboto, sans-serif",
+                  color: "#000",
+                  mb: 1,
+                }}
+              >
+                Update Quantity
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
+                {[-10, -5, -1].map((delta) => (
+                  <Button
+                    key={delta}
+                    variant="outlined"
+                    onClick={() => handleQuantityButton(delta)}
+                    sx={{
+                      minWidth: 40,
+                      height: 32,
+                      borderRadius: "6px",
+                      borderColor: "#fca5a5",
+                      backgroundColor: "#fef2f2",
+                      color: "#dc2626",
+                      fontSize: 24,
+                      fontWeight: 500,
+                      p: 0,
+                      "&:hover": {
+                        borderColor: "#f87171",
+                        backgroundColor: "#fee2e2",
+                      },
+                    }}
+                  >
+                    {delta}
+                  </Button>
+                ))}
                 <Box
                   sx={{
-                    width: 50,
-                    height: 50,
+                    minWidth: 50,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: 24,
+                    fontWeight: 500,
+                    backgroundColor: "#fff",
+                  }}
+                >
+                  {quantityAdjustment >= 0 ? quantityAdjustment : quantityAdjustment}
+                </Box>
+                {[1, 5, 10].map((delta) => (
+                  <Button
+                    key={delta}
+                    variant="outlined"
+                    onClick={() => handleQuantityButton(delta)}
+                    sx={{
+                      minWidth: 40,
+                      height: 32,
+                      borderRadius: "6px",
+                      borderColor: "#86efac",
+                      backgroundColor: "#f0fdf4",
+                      color: "#16a34a",
+                      fontSize: 24,
+                      fontWeight: 500,
+                      p: 0,
+                      "&:hover": {
+                        borderColor: "#4ade80",
+                        backgroundColor: "#dcfce7",
+                      },
+                    }}
+                  >
+                    +{delta}
+                  </Button>
+                ))}
+                <Button
+                  variant="contained"
+                  onClick={handleUpdateQuantity}
+                  disabled={quantityAdjustment === 0}
+                  sx={{
+                    minWidth: 60,
+                    height: 32,
+                    borderRadius: "6px",
+                    backgroundColor: "#3b82f6",
+                    color: "#fff",
+                    fontSize: 24,
+                    fontWeight: 500,
+                    textTransform: "none",
+                    p: 0,
+                    "&:hover": {
+                      backgroundColor: "#2563eb",
+                    },
+                    "&:disabled": {
+                      backgroundColor: "#e5e7eb",
+                      color: "#9ca3af",
+                    },
+                  }}
+                >
+                  Update
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {/* Select Product */}
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              sx={{
+                fontSize: 24,
+                fontWeight: 500,
+                fontFamily: "Roboto, sans-serif",
+                color: "#000",
+                mb: 1,
+              }}
+            >
+              Select Product
+            </Typography>
+            <FormControl fullWidth>
+              <Select
+                value={selectedProductId}
+                onChange={(e) => setSelectedProductId(e.target.value)}
+                displayEmpty
+                MenuProps={{
+                  disableScrollLock: true,
+                  disablePortal: true,
+                  disableAutoFocusItem: true,
+                  sx: {
+                    zIndex: 3000,
+                  },
+                  PaperProps: {
+                    sx: {
+                      pointerEvents: isKeyboardOpen ? "none" : "auto",
+                      maxHeight: 500,
+                      WebkitOverflowScrolling: "touch",
+                      touchAction: "pan-y",
+                    },
+                  },
+                  MenuListProps: {
+                    sx: {
+                      WebkitOverflowScrolling: "touch",
+                      touchAction: "pan-y",
+                    },
+                    onKeyDown: (e: any) => {
+                      e.stopPropagation();
+                    },
+                  },
+                  autoFocus: false,
+                }}
+                sx={{
+                  height: 48,
+                  borderRadius: "8px",
+                  fontSize: 24,
+                  fontFamily: "Roboto, sans-serif",
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#22c55e",
+                    borderWidth: 2,
+                  },
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#16a34a",
+                  },
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#16a34a",
+                  },
+                }}
+              >
+                {/* Search Input - Sticky at top */}
+                <Box
+                  ref={searchInputContainerRef}
+                  sx={{
+                    position: "sticky",
+                    top: 0,
+                    backgroundColor: "#fff",
+                    zIndex: 1,
+                    p: 1,
+                    borderBottom: "1px solid #e5e5e5",
+                  }}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  <TextField
+                    inputRef={searchInputRef}
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsKeyboardOpen(true);
+                    }}
+                    onFocus={() => setIsKeyboardOpen(true)}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    fullWidth
+                    size="small"
+                    autoFocus
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "6px",
+                        fontSize: 24,
+                      },
+                    }}
+                  />
+                  <Typography sx={{ fontSize: 16, color: "#666", mt: 0.5, textAlign: "right" }}>
+                    {searchQuery ? `${filteredProducts.length} of ${products.length} products` : `Total: ${products.length} products`}
+                  </Typography>
+                </Box>
+                <MenuItem value="">
+                  <Typography sx={{ color: "#666" }}>-- Select a product --</Typography>
+                </MenuItem>
+                {filteredProducts.map((product) => (
+                  <MenuItem key={product.id} value={product.id}>
+                    {product.name.toUpperCase()}
+                  </MenuItem>
+                ))}
+                {filteredProducts.length === 0 && searchQuery && (
+                  <MenuItem disabled>
+                    <Typography sx={{ color: "#999", fontStyle: "italic" }}>
+                      No products found for "{searchQuery}"
+                    </Typography>
+                  </MenuItem>
+                )}
+              </Select>
+            </FormControl>
+          </Box>
+
+          {/* Selected Product Preview */}
+          {selectedProduct && (
+            <Box
+              sx={{
+                border: "1px solid #e5e5e5",
+                borderRadius: "8px",
+                p: 2,
+                mb: 3,
+                display: "flex",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              {selectedProduct.image && (
+                <Box
+                  sx={{
+                    width: 120,
+                    height: 120,
                     borderRadius: "6px",
                     overflow: "hidden",
                     flexShrink: 0,
@@ -183,15 +500,15 @@ export default function SlotAssignmentModal({
                   }}
                 >
                   <Image
-                    src={currentProduct.image}
-                    alt={currentProduct.name}
-                    width={50}
-                    height={50}
+                    src={selectedProduct.image}
+                    alt={selectedProduct.name}
+                    width={120}
+                    height={120}
                     style={{ objectFit: "cover" }}
                   />
                 </Box>
               )}
-              <Box sx={{ flex: 1 }}>
+              <Box>
                 <Typography
                   sx={{
                     fontSize: 24,
@@ -202,415 +519,181 @@ export default function SlotAssignmentModal({
                     lineHeight: 1.3,
                   }}
                 >
-                  {currentProduct?.name}
+                  {selectedProduct.name}
                 </Typography>
                 <Typography
                   sx={{
                     fontSize: 24,
                     fontFamily: "Roboto, sans-serif",
                     color: "#666",
+                    textTransform: "uppercase",
                   }}
                 >
-                  Quantity: {currentQuantity}
+                  {selectedProduct.category}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontSize: 24,
+                    fontWeight: 600,
+                    fontFamily: "Roboto, sans-serif",
+                    color: "#22c55e",
+                  }}
+                >
+                  {selectedProduct.price}
                 </Typography>
               </Box>
             </Box>
+          )}
 
-            {/* Update Quantity Controls */}
+          {/* Quantity Input */}
+          <Box sx={{ mb: 3 }}>
             <Typography
               sx={{
                 fontSize: 24,
-                fontWeight: 600,
+                fontWeight: 500,
                 fontFamily: "Roboto, sans-serif",
                 color: "#000",
-                mb: 1,
+                mb: 0.5,
               }}
             >
-              Update Quantity
+              Quantity{" "}
+              <Typography
+                component="span"
+                sx={{
+                  fontSize: 24,
+                  color: "#9ca3af",
+                  fontWeight: 400,
+                }}
+              >
+                (Must be less than or equal to product stock)
+              </Typography>
             </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexWrap: "wrap" }}>
-              {[-10, -5, -1].map((delta) => (
-                <Button
-                  key={delta}
-                  variant="outlined"
-                  onClick={() => handleQuantityButton(delta)}
-                  sx={{
-                    minWidth: 40,
-                    height: 32,
-                    borderRadius: "6px",
-                    borderColor: "#fca5a5",
-                    backgroundColor: "#fef2f2",
-                    color: "#dc2626",
-                    fontSize: 24,
-                    fontWeight: 500,
-                    p: 0,
-                    "&:hover": {
-                      borderColor: "#f87171",
-                      backgroundColor: "#fee2e2",
-                    },
-                  }}
-                >
-                  {delta}
-                </Button>
-              ))}
-              <Box
-                sx={{
-                  minWidth: 50,
-                  height: 32,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: 24,
-                  fontWeight: 500,
-                  backgroundColor: "#fff",
-                }}
-              >
-                {quantityAdjustment >= 0 ? quantityAdjustment : quantityAdjustment}
-              </Box>
-              {[1, 5, 10].map((delta) => (
-                <Button
-                  key={delta}
-                  variant="outlined"
-                  onClick={() => handleQuantityButton(delta)}
-                  sx={{
-                    minWidth: 40,
-                    height: 32,
-                    borderRadius: "6px",
-                    borderColor: "#86efac",
-                    backgroundColor: "#f0fdf4",
-                    color: "#16a34a",
-                    fontSize: 24,
-                    fontWeight: 500,
-                    p: 0,
-                    "&:hover": {
-                      borderColor: "#4ade80",
-                      backgroundColor: "#dcfce7",
-                    },
-                  }}
-                >
-                  +{delta}
-                </Button>
-              ))}
-              <Button
-                variant="contained"
-                onClick={handleUpdateQuantity}
-                disabled={quantityAdjustment === 0}
-                sx={{
-                  minWidth: 60,
-                  height: 32,
-                  borderRadius: "6px",
-                  backgroundColor: "#3b82f6",
-                  color: "#fff",
-                  fontSize: 24,
-                  fontWeight: 500,
-                  textTransform: "none",
-                  p: 0,
-                  "&:hover": {
-                    backgroundColor: "#2563eb",
-                  },
-                  "&:disabled": {
-                    backgroundColor: "#e5e7eb",
-                    color: "#9ca3af",
-                  },
-                }}
-              >
-                Update
-              </Button>
-            </Box>
-          </Box>
-        )}
-
-        {/* Select Product */}
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            sx={{
-              fontSize: 24,
-              fontWeight: 500,
-              fontFamily: "Roboto, sans-serif",
-              color: "#000",
-              mb: 1,
-            }}
-          >
-            Select Product
-          </Typography> 
-          <FormControl fullWidth>
-            <Select
-              value={selectedProductId}
-              onChange={(e) => setSelectedProductId(e.target.value)}
-              displayEmpty
-              MenuProps={{
-                disableScrollLock: true,
-                PaperProps: {
-                  sx: {
-                    maxHeight: 500,
-                    WebkitOverflowScrolling: "touch",
-                    touchAction: "pan-y",
-                  },
-                },
-                MenuListProps: {
-                  sx: {
-                    WebkitOverflowScrolling: "touch",
-                    touchAction: "pan-y",
-                  },
-                },
-                autoFocus: false,
+            <TextField
+              type="number"
+              value={quantity === 0 ? "" : quantity}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  setQuantity(0);
+                } else {
+                  const parsed = parseInt(val, 10);
+                  if (!isNaN(parsed) && parsed >= 0) {
+                    setQuantity(parsed);
+                  }
+                }
               }}
+              fullWidth
               sx={{
-                height: 48,
-                borderRadius: "8px",
-                fontSize: 24,
-                fontFamily: "Roboto, sans-serif",
-                "& .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#22c55e",
-                  borderWidth: 2,
-                },
-                "&:hover .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#16a34a",
-                },
-                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                  borderColor: "#16a34a",
+                mt: 1,
+                "& .MuiOutlinedInput-root": {
+                  height: 48,
+                  borderRadius: "8px",
+                  fontSize: 24,
+                  fontFamily: "Roboto, sans-serif",
+                  "& fieldset": {
+                    borderColor: "#22c55e",
+                    borderWidth: 2,
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "#16a34a",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#16a34a",
+                  },
                 },
               }}
-            >
-              {/* Search Input - Sticky at top */}
-              <Box
-                sx={{
-                  position: "sticky",
-                  top: 0,
-                  backgroundColor: "#fff",
-                  zIndex: 1,
-                  p: 1,
-                  borderBottom: "1px solid #e5e5e5",
-                }}
-                onKeyDown={(e) => e.stopPropagation()}
-              >
-                <TextField
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  fullWidth
-                  size="small"
-                  autoFocus
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "6px",
-                      fontSize: 24,
-                    },
-                  }}
-                />
-                <Typography sx={{ fontSize: 16, color: "#666", mt: 0.5, textAlign: "right" }}>
-                  {searchQuery ? `${filteredProducts.length} of ${products.length} products` : `Total: ${products.length} products`}
-                </Typography>
-              </Box>
-              <MenuItem value="">
-                <Typography sx={{ color: "#666" }}>-- Select a product --</Typography>
-              </MenuItem>
-              {filteredProducts.map((product) => (
-                <MenuItem key={product.id} value={product.id}>
-                  {product.name.toUpperCase()}
-                </MenuItem>
-              ))}
-              {filteredProducts.length === 0 && searchQuery && (
-                <MenuItem disabled>
-                  <Typography sx={{ color: "#999", fontStyle: "italic" }}>
-                    No products found for "{searchQuery}"
-                  </Typography>
-                </MenuItem>
-              )}
-            </Select>
-          </FormControl>
-        </Box>
+            />
+          </Box>
 
-        {/* Selected Product Preview */}
-        {selectedProduct && (
+          {/* Action Buttons */}
           <Box
             sx={{
-              border: "1px solid #e5e5e5",
-              borderRadius: "8px",
-              p: 2,
-              mb: 3,
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
               gap: 2,
             }}
           >
-            {selectedProduct.image && (
-              <Box
-                sx={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: "6px",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                  border: "1px solid #e5e5e5",
-                }}
-              >
-                <Image
-                  src={selectedProduct.image}
-                  alt={selectedProduct.name}
-                  width={120}
-                  height={120}
-                  style={{ objectFit: "cover" }}
-                />
-              </Box>
-            )}
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: 24,
-                  fontWeight: 600,
-                  fontFamily: "Roboto, sans-serif",
-                  color: "#000",
-                  textTransform: "uppercase",
-                  lineHeight: 1.3,
-                }}
-              >
-                {selectedProduct.name}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 24,
-                  fontFamily: "Roboto, sans-serif",
-                  color: "#666",
-                  textTransform: "uppercase",
-                }}
-              >
-                {selectedProduct.category}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 24,
-                  fontWeight: 600,
-                  fontFamily: "Roboto, sans-serif",
-                  color: "#22c55e",
-                }}
-              >
-                {selectedProduct.price}
-              </Typography>
-            </Box>
-          </Box>
-        )}
-
-        {/* Quantity Input */}
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            sx={{
-              fontSize: 24,
-              fontWeight: 500,
-              fontFamily: "Roboto, sans-serif",
-              color: "#000",
-              mb: 0.5,
-            }}
-          >
-            Quantity{" "}
-            <Typography
-              component="span"
+            <Button
+              variant="contained"
+              onClick={handleRemove}
               sx={{
-                fontSize:   24,
-                color: "#9ca3af",
-                fontWeight: 400,
-              }}
-            >
-              (Must be less than or equal to product stock)
-            </Typography>
-          </Typography>
-          <TextField
-            type="number"
-            value={quantity === 0 ? "" : quantity}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "") {
-                setQuantity(0);
-              } else {
-                const parsed = parseInt(val, 10);
-                if (!isNaN(parsed) && parsed >= 0) {
-                  setQuantity(parsed);
-                }
-              }
-            }}
-            fullWidth
-            sx={{
-              mt: 1,
-              "& .MuiOutlinedInput-root": {
+                flex: 1,
                 height: 48,
                 borderRadius: "8px",
+                backgroundColor: "#ef4444",
+                color: "#fff",
                 fontSize: 24,
+                fontWeight: 500,
                 fontFamily: "Roboto, sans-serif",
-                "& fieldset": {
-                  borderColor: "#22c55e",
-                  borderWidth: 2,
+                textTransform: "none",
+                "&:hover": {
+                  backgroundColor: "#dc2626",
                 },
-                "&:hover fieldset": {
-                  borderColor: "#16a34a",
+              }}
+            >
+              Remove
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleAssign}
+              disabled={!selectedProductId || quantity <= 0}
+              sx={{
+                flex: 1,
+                height: 48,
+                borderRadius: "8px",
+                backgroundColor: "#22c55e",
+                color: "#fff",
+                fontSize: 24,
+                fontWeight: 500,
+                fontFamily: "Roboto, sans-serif",
+                textTransform: "none",
+                "&:hover": {
+                  backgroundColor: "#16a34a",
                 },
-                "&.Mui-focused fieldset": {
-                  borderColor: "#16a34a",
+                "&:disabled": {
+                  backgroundColor: "#e5e7eb",
+                  color: "#9ca3af",
                 },
-              },
-            }}
-          />
+              }}
+            >
+              Assign
+            </Button>
+          </Box>
         </Box>
 
-        {/* Action Buttons */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 2,
-          }}
-        >
-          <Button
-            variant="contained"
-            onClick={handleRemove}
+        {isKeyboardOpen ? (
+          <Box
+            onClick={() => setIsKeyboardOpen(false)}
             sx={{
-              flex: 1,
-              height: 48,
-              borderRadius: "8px",
-              backgroundColor: "#ef4444",
-              color: "#fff",
-              fontSize: 24,
-              fontWeight: 500,
-              fontFamily: "Roboto, sans-serif",
-              textTransform: "none",
-              "&:hover": {
-                backgroundColor: "#dc2626",
-              },
+              position: "fixed",
+              inset: 0,
+              zIndex: 5000,
+              pointerEvents: "auto",
             }}
           >
-            Remove
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleAssign}
-            disabled={!selectedProductId || quantity <= 0}
-            sx={{
-              flex: 1,
-              height: 48,
-              borderRadius: "8px",
-              backgroundColor: "#22c55e",
-              color: "#fff",
-              fontSize: 24,
-              fontWeight: 500,
-              fontFamily: "Roboto, sans-serif",
-              textTransform: "none",
-              "&:hover": {
-                backgroundColor: "#16a34a",
-              },
-              "&:disabled": {
-                backgroundColor: "#e5e7eb",
-                color: "#9ca3af",
-              },
-            }}
-          >
-            Assign
-          </Button>
-        </Box>
-      </Box>
+            <Box
+              ref={keyboardContainerRef}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}   // ✅ ADD THIS LINE
+
+              sx={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+                pointerEvents: "auto",
+              }}
+            >
+              <VirtualKeyboard
+                onKeyPress={handleKeyboardKeyPress}
+                layout="default"
+                visible={isKeyboardOpen}
+              />
+            </Box>
+          </Box>
+        ) : null}
+      </>
     </Modal>
   );
 }

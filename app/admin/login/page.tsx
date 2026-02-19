@@ -2,32 +2,20 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Box, IconButton, Typography, TextField } from "@mui/material";
-import { ArrowBack, Backspace } from "@mui/icons-material";
+import { ArrowBack } from "@mui/icons-material";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { PageBackground } from "@/components/ui";
+import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 import { useAdminLoginMutation } from "@/redux/api/adminApi";
-
-const letterKeys = [
-  ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-  ["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-  ["Z", "X", "C", "V", "B", "N", "M"],
-];
-
-const numericKeys = [
-  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
-  ["-", "/", ":", ";", "(", ")", "$", "&", "@", '"'],
-  [".", ",", "?", "!", "'"],
-];
 
 export default function AdminLoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [activeField, setActiveField] = useState<"username" | "password">("username");
-  const [isShift, setIsShift] = useState(true);
-  const [isNumeric, setIsNumeric] = useState(false);
   const [error, setError] = useState("");
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const [adminLogin, { isLoading }] = useAdminLoginMutation();
 
@@ -55,7 +43,6 @@ export default function AdminLoginPage() {
         e.preventDefault();
         if (activeField === "username") {
           setActiveField("password");
-          setIsNumeric(false);
           passwordRef.current?.focus();
         }
         return;
@@ -78,29 +65,32 @@ export default function AdminLoginPage() {
     return () => window.removeEventListener("keydown", handler);
   }, [activeField, username, password]);
 
-  const handleKeyPress = (key: string) => {
+  const handleKeyboardKeyPress = (key: string) => {
     const setValue = activeField === "username" ? setUsername : setPassword;
     const currentValue = activeField === "username" ? username : password;
 
     if (key === "backspace") {
       setValue(currentValue.slice(0, -1));
-    } else if (key === "space") {
+      return;
+    }
+    if (key === "space") {
       setValue(currentValue + " ");
-    } else if (key === "shift") {
-      setIsShift(!isShift);
-    } else if (key === "123" || key === "ABC") {
-      setIsNumeric(!isNumeric);
-    } else if (key === "return") {
+      return;
+    }
+    if (key === "return") {
       if (activeField === "username") {
         setActiveField("password");
-        setIsNumeric(false);
         passwordRef.current?.focus();
+        return;
       }
-    } else {
-      const char = isShift && !isNumeric ? key.toUpperCase() : key.toLowerCase();
-      setValue(currentValue + char);
-      if (isShift && !isNumeric) setIsShift(false);
+      setIsKeyboardOpen(false);
+      return;
     }
+    if (key === "shift" || key === "123" || key === "ABC" || key === "arrowleft" || key === "arrowright") {
+      return;
+    }
+
+    setValue(currentValue + key);
   };
 
   const handleNext = async () => {
@@ -133,8 +123,6 @@ export default function AdminLoginPage() {
   const handleBack = () => {
     router.back();
   };
-
-  const keys = isNumeric ? numericKeys : letterKeys;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh", width: "100%" }}>
@@ -224,12 +212,12 @@ export default function AdminLoginPage() {
               value={username}
               onClick={() => {
                 setActiveField("username");
-                setIsNumeric(false);
+                setIsKeyboardOpen(true);
                 usernameRef.current?.focus();
               }}
               onFocus={() => {
                 setActiveField("username");
-                setIsNumeric(false);
+                setIsKeyboardOpen(true);
               }}
               InputProps={{ readOnly: true }}
               sx={{
@@ -256,12 +244,12 @@ export default function AdminLoginPage() {
               value={password}
               onClick={() => {
                 setActiveField("password");
-                setIsNumeric(false);
+                setIsKeyboardOpen(true);
                 passwordRef.current?.focus();
               }}
               onFocus={() => {
                 setActiveField("password");
-                setIsNumeric(false);
+                setIsKeyboardOpen(true);
               }}
               InputProps={{ readOnly: true }}
               sx={{
@@ -299,128 +287,32 @@ export default function AdminLoginPage() {
           </Typography>
         </Box>
 
-        {/* Custom Keyboard */}
-       <Box
-          sx={{
-            bgcolor: "#d1d5db",
-            px: 2,
-            py: 6,
-            pb: 12,
-            flexShrink: 0,
-          }}
-        >
-          {keys.map((row, rowIndex) => (
-            <Box key={rowIndex} sx={{ display: "flex", justifyContent: "center", gap: 1, mb: 1 }}>
-              {rowIndex === 2 && !isNumeric && (
-                <Box
-                  onClick={() => handleKeyPress("shift")}
-                  sx={{
-                    width: 100,
-                    height: 100,
-                    bgcolor: isShift ? "#9ca3af" : "#f3f4f6",
-                    borderRadius: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <Typography sx={{ fontSize: "1.2rem" }}>⇧</Typography>
-                </Box>
-              )}
-              {row.map((key) => (
-                <Box
-                  key={key}
-                  onClick={() => handleKeyPress(key)}
-                  sx={{
-                    width: 60,
-                    height: 80,
-                    bgcolor: "#f3f4f6",
-                    borderRadius: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <Typography sx={{ fontSize: "1.2rem", fontWeight: 500 }}>
-                    {isShift && !isNumeric ? key : key.toLowerCase()}
-                  </Typography>
-                </Box>
-              ))}
-              {rowIndex === 2 && (
-                <Box
-                  onClick={() => handleKeyPress("backspace")}
-                  sx={{
-                    width: 60,
-                    height: 80,
-                    bgcolor: "#f3f4f6",
-                    borderRadius: 1,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
-                  }}
-                >
-                  <Backspace sx={{ fontSize: "1.1rem", color: "#374151" }} />
-                </Box>
-              )}
-            </Box>
-          ))}
-
-          {/* Bottom Row */}
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5, mt: 1 }}>
+        {isKeyboardOpen ? (
+          <Box
+            onClick={() => setIsKeyboardOpen(false)}
+            sx={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1400,
+            }}
+          >
             <Box
-              onClick={() => handleKeyPress(isNumeric ? "ABC" : "123")}
+              onClick={(e) => e.stopPropagation()}
               sx={{
-                width: 100,
-                height: 80,
-                bgcolor: "#9ca3af",
-                borderRadius: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
               }}
             >
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>{isNumeric ? "ABC" : "123"}</Typography>
-            </Box>
-            <Box
-              onClick={() => handleKeyPress("space")}
-              sx={{
-                flex: 1,
-                maxWidth: 200,
-                height: 80,
-                bgcolor: "#f3f4f6",
-                borderRadius: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Typography sx={{ fontSize: "0.85rem", color: "#6b7280" }}>space</Typography>
-            </Box>
-            <Box
-              onClick={() => handleKeyPress("return")}
-              sx={{
-                width: 100,
-                height: 80,
-                bgcolor: "#9ca3af",
-                borderRadius: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-              }}
-            >
-              <Typography sx={{ fontSize: "0.85rem", fontWeight: 600 }}>return</Typography>
+              <VirtualKeyboard
+                onKeyPress={handleKeyboardKeyPress}
+                layout="default"
+                visible={isKeyboardOpen}
+              />
             </Box>
           </Box>
-        </Box>
+        ) : null}
       </PageBackground>
     </Box>
   );

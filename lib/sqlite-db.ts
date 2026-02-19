@@ -35,6 +35,23 @@ function initDb() {
     )
   `);
 
+  // Dispense history table - tracks every dispense event
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS dispense_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id TEXT,
+      order_item_id INTEGER,
+      product_id TEXT NOT NULL,
+      product_name TEXT,
+      slot_id INTEGER NOT NULL,
+      quantity INTEGER DEFAULT 1,
+      success INTEGER DEFAULT 0,
+      error_message TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (order_id) REFERENCES orders(id)
+    )
+  `);
+
   // Order items table - individual items in each order
   db.exec(`
     CREATE TABLE IF NOT EXISTS order_items (
@@ -72,6 +89,138 @@ function initDb() {
       category TEXT,
       retail_price REAL,
       quantity INTEGER,
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Users table - user profiles
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      name TEXT,
+      phone TEXT,
+      email TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Admin users table - admin login credentials
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS admin_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      is_active INTEGER DEFAULT 1,
+      last_login TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // App settings table - app configuration
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      setting_key TEXT UNIQUE NOT NULL,
+      setting_value TEXT NOT NULL,
+      description TEXT,
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Insert default Razorpay mode setting
+  db.exec(`
+    INSERT OR IGNORE INTO app_settings (setting_key, setting_value, description)
+    VALUES ('razorpay_mode', 'test', 'Razorpay payment mode: test or live')
+  `);
+
+  // Products table - full product catalog (local cache)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      external_id TEXT UNIQUE,
+      name TEXT NOT NULL,
+      description TEXT,
+      retail_price REAL NOT NULL,
+      product_use TEXT,
+      product_benefits TEXT,
+      application TEXT,
+      product_type TEXT,
+      category TEXT,
+      category_sort_order INTEGER,
+      image_url TEXT,
+      image_tag TEXT,
+      in_stock INTEGER DEFAULT 1,
+      quantity INTEGER DEFAULT 0,
+      min_quantity INTEGER DEFAULT 5,
+      skin_types TEXT,
+      matching_attributes TEXT,
+      matches TEXT,
+      discount TEXT,
+      shopify_url TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  // Cart items table - user shopping cart
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS cart_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      quantity INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      UNIQUE(user_id, product_id)
+    )
+  `);
+
+  // Scan records table - skin analysis results
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS scan_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL,
+      image_url TEXT,
+      local_captured_image TEXT,
+      skin_type TEXT,
+      detected_attributes TEXT,
+      detected_lip_attributes TEXT,
+      analysis_ai_summary TEXT,
+      lip_analysis_summary TEXT,
+      diet_plan TEXT,
+      captured_images TEXT,
+      analysed_images TEXT,
+      public_url TEXT,
+      recommended_products TEXT,
+      recommended_lip_products TEXT,
+      recommended_salon_services TEXT,
+      recommended_cosmetic_services TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  // Transactions table - payment transactions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      product_id TEXT,
+      amount REAL NOT NULL,
+      payment_id TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  // Settings table - additional settings
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT UNIQUE NOT NULL,
+      value TEXT,
       updated_at TEXT DEFAULT (datetime('now'))
     )
   `);
@@ -133,6 +282,19 @@ export interface ProductOverride {
   retail_price?: number;
   quantity?: number;
   updated_at: string;
+}
+
+export interface DispenseHistoryEntry {
+  id: number;
+  orderId?: string;
+  orderItemId?: number;
+  productId: string;
+  productName?: string;
+  slotId: number;
+  quantity: number;
+  success: boolean;
+  errorMessage?: string;
+  createdAt: string;
 }
 
 // Database operations
@@ -240,13 +402,44 @@ export const sqliteDb = {
     orderId: string,
     productId: string,
     dispensed: boolean,
-    dispenseError?: string
+    dispenseError?: string,
+    slotId?: number
   ): Order | undefined {
+    // Get order item details for logging
+    const orderItem = db.prepare(`
+      SELECT id, product_name, slot_id, quantity FROM order_items 
+      WHERE order_id = ? AND product_id = ?
+    `).get(orderId, productId) as any;
+
+    const effectiveSlotId = slotId || orderItem?.slot_id;
+
+    // Update order item dispense status
     db.prepare(`
       UPDATE order_items 
       SET dispensed = ?, dispense_error = ?
       WHERE order_id = ? AND product_id = ?
     `).run(dispensed ? 1 : 0, dispenseError || null, orderId, productId);
+
+    // Log dispense event to history
+    if (orderItem) {
+      this.logDispenseEvent({
+        orderId,
+        orderItemId: orderItem.id,
+        productId,
+        productName: orderItem.product_name,
+        slotId: effectiveSlotId,
+        quantity: orderItem.quantity || 1,
+        success: dispensed,
+        errorMessage: dispenseError,
+      });
+    }
+
+    // Auto-decrement slot quantity on successful dispense
+    if (dispensed && effectiveSlotId) {
+      const quantityToDecrement = orderItem?.quantity || 1;
+      this.updateSlotQuantity(effectiveSlotId, -quantityToDecrement);
+      console.log(`[SQLite] Auto-decremented slot ${effectiveSlotId} by ${quantityToDecrement}`);
+    }
 
     // Update order status based on items
     const items = db.prepare('SELECT dispensed, dispense_error FROM order_items WHERE order_id = ?').all(orderId) as any[];
@@ -487,11 +680,397 @@ export const sqliteDb = {
     return result;
   },
 
+  // ==================== DISPENSE HISTORY ====================
+
+  logDispenseEvent(event: {
+    orderId?: string;
+    orderItemId?: number;
+    productId: string;
+    productName?: string;
+    slotId: number;
+    quantity?: number;
+    success: boolean;
+    errorMessage?: string;
+  }): DispenseHistoryEntry {
+    const createdAt = new Date().toISOString();
+    const result = db.prepare(`
+      INSERT INTO dispense_history (order_id, order_item_id, product_id, product_name, slot_id, quantity, success, error_message, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      event.orderId || null,
+      event.orderItemId || null,
+      event.productId,
+      event.productName || null,
+      event.slotId,
+      event.quantity || 1,
+      event.success ? 1 : 0,
+      event.errorMessage || null,
+      createdAt
+    );
+
+    console.log(`[SQLite] Logged dispense event: slot ${event.slotId}, product ${event.productId}, success: ${event.success}`);
+    return this.getDispenseHistoryEntry(result.lastInsertRowid as number)!;
+  },
+
+  getDispenseHistoryEntry(id: number): DispenseHistoryEntry | undefined {
+    const row = db.prepare('SELECT * FROM dispense_history WHERE id = ?').get(id) as any;
+    if (!row) return undefined;
+    return {
+      id: row.id,
+      orderId: row.order_id,
+      orderItemId: row.order_item_id,
+      productId: row.product_id,
+      productName: row.product_name,
+      slotId: row.slot_id,
+      quantity: row.quantity,
+      success: row.success === 1,
+      errorMessage: row.error_message,
+      createdAt: row.created_at,
+    };
+  },
+
+  getDispenseHistory(limit?: number, offset?: number): { entries: DispenseHistoryEntry[]; total: number } {
+    const total = (db.prepare('SELECT COUNT(*) as count FROM dispense_history').get() as { count: number }).count;
+
+    let query = 'SELECT * FROM dispense_history ORDER BY created_at DESC';
+    if (limit !== undefined) {
+      query += ` LIMIT ${limit}`;
+      if (offset !== undefined) {
+        query += ` OFFSET ${offset}`;
+      }
+    }
+
+    const rows = db.prepare(query).all() as any[];
+    const entries = rows.map(row => ({
+      id: row.id,
+      orderId: row.order_id,
+      orderItemId: row.order_item_id,
+      productId: row.product_id,
+      productName: row.product_name,
+      slotId: row.slot_id,
+      quantity: row.quantity,
+      success: row.success === 1,
+      errorMessage: row.error_message,
+      createdAt: row.created_at,
+    }));
+
+    return { entries, total };
+  },
+
+  getDispenseHistoryForSlot(slotId: number): DispenseHistoryEntry[] {
+    const rows = db.prepare('SELECT * FROM dispense_history WHERE slot_id = ? ORDER BY created_at DESC').all(slotId) as any[];
+    return rows.map(row => ({
+      id: row.id,
+      orderId: row.order_id,
+      orderItemId: row.order_item_id,
+      productId: row.product_id,
+      productName: row.product_name,
+      slotId: row.slot_id,
+      quantity: row.quantity,
+      success: row.success === 1,
+      errorMessage: row.error_message,
+      createdAt: row.created_at,
+    }));
+  },
+
+  getDispenseStats(): {
+    totalDispenses: number;
+    successfulDispenses: number;
+    failedDispenses: number;
+    todayDispenses: number;
+    todaySuccessful: number;
+  } {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString();
+
+    const stats = db.prepare(`
+      SELECT 
+        COUNT(*) as total_dispenses,
+        SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) as successful_dispenses,
+        SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) as failed_dispenses,
+        SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) as today_dispenses,
+        SUM(CASE WHEN success = 1 AND created_at >= ? THEN 1 ELSE 0 END) as today_successful
+      FROM dispense_history
+    `).get(todayStr, todayStr) as any;
+
+    return {
+      totalDispenses: stats.total_dispenses || 0,
+      successfulDispenses: stats.successful_dispenses || 0,
+      failedDispenses: stats.failed_dispenses || 0,
+      todayDispenses: stats.today_dispenses || 0,
+      todaySuccessful: stats.today_successful || 0,
+    };
+  },
+
   // ==================== UTILITY ====================
 
-  syncProductQuantities(): void {
-    // This would sync quantities from slots to products if needed
-    console.log('[SQLite] Sync product quantities called');
+  syncProductQuantities(): { productId: string; totalQuantity: number }[] {
+    // Calculate total quantity for each product by summing all slot quantities
+    const results: { productId: string; totalQuantity: number }[] = [];
+
+    const productSlots = db.prepare(`
+      SELECT product_id, SUM(quantity) as total_quantity
+      FROM vending_slots
+      WHERE product_id IS NOT NULL
+      GROUP BY product_id
+    `).all() as any[];
+
+    for (const row of productSlots) {
+      results.push({
+        productId: row.product_id,
+        totalQuantity: row.total_quantity || 0,
+      });
+    }
+
+    console.log('[SQLite] Synced product quantities:', results.length, 'products');
+    return results;
+  },
+
+  getTotalQuantityForProduct(productId: string): number {
+    const searchId = String(productId).replace(/^products\//, '');
+    const result = db.prepare(`
+      SELECT COALESCE(SUM(quantity), 0) as total_quantity
+      FROM vending_slots
+      WHERE product_id = ? OR product_id = ? OR product_id = ?
+    `).get(searchId, `products/${searchId}`, String(productId)) as any;
+    return result?.total_quantity || 0;
+  },
+
+  // ==================== USERS ====================
+
+  saveUser(userId: string, name: string, phone: string, email: string = ''): string {
+    const existing = db.prepare('SELECT id FROM users WHERE id = ?').get(userId);
+    if (existing) {
+      db.prepare('UPDATE users SET name = ?, phone = ?, email = ? WHERE id = ?').run(name, phone, email, userId);
+    } else {
+      db.prepare('INSERT INTO users (id, name, phone, email) VALUES (?, ?, ?, ?)').run(userId, name, phone, email);
+    }
+    return userId;
+  },
+
+  getUser(userId: string): { id: string; name: string; phone: string; email: string; created_at: string } | undefined {
+    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any;
+    if (!row) return undefined;
+    return { id: row.id, name: row.name, phone: row.phone, email: row.email, created_at: row.created_at };
+  },
+
+  // ==================== ADMIN USERS ====================
+
+  createAdminUser(username: string, passwordHash: string): boolean {
+    try {
+      db.prepare('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)').run(username, passwordHash);
+      return true;
+    } catch {
+      return false; // User already exists
+    }
+  },
+
+  verifyAdminCredentials(username: string, password: string): boolean {
+    const user = db.prepare('SELECT id, password_hash FROM admin_users WHERE username = ? AND is_active = 1').get(username) as any;
+    if (user && user.password_hash === password) {
+      db.prepare('UPDATE admin_users SET last_login = ? WHERE id = ?').run(new Date().toISOString(), user.id);
+      return true;
+    }
+    return false;
+  },
+
+  // ==================== APP SETTINGS ====================
+
+  getSetting(key: string, defaultValue: string | null = null): string | null {
+    const row = db.prepare('SELECT setting_value FROM app_settings WHERE setting_key = ?').get(key) as any;
+    return row ? row.setting_value : defaultValue;
+  },
+
+  setSetting(key: string, value: string, description?: string): boolean {
+    db.prepare(`
+      INSERT INTO app_settings (setting_key, setting_value, description, updated_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(setting_key) DO UPDATE SET setting_value = ?, description = COALESCE(?, description), updated_at = ?
+    `).run(key, value, description || null, new Date().toISOString(), value, description || null, new Date().toISOString());
+    return true;
+  },
+
+  getRazorpayMode(): 'test' | 'live' {
+    return (this.getSetting('razorpay_mode', 'test') as 'test' | 'live') || 'test';
+  },
+
+  setRazorpayMode(mode: 'test' | 'live'): boolean {
+    return this.setSetting('razorpay_mode', mode, 'Razorpay payment mode: test or live');
+  },
+
+  // ==================== CART ====================
+
+  getCart(userId: string): { items: any[]; total: number } {
+    const rows = db.prepare(`
+      SELECT ci.*, p.name, p.retail_price, p.image_url, p.category
+      FROM cart_items ci
+      LEFT JOIN products p ON ci.product_id = p.external_id
+      WHERE ci.user_id = ?
+    `).all(userId) as any[];
+    
+    const total = rows.reduce((sum, item) => sum + (item.quantity * (item.retail_price || 0)), 0);
+    return { items: rows, total };
+  },
+
+  addToCart(userId: string, productId: string, quantity: number = 1): boolean {
+    db.prepare(`
+      INSERT INTO cart_items (user_id, product_id, quantity)
+      VALUES (?, ?, ?)
+      ON CONFLICT(user_id, product_id) DO UPDATE SET quantity = quantity + ?, updated_at = datetime('now')
+    `).run(userId, productId, quantity, quantity);
+    return true;
+  },
+
+  removeFromCart(userId: string, productId: string): boolean {
+    db.prepare('DELETE FROM cart_items WHERE user_id = ? AND product_id = ?').run(userId, productId);
+    return true;
+  },
+
+  clearCart(userId: string): boolean {
+    db.prepare('DELETE FROM cart_items WHERE user_id = ?').run(userId);
+    return true;
+  },
+
+  // ==================== SCAN RECORDS ====================
+
+  saveScanRecord(scanData: {
+    userId: string;
+    imageUrl?: string;
+    localCapturedImage?: string;
+    skinType?: string;
+    detectedAttributes?: any;
+    detectedLipAttributes?: any;
+    analysisAiSummary?: any;
+    lipAnalysisSummary?: string;
+    dietPlan?: any;
+    capturedImages?: any;
+    analysedImages?: any;
+    publicUrl?: string;
+    recommendedProducts?: any;
+    recommendedLipProducts?: any;
+    recommendedSalonServices?: any;
+    recommendedCosmeticServices?: any;
+  }): number {
+    const result = db.prepare(`
+      INSERT INTO scan_records (
+        user_id, image_url, local_captured_image, skin_type, detected_attributes, detected_lip_attributes,
+        analysis_ai_summary, lip_analysis_summary, diet_plan, captured_images, analysed_images, public_url,
+        recommended_products, recommended_lip_products, recommended_salon_services, recommended_cosmetic_services
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      scanData.userId,
+      scanData.imageUrl || null,
+      scanData.localCapturedImage || null,
+      scanData.skinType || null,
+      JSON.stringify(scanData.detectedAttributes || []),
+      JSON.stringify(scanData.detectedLipAttributes || []),
+      JSON.stringify(scanData.analysisAiSummary || []),
+      scanData.lipAnalysisSummary || null,
+      JSON.stringify(scanData.dietPlan || {}),
+      JSON.stringify(scanData.capturedImages || []),
+      JSON.stringify(scanData.analysedImages || []),
+      scanData.publicUrl || null,
+      JSON.stringify(scanData.recommendedProducts || {}),
+      JSON.stringify(scanData.recommendedLipProducts || []),
+      JSON.stringify(scanData.recommendedSalonServices || []),
+      JSON.stringify(scanData.recommendedCosmeticServices || [])
+    );
+    return result.lastInsertRowid as number;
+  },
+
+  getScanRecord(scanId: number): any {
+    const row = db.prepare('SELECT * FROM scan_records WHERE id = ?').get(scanId) as any;
+    if (!row) return undefined;
+    
+    // Parse JSON fields
+    const jsonFields = ['detected_attributes', 'detected_lip_attributes', 'analysis_ai_summary', 'diet_plan', 
+                        'captured_images', 'analysed_images', 'recommended_products', 'recommended_lip_products',
+                        'recommended_salon_services', 'recommended_cosmetic_services'];
+    for (const field of jsonFields) {
+      if (row[field]) {
+        try { row[field] = JSON.parse(row[field]); } catch { row[field] = []; }
+      }
+    }
+    return row;
+  },
+
+  // ==================== TRANSACTIONS ====================
+
+  createTransaction(transactionId: string, userId: string | null, productId: string | null, amount: number, paymentId?: string): boolean {
+    db.prepare(`
+      INSERT INTO transactions (id, user_id, product_id, amount, payment_id, status)
+      VALUES (?, ?, ?, ?, ?, 'pending')
+    `).run(transactionId, userId, productId, amount, paymentId || null);
+    return true;
+  },
+
+  updateTransactionStatus(transactionId: string, status: string, paymentId?: string): boolean {
+    if (paymentId) {
+      db.prepare('UPDATE transactions SET status = ?, payment_id = ? WHERE id = ?').run(status, paymentId, transactionId);
+    } else {
+      db.prepare('UPDATE transactions SET status = ? WHERE id = ?').run(status, transactionId);
+    }
+    return true;
+  },
+
+  // ==================== LOCAL PRODUCTS ====================
+
+  upsertProduct(productData: {
+    externalId: string;
+    name: string;
+    description?: string;
+    retailPrice: number;
+    category?: string;
+    imageUrl?: string;
+    quantity?: number;
+    skinTypes?: string[];
+    matchingAttributes?: string[];
+  }): number {
+    const existing = db.prepare('SELECT id FROM products WHERE external_id = ?').get(productData.externalId) as any;
+    
+    if (existing) {
+      db.prepare(`
+        UPDATE products SET name = ?, description = ?, retail_price = ?, category = ?, image_url = ?,
+        quantity = ?, skin_types = ?, matching_attributes = ?, updated_at = datetime('now')
+        WHERE external_id = ?
+      `).run(
+        productData.name,
+        productData.description || null,
+        productData.retailPrice,
+        productData.category || null,
+        productData.imageUrl || null,
+        productData.quantity || 0,
+        JSON.stringify(productData.skinTypes || []),
+        JSON.stringify(productData.matchingAttributes || []),
+        productData.externalId
+      );
+      return existing.id;
+    } else {
+      const result = db.prepare(`
+        INSERT INTO products (external_id, name, description, retail_price, category, image_url, quantity, skin_types, matching_attributes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        productData.externalId,
+        productData.name,
+        productData.description || null,
+        productData.retailPrice,
+        productData.category || null,
+        productData.imageUrl || null,
+        productData.quantity || 0,
+        JSON.stringify(productData.skinTypes || []),
+        JSON.stringify(productData.matchingAttributes || [])
+      );
+      return result.lastInsertRowid as number;
+    }
+  },
+
+  getProductByExternalId(externalId: string): any {
+    return db.prepare('SELECT * FROM products WHERE external_id = ?').get(externalId);
+  },
+
+  getAllLocalProducts(): any[] {
+    return db.prepare('SELECT * FROM products ORDER BY name').all();
   },
 
   // Close database connection (for cleanup)

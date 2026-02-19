@@ -308,6 +308,7 @@ const TakeSelfie = () => {
   const [image, setImage] = useState<any>(null);
   const imageRef = useRef<any>();
   const canvasRef = useRef<any>();
+  const autoAnalyzeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const theme = useTheme();
   const isUpMdDevice = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -333,6 +334,15 @@ const TakeSelfie = () => {
   const [getSignedUploadUrl] = useGetSignedUploadUrlMutation();
   const { data: session, status, update } = useSession();
   useEffect(() => {}, []);
+
+  useEffect(() => {
+    return () => {
+      if (autoAnalyzeTimerRef.current) {
+        clearTimeout(autoAnalyzeTimerRef.current);
+        autoAnalyzeTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -509,6 +519,11 @@ const TakeSelfie = () => {
   // handle captured Image
   const handleUploadToServer = async (base64String: string) => {
     try {
+      if (autoAnalyzeTimerRef.current) {
+        clearTimeout(autoAnalyzeTimerRef.current);
+        autoAnalyzeTimerRef.current = null;
+      }
+
       if (!resolvedUserId) {
         console.error("Missing userId for upload (session)");
         setCroppedFace(null);
@@ -556,49 +571,52 @@ const TakeSelfie = () => {
           });
           // Auto-start skin analysis after successful upload
           const formValues = getValues();
-          setIsAutoAnalyzing(true);
-          getRecommnedSkinAttributes({
-            userId: resolvedUserId,
-            fileName: fileName,
-            skinType: formValues?.skinType as string,
-          })
-            .then((response: any) => {
-              console.log("Skin analysis response:", response);
-              setIsAutoAnalyzing(false);
-              if (response?.error?.data?.error) {
-                setSkinAttributeStatus({
-                  type: "ERROR",
-                  message: response?.error?.data?.error,
-                });
-              } else if (response?.error) {
-                setSkinAttributeStatus({
-                  type: "ERROR",
-                  message: response?.error?.message || "Analysis failed",
-                });
-              } else {
-                update({
-                  ...session,
-                  user: {
-                    ...session?.user,
-                    selfyImage: fileName,
-                    selfyImagePath: _res?.config?.url,
-                    skinTypes: formValues?.skinType?.replace("_", " "),
-                  },
-                });
-                setSkinAttributeStatus({
-                  type: "SUCCESS",
-                  message: response?.data?.message || "Analysis completed successfully!",
-                });
-              }
+
+          autoAnalyzeTimerRef.current = setTimeout(() => {
+            setIsAutoAnalyzing(true);
+            getRecommnedSkinAttributes({
+              userId: resolvedUserId,
+              fileName: fileName,
+              skinType: formValues?.skinType as string,
             })
-            .catch((error) => {
-              console.error("Auto skin analysis error:", error);
-              setIsAutoAnalyzing(false);
-              setSkinAttributeStatus({
-                type: "ERROR",
-                message: "Analysis failed. Please try again.",
+              .then((response: any) => {
+                console.log("Skin analysis response:", response);
+                setIsAutoAnalyzing(false);
+                if (response?.error?.data?.error) {
+                  setSkinAttributeStatus({
+                    type: "ERROR",
+                    message: response?.error?.data?.error,
+                  });
+                } else if (response?.error) {
+                  setSkinAttributeStatus({
+                    type: "ERROR",
+                    message: response?.error?.message || "Analysis failed",
+                  });
+                } else {
+                  update({
+                    ...session,
+                    user: {
+                      ...session?.user,
+                      selfyImage: fileName,
+                      selfyImagePath: _res?.config?.url,
+                      skinTypes: formValues?.skinType?.replace("_", " "),
+                    },
+                  });
+                  setSkinAttributeStatus({
+                    type: "SUCCESS",
+                    message: response?.data?.message || "Analysis completed successfully!",
+                  });
+                }
+              })
+              .catch((error) => {
+                console.error("Auto skin analysis error:", error);
+                setIsAutoAnalyzing(false);
+                setSkinAttributeStatus({
+                  type: "ERROR",
+                  message: "Analysis failed. Please try again.",
+                });
               });
-            });
+          }, 2000);
         }
       }
     } catch (error) {
@@ -810,6 +828,11 @@ const TakeSelfie = () => {
                           fullWidth
                           sx={{ mt: 2, borderColor: "#9ca3af", color: "#1a1a1a" }}
                           onClick={() => {
+                            if (autoAnalyzeTimerRef.current) {
+                              clearTimeout(autoAnalyzeTimerRef.current);
+                              autoAnalyzeTimerRef.current = null;
+                            }
+                            setIsAutoAnalyzing(false);
                             setSkinAttributeStatus(null);
                             setOpenCamera(true);
                           }}

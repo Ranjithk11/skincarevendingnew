@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import PageBackground from "@/components/ui/PageBackground";
 import { HelpDialog } from "@/components/ui";
+import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { clearCart } from "@/redux/reducers/cartSlice";
@@ -36,6 +37,7 @@ export default function FeedbackPage() {
   const [notes, setNotes] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [helpDialogOpen, setHelpDialogOpen] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const [checkoutSummary, setCheckoutSummary] = useState<any>(null);
   const [dispenseState, setDispenseState] = useState<
@@ -111,6 +113,26 @@ export default function FeedbackPage() {
     const items = checkoutSummary?.items;
     return Array.isArray(items) ? items : [];
   }, [checkoutSummary]);
+
+  const handleKeyboardKeyPress = (key: string) => {
+    if (key === "backspace") {
+      setNotes((prev) => prev.slice(0, -1));
+      return;
+    }
+    if (key === "space") {
+      setNotes((prev) => `${prev} `);
+      return;
+    }
+    if (key === "return") {
+      setNotes((prev) => `${prev}\n`);
+      setIsKeyboardOpen(false);
+      return;
+    }
+    if (key === "shift" || key === "123" || key === "ABC" || key === "arrowleft" || key === "arrowright") {
+      return;
+    }
+    setNotes((prev) => `${prev}${key}`);
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -351,7 +373,7 @@ export default function FeedbackPage() {
               </Typography>
             </Box>
             <Box sx={{ bgcolor: "#ffffff", borderRadius: 2, p: 1, flexShrink: 0 }}>
-              <Image src="/wending/qr.svg" alt="QR" width={74} height={74} />
+              <Image src="/qrcode/leafqr.jpeg" alt="QR" width={120} height={120} />
             </Box>
           </Box>
         </Box>
@@ -488,6 +510,8 @@ export default function FeedbackPage() {
               placeholder="Tell us more (optional)"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              onFocus={() => setIsKeyboardOpen(true)}
+              onClick={() => setIsKeyboardOpen(true)}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "12px",
@@ -540,6 +564,33 @@ export default function FeedbackPage() {
             </Button>
           </Box>
         </Box>
+
+        {isKeyboardOpen ? (
+          <Box
+            onClick={() => setIsKeyboardOpen(false)}
+            sx={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1400,
+            }}
+          >
+            <Box
+              onClick={(e) => e.stopPropagation()}
+              sx={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+            >
+              <VirtualKeyboard
+                onKeyPress={handleKeyboardKeyPress}
+                layout="default"
+                visible={isKeyboardOpen}
+              />
+            </Box>
+          </Box>
+        ) : null}
 
         <Box
           sx={{
@@ -610,7 +661,7 @@ export default function FeedbackPage() {
                 Scan this <br /> QR Code
               </Typography>
               <Box sx={{ bgcolor: "#ffffff", borderRadius: 1, p: 0.75, flexShrink: 0 }}>
-                <Image src="/wending/qr.svg" alt="QR" width={92} height={92} />
+                <Image src="/qrcode/leafqr.jpeg" alt="QR" width={120} height={120} />
               </Box>
             </Box>
           </Box>

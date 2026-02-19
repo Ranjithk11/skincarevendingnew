@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Divider, Grid, Typography, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Grid, Typography, useMediaQuery, useTheme } from "@mui/material";
 import ProductCard from "./ProductCard";
 
 interface Brand {
@@ -55,6 +55,9 @@ export default function VendingProducts({ data }: Props) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
+  const normalizeBrandKey = (name: unknown) =>
+    String(name ?? "").trim().toLowerCase();
+
   const categories = useMemo(() => {
     const high = data?.recommendedProducts?.highRecommendation;
     if (!Array.isArray(high)) return [];
@@ -65,29 +68,48 @@ export default function VendingProducts({ data }: Props) {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
 
-  // Extract unique brands from product data
   useEffect(() => {
-    if (!categories || categories.length === 0) return;
-    
-    const brandMap = new Map<string, Brand>();
-    
-    categories.forEach((cat: any) => {
-      const prods = cat?.products || [];
-      prods.forEach((p: any) => {
-        const brand = p?.brand;
-        if (brand?.name && !brandMap.has(brand.name)) {
-          brandMap.set(brand.name, {
-            _id: brand._id || brand.name,
-            _key: brand._key || brand.name,
-            name: brand.name,
-            label: brand.label || brand.name,
-          });
-        }
-      });
-    });
-    
-    setBrands(Array.from(brandMap.values()));
+    setBrands([]);
+    setSelectedBrand(null);
   }, [categories]);
+
+  // const brandImageMap = useMemo(() => {
+  //   const map = new Map<string, string>();
+  //   if (!categories || categories.length === 0) return map;
+
+  //   categories.forEach((cat: any) => {
+  //     const prods = cat?.products || [];
+  //     prods.forEach((p: any) => {
+  //       const brandNameRaw =
+  //         p?.brand?.name ??
+  //         p?.brand?.label ??
+  //         p?.brandName ??
+  //         p?.brand_label ??
+  //         (typeof p?.brand === "string" ? p.brand : undefined);
+
+  //       const brandKey = normalizeBrandKey(brandNameRaw);
+  //       if (!brandKey) return;
+
+  //       const img =
+  //         p?.images?.[0]?.url ||
+  //         p?.image_url ||
+  //         p?.images?.[0] ||
+  //         p?.imageUrl ||
+  //         "";
+
+  //       if (img && !map.has(brandKey)) {
+  //         map.set(brandKey, img);
+  //       }
+  //     });
+  //   });
+
+  //   return map;
+  // }, [categories]);
+
+  // const isAllBrandName = (name: unknown) => {
+  //   const n = String(name ?? "").trim().toLowerCase();
+  //   return n === "all" || n === "all brands";
+  // };
 
   const activeCategory = categories?.[categoryIndex];
   const products = Array.isArray(activeCategory?.products)
@@ -98,10 +120,16 @@ export default function VendingProducts({ data }: Props) {
     let filtered = products.filter(Boolean);
     // Filter by brand if selected
     if (selectedBrand) {
-      filtered = filtered.filter((p: any) => 
-        p?.brand?.name?.toLowerCase() === selectedBrand.toLowerCase() ||
-        p?.brand?.label?.toLowerCase() === selectedBrand.toLowerCase()
-      );
+      const selectedKey = normalizeBrandKey(selectedBrand);
+      filtered = filtered.filter((p: any) => {
+        const brandNameRaw =
+          p?.brand?.name ??
+          p?.brand?.label ??
+          p?.brandName ??
+          p?.brand_label ??
+          (typeof p?.brand === "string" ? p.brand : undefined);
+        return normalizeBrandKey(brandNameRaw) === selectedKey;
+      });
     }
     return filtered;
   }, [products, selectedBrand]);
@@ -111,7 +139,7 @@ export default function VendingProducts({ data }: Props) {
       <Box
         sx={{
           width: "100%",
-          mb:2,
+          mb: 2,
           fontFamily:
             'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
         }}
@@ -119,199 +147,226 @@ export default function VendingProducts({ data }: Props) {
         <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 3, mb: 3 }}>
           My Skincare Products
         </Typography>
-        <Typography sx={{ fontSize: "24px", letterSpacing: 1,fontWeight:400, color: "#000",mb:1 }}>
+        <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#000", mb: 1 }}>
           WHAT WE RECOMMEND
         </Typography>
 
-      <Box
-        sx={{
-          mt: 5,
-          mb: 5,
-          display: "flex",
-          gap: { xs: 0, md: 0 },
-          overflowX: { xs: "auto", md: "hidden" },
-          flexWrap: { xs: "nowrap", md: "wrap" },
-          justifyContent: { md: "space-between" },
-          width: "100%",
-          pb: 1,
-        }}
-      >
-        {categories.slice(0, 8).map((c: any, idx: number) => {
-          const firstImg = c?.products?.[0]?.images?.[0]?.url;
-          return (
-            <Box
-              key={c?.productCategory?._id || idx}
-              onClick={() => setCategoryIndex(idx)}
-              sx={{
-                flex: "0 0 auto",
-                width: { xs: 100, md: "calc((100% - 21px) / 8)" },
-                cursor: "pointer",
-                textAlign: "center",
-              }}
-            >
-              <Box
-                sx={{
-                  width: { xs: 58, md: 86 },
-                  height: { xs: 58, md: 86 },
-                  borderRadius: "50%",
-                  mx: "auto",
-                  border:
-                    idx === categoryIndex
-                      ? "2px solid #0f766e"
-                      : "2px solid #e5e7eb",
-                  bgcolor: "#ffffff",
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  
-                }}
-              >
-                {firstImg ? (
-                  <Box
-                    component="img"
-                    src={firstImg}
-                    alt={c?.productCategory?.title || "category"}
-                    sx={{ width: "122px", height: "122px", objectFit: "contain" }}
-                  />
-                ) : null}
-              </Box>
-              <Typography
-                sx={{
-                  mt: 0.75,
-                  fontSize: "24px",
-                  color: "#000",
-                  fontWeight: 400,
-                  whiteSpace: "normal",
-                  wordBreak: "break-word",
-                  lineHeight: 1.15,
-                  fontFamily: "Roboto, system-ui, -apple-system",
-                }}
-              >
-                {(() => {
-                  const title = c?.productCategory?.title || "Category";
-                  const parts = String(title).trim().split(/\s+/);
-                  const first = parts[0] || "";
-                  const rest = parts.slice(1).join(" ");
-
-                  return rest ? (
-                    <>
-                      {first}
-                      <br />
-                      {rest}
-                    </>
-                  ) : (
-                    first
-                  );
-                })()}
-              </Typography>
-            </Box>
-          );
-        })}
-      </Box>
-
-      {/* Horizontal Divider */}
-      <Divider sx={{ my: 3, borderColor: "#e5e7eb" }} />
-
-      {/* Brand Filters */}
-      <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#000", mb: 2 }}>
-        FILTER BY BRAND
-      </Typography>
-      <Box
-        sx={{
-          mb: 4,
-          display: "flex",
-          gap: 2,
-          overflowX: "auto",
-          flexWrap: "nowrap",
-          pb: 1,
-        }}
-      >
-        {/* All Brands option */}
         <Box
-          onClick={() => setSelectedBrand(null)}
           sx={{
-            flex: "0 0 auto",
-            px: 3,
-            py: 1.5,
-            borderRadius: "999px",
-            cursor: "pointer",
-            bgcolor: selectedBrand === null ? "#316D52" : "#f3f4f6",
-            color: selectedBrand === null ? "#fff" : "#374151",
-            fontWeight: 600,
-            fontSize: "20px",
-            transition: "all 0.2s ease",
-            "&:hover": {
-              bgcolor: selectedBrand === null ? "#234a31" : "#e5e7eb",
-            },
+            mt: 5,
+            mb: 5,
+            display: "flex",
+            gap: { xs: 0, md: 0 },
+            overflowX: { xs: "auto", md: "hidden" },
+            flexWrap: { xs: "nowrap", md: "wrap" },
+            justifyContent: { md: "space-between" },
+            width: "100%",
+            pb: 1,
           }}
         >
-          All
-        </Box>
-        {brands.map((brand) => (
-          <Box
-            key={brand._key}
-            onClick={() => setSelectedBrand(brand.name)}
+          {categories.slice(0, 8).map((c: any, idx: number) => {
+            const firstImg = c?.products?.[0]?.images?.[0]?.url;
+            return (
+              <Box
+                key={c?.productCategory?._id || idx}
+                onClick={() => setCategoryIndex(idx)}
+                sx={{
+                  flex: "0 0 auto",
+                  width: { xs: 100, md: "calc((100% - 21px) / 8)" },
+                  cursor: "pointer",
+                  textAlign: "center",
+                }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: 58, md: 86 },
+                    height: { xs: 58, md: 86 },
+                    borderRadius: "50%",
+                    mx: "auto",
+                    border:
+                      idx === categoryIndex
+                        ? "2px solid #0f766e"
+                        : "2px solid #e5e7eb",
+                    bgcolor: "#ffffff",
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+
+                  }}
+                >
+                  {firstImg ? (
+                    <Box
+                      component="img"
+                      src={firstImg}
+                      alt={c?.productCategory?.title || "category"}
+                      sx={{ width: "122px", height: "122px", objectFit: "contain" }}
+                    />
+                  ) : null}
+                </Box>
+                <Typography
+                  sx={{
+                    mt: 0.75,
+                    fontSize: "24px",
+                    color: "#000",
+                    fontWeight: 400,
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                    lineHeight: 1.15,
+                    fontFamily: "Roboto, system-ui, -apple-system",
+                  }}
+                >
+                  {(() => {
+                    const title = c?.productCategory?.title || "Category";
+                    const parts = String(title).trim().split(/\s+/);
+                    const first = parts[0] || "";
+                    const rest = parts.slice(1).join(" ");
+
+                    return rest ? (
+                      <>
+                        {first}
+                        <br />
+                        {rest}
+                      </>
+                    ) : (
+                      first
+                    );
+                  })()}
+                </Typography>
+              </Box>
+            );
+          })}
+
+          {/* Vertical divider between category and brand filters */}
+          {/* <Box
+            aria-hidden
             sx={{
               flex: "0 0 auto",
-              px: 3,
-              py: 1.5,
-              borderRadius: "999px",
-              cursor: "pointer",
-              bgcolor: selectedBrand === brand.name ? "#316D52" : "#f3f4f6",
-              color: selectedBrand === brand.name ? "#fff" : "#374151",
-              fontWeight: 600,
-              fontSize: "20px",
-              transition: "all 0.2s ease",
-              "&:hover": {
-                bgcolor: selectedBrand === brand.name ? "#234a31" : "#e5e7eb",
-              },
+              width: 4,
+              height: 100,
+              bgcolor: "#79797aff",
+              alignSelf: "center",
+              mx: 2,
+              borderRadius: 999,
             }}
-          >
-            {brand.name}
-          </Box>
-        ))}
-      </Box>
+          /> */}
 
-      <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 1 }}>
-        {visibleProducts.length === 0 ? (
-          <Grid item xs={12}>
-            <Typography sx={{ mt: 1.5, color: "#6b7280" }}>
-              No products available for this category.
-            </Typography>
-          </Grid>
-        ) : (
-          visibleProducts.map((product: any) => (
-            <Grid
-              item
-              xs={6}
-              md={4}
-              key={product?._id}
-              sx={{ display: "flex", justifyContent: "center" }}
-            >
-              <ProductCard
-                {...product}
-                category={activeCategory?.productCategory?.title}
-                enabledMask={false}
-                compact={false}
-                horizontalLayout={true}
-                cardSx={{
-                  width: "100%",
-                  ...(isDesktop
-                    ? {
-                      maxWidth: 700,
-                      minHeight: 380,
-                    }
-                    : {
-                      maxWidth: 700,
-                      height: 300,
-                    }),
-                }}
-              />
+          {/* Brand filters (same style as categories) */}
+          {/* {brands
+            .filter((b) => !isAllBrandName(b?.name))
+            .slice(0, 8)
+            .map((b) => {
+              const brandKey = normalizeBrandKey(b.name);
+              const img = brandImageMap.get(brandKey);
+              const active = normalizeBrandKey(selectedBrand) === brandKey;
+
+              return (
+                <Box
+                  key={b._key || b._id || b.name}
+                  onClick={() => setSelectedBrand(active ? null : b.name)}
+                  sx={{
+                    flex: "0 0 auto",
+                    width: { xs: 100, md: "calc((100% - 21px) / 8)" },
+                    cursor: "pointer",
+                    textAlign: "center",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: { xs: 58, md: 86 },
+                      height: { xs: 58, md: 86 },
+                      borderRadius: "50%",
+                      mx: "auto",
+                      border: active ? "2px solid #0f766e" : "2px solid #e5e7eb",
+                      bgcolor: "#ffffff",
+                      overflow: "hidden",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {img ? (
+                      <Box
+                        component="img"
+                        src={img}
+                        alt={b?.name || "brand"}
+                        sx={{ width: "122px", height: "122px", objectFit: "contain" }}
+                      />
+                    ) : null}
+                  </Box>
+                  <Typography
+                    sx={{
+                      mt: 0.75,
+                      fontSize: "24px",
+                      color: "#000",
+                      fontWeight: 400,
+                      whiteSpace: "normal",
+                      wordBreak: "break-word",
+                      lineHeight: 1.15,
+                      fontFamily: "Roboto, system-ui, -apple-system",
+                    }}
+                  >
+                    {(() => {
+                      const title = b?.name || "Brand";
+                      const parts = String(title).trim().split(/\s+/);
+                      const first = parts[0] || "";
+                      const rest = parts.slice(1).join(" ");
+
+                      return rest ? (
+                        <>
+                          {first}
+                          <br />
+                          {rest}
+                        </>
+                      ) : (
+                        first
+                      );
+                    })()}
+                  </Typography>
+                </Box>
+              );
+            })} */}
+        </Box>
+
+        <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 1 }}>
+          {visibleProducts.length === 0 ? (
+            <Grid item xs={12}>
+              <Typography sx={{ mt: 1.5, color: "#6b7280" }}>
+                No products available for this category.
+              </Typography>
             </Grid>
-          ))
-        )}
-      </Grid>
+          ) : (
+            visibleProducts.map((product: any) => (
+              <Grid
+                item
+                xs={6}
+                md={4}
+                key={product?._id}
+                sx={{ display: "flex", justifyContent: "center" }}
+              >
+                <ProductCard
+                  {...product}
+                  category={activeCategory?.productCategory?.title}
+                  enabledMask={false}
+                  compact={false}
+                  horizontalLayout={true}
+                  cardSx={{
+                    width: "100%",
+                    ...(isDesktop
+                      ? {
+                        maxWidth: 700,
+                        minHeight: 380,
+                      }
+                      : {
+                        maxWidth: 700,
+                        height: 300,
+                      }),
+                  }}
+                />
+              </Grid>
+            ))
+          )}
+        </Grid>
       </Box>
     </PageBackground>
   );

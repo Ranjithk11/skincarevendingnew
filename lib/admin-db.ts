@@ -4,7 +4,7 @@
 import { sqliteDb } from './sqlite-db';
 
 // Re-export types from sqlite-db
-export type { Order, OrderItem, VendingSlot, ProductOverride } from './sqlite-db';
+export type { Order, OrderItem, VendingSlot, ProductOverride, DispenseHistoryEntry } from './sqlite-db';
 
 // Product interface for local products list
 export interface Product {
@@ -63,4 +63,46 @@ export const adminDb = {
   getOrdersByStatus: sqliteDb.getOrdersByStatus.bind(sqliteDb),
   getOrdersByDateRange: sqliteDb.getOrdersByDateRange.bind(sqliteDb),
   getSalesStats: sqliteDb.getSalesStats.bind(sqliteDb),
+
+  // Dispense history tracking
+  logDispenseEvent: sqliteDb.logDispenseEvent.bind(sqliteDb),
+  getDispenseHistory: sqliteDb.getDispenseHistory.bind(sqliteDb),
+  getDispenseHistoryForSlot: sqliteDb.getDispenseHistoryForSlot.bind(sqliteDb),
+  getDispenseStats: sqliteDb.getDispenseStats.bind(sqliteDb),
+
+  // Product quantity utilities
+  getTotalQuantityForProduct: sqliteDb.getTotalQuantityForProduct.bind(sqliteDb),
+
+  // Users
+  saveUser: sqliteDb.saveUser.bind(sqliteDb),
+  getUser: sqliteDb.getUser.bind(sqliteDb),
+
+  // Admin users
+  createAdminUser: sqliteDb.createAdminUser.bind(sqliteDb),
+  verifyAdminCredentials: sqliteDb.verifyAdminCredentials.bind(sqliteDb),
+
+  // App settings
+  getSetting: sqliteDb.getSetting.bind(sqliteDb),
+  setSetting: sqliteDb.setSetting.bind(sqliteDb),
+  getRazorpayMode: sqliteDb.getRazorpayMode.bind(sqliteDb),
+  setRazorpayMode: sqliteDb.setRazorpayMode.bind(sqliteDb),
+
+  // Cart
+  getCart: sqliteDb.getCart.bind(sqliteDb),
+  addToCart: sqliteDb.addToCart.bind(sqliteDb),
+  removeFromCart: sqliteDb.removeFromCart.bind(sqliteDb),
+  clearCart: sqliteDb.clearCart.bind(sqliteDb),
+
+  // Scan records
+  saveScanRecord: sqliteDb.saveScanRecord.bind(sqliteDb),
+  getScanRecord: sqliteDb.getScanRecord.bind(sqliteDb),
+
+  // Transactions
+  createTransaction: sqliteDb.createTransaction.bind(sqliteDb),
+  updateTransactionStatus: sqliteDb.updateTransactionStatus.bind(sqliteDb),
+
+  // Local products
+  upsertProduct: sqliteDb.upsertProduct.bind(sqliteDb),
+  getProductByExternalId: sqliteDb.getProductByExternalId.bind(sqliteDb),
+  getAllLocalProducts: sqliteDb.getAllLocalProducts.bind(sqliteDb),
 };

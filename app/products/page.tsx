@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Box, Typography, Grid, useMediaQuery, useTheme, Chip } from "@mui/material";
+import { Box, Typography, Grid, useMediaQuery, useTheme } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { 
   useGetProductCategoriesQuery,
@@ -86,6 +86,7 @@ export default function BrowseProductsPage() {
   const router = useRouter();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+  const showBrandFilters = true;
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [openCart, setOpenCart] = useState(false);
@@ -100,9 +101,16 @@ export default function BrowseProductsPage() {
   const categories = categoriesData?.data || [];
   const brands = brandsData?.data || [];
 
+  const isAllBrandName = (name: unknown) => {
+    const n = String(name ?? "").trim().toLowerCase();
+    return n === "all" || n === "all brands";
+  };
+
   // State to store category images
   const [categoryImages, setCategoryImages] = useState<Record<string, string | undefined>>({});
+  const [brandImages, setBrandImages] = useState<Record<string, string | undefined>>({});
   const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [brandImagesLoaded, setBrandImagesLoaded] = useState(false);
 
   const categoryStripRef = useRef<HTMLDivElement | null>(null);
   const categoryDragRef = useRef<{ dragging: boolean; startX: number; startScrollLeft: number }>(
@@ -208,6 +216,57 @@ export default function BrowseProductsPage() {
     fetchAllCategoryImages();
   }, [categories, imagesLoaded]);
 
+  // Fetch all brand images in parallel once brands are loaded
+  useEffect(() => {
+    if (brandImagesLoaded || brands.length === 0) return;
+
+    const fetchAllBrandImages = async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
+      if (!apiUrl) return;
+
+      const fetchPromises = brands
+        .filter((b: any) => b?._id && b._id !== "all")
+        .map(async (b: any) => {
+          try {
+            const res = await fetch(
+              `${apiUrl}/product/fetch-by-filter?brandId=${b._id}&limit=1&isShopifyAvailable=true&hasBrand=true`,
+              { headers: { "x-db-token": dbToken } }
+            );
+            const data = await res.json();
+            const imgUrl = data?.data?.[0]?.products?.[0]?.images?.[0]?.url;
+            return { brandId: b._id, imgUrl };
+          } catch {
+            return { brandId: b._id, imgUrl: undefined };
+          }
+        });
+
+      // Also fetch for "all" brand
+      fetchPromises.push(
+        fetch(`${apiUrl}/product/fetch-by-filter?limit=1&isShopifyAvailable=true&hasBrand=true`, {
+          headers: { "x-db-token": dbToken },
+        })
+          .then((res) => res.json())
+          .then((data) => ({
+            brandId: "all",
+            imgUrl: data?.data?.[0]?.products?.[0]?.images?.[0]?.url,
+          }))
+          .catch(() => ({ brandId: "all", imgUrl: undefined }))
+      );
+
+      const results = await Promise.all(fetchPromises);
+      const images: Record<string, string | undefined> = {};
+      results.forEach(({ brandId, imgUrl }) => {
+        if (imgUrl) images[brandId] = imgUrl;
+      });
+
+      setBrandImages(images);
+      setBrandImagesLoaded(true);
+    };
+
+    fetchAllBrandImages();
+  }, [brands, brandImagesLoaded]);
+
   const handleGoBack = () => {
     router.push(APP_ROUTES.HOME);
   };
@@ -273,38 +332,7 @@ export default function BrowseProductsPage() {
             WHAT WE RECOMMEND
           </Typography>
 
-          {/* Brands Filter */}
-          {/* <Box
-            sx={{
-              mt: 3,
-              mb: 2,
-              display: "flex",
-              gap: 1,
-              overflowX: "auto",
-              pb: 1,
-              width: "100%",
-            }}
-          >
-            <Chip
-              label="All Brands"
-              onClick={() => setSelectedBrand("all")}
-              color={selectedBrand === "all" ? "primary" : "default"}
-              variant={selectedBrand === "all" ? "filled" : "outlined"}
-              sx={{ fontWeight: selectedBrand === "all" ? 600 : 400 }}
-            />
-            {brands.map((brand: any) => (
-              <Chip
-                key={brand._id}
-                label={brand.name}
-                onClick={() => setSelectedBrand(brand._id)}
-                color={selectedBrand === brand._id ? "primary" : "default"}
-                variant={selectedBrand === brand._id ? "filled" : "outlined"}
-                sx={{ fontWeight: selectedBrand === brand._id ? 600 : 400 }}
-              />
-            ))}
-          </Box> */}
-
-          {/* Category Tabs - circular icons with dynamic images */}
+          {/* Category + Brand Tabs - circular icons with dynamic images */}
           <Box
             ref={categoryStripRef}
             onPointerDown={(e) => {
@@ -396,6 +424,79 @@ export default function BrowseProductsPage() {
                 </Box>
               );
             })}
+
+            {showBrandFilters ? (
+              <>
+                {/* Vertical divider */}
+                <Box
+                  aria-hidden
+                  sx={{
+                    flex: "0 0 auto",
+                    width: 4,
+                    height: 100,
+                    bgcolor: "#79797aff",
+                    alignSelf: "center",
+                    mx: 2,
+                    borderRadius: 999,
+                  }}
+                />
+
+                {brands
+                  .filter((brand: any) => !isAllBrandName(brand?.name))
+                  .map((brand: any) => {
+                    const active = selectedBrand === brand._id;
+                    const firstImg = brandImages[brand._id];
+
+                    return (
+                      <Box
+                        key={brand._id}
+                        onClick={() => setSelectedBrand(brand._id)}
+                        sx={{
+                          flex: "0 0 auto",
+                          cursor: "pointer",
+                          textAlign: "center",
+                          minWidth: 100,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: { xs: 58, md: 86 },
+                            height: { xs: 58, md: 86 },
+                            borderRadius: "50%",
+                            mx: "auto",
+                            border: active ? "2px solid #0f766e" : "2px solid #e5e7eb",
+                            bgcolor: "#ffffff",
+                            overflow: "hidden",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          {firstImg ? (
+                            <Box
+                              component="img"
+                              src={firstImg}
+                              alt={brand?.name || "brand"}
+                              sx={{ width: "122px", height: "122px", objectFit: "contain" }}
+                            />
+                          ) : null}
+                        </Box>
+                        <Typography
+                          sx={{
+                            mt: 0.75,
+                            fontSize: 18,
+                            color: "#000",
+                            fontWeight: active ? 600 : 400,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {brand.name}
+                        </Typography>
+                      </Box>
+                    );
+                  })}
+              </>
+            ) : null}
           </Box>
 
           {/* Products Grid */}
