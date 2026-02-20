@@ -122,28 +122,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle REOPEN command - reopens the tray door
+    // Firmware outputs: "REOPEN command received", "Opening dispensing door", 
+    // "Door opened. Waiting 10 seconds...", "Closing dispensing door", "REOPEN complete", "200"
     if (command === "REOPEN") {
       if (cfg.mock) {
         console.log("[STM32 Mock] Simulating REOPEN command");
         return NextResponse.json({
           success: true,
           message: "Reopen command sent (mock)",
-          response: "Tray door reopened",
-          rawLines: ["[MOCK] REOPEN command", "[MOCK] Door opened"],
+          response: "REOPEN complete",
+          rawLines: [
+            "[MOCK] REOPEN command received",
+            "[MOCK] Opening dispensing door",
+            "[MOCK] Door opened. Waiting 10 seconds...",
+            "[MOCK] Closing dispensing door",
+            "[MOCK] REOPEN complete",
+            "[MOCK] 200",
+          ],
         });
       }
       
       try {
         const result = await stm32Dispense(cfg, "REOPEN", {
           commandPrefix: "",
-          okPattern: /OK|opened|success|complete/i,
+          okPattern: /REOPEN complete|^200$/i,
           errorPattern: /error|fail|invalid/i,
         });
         
         return NextResponse.json({
           success: true,
           message: "Reopen command sent",
-          response: result.okLine || "Tray door reopened",
+          response: result.okLine || "REOPEN complete",
           rawLines: result.rawLines,
         });
       } catch (err) {
