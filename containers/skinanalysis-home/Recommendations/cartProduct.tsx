@@ -436,7 +436,7 @@
 
                                                     router.push(APP_ROUTES.FEEDBACK);
 
-                                                    // Record the sale/order
+                                                    // Record the sale/order and transaction
                                                     void (async () => {
                                                         try {
                                                             const orderItems = itemsToDispense.map(item => ({
@@ -460,6 +460,18 @@
                                                             });
                                                             const orderData = await orderResponse.json();
                                                             console.log("[Payment] Order recorded:", orderData);
+
+                                                            // Also record transaction
+                                                            await fetch("/api/admin/transactions", {
+                                                                method: "POST",
+                                                                headers: { "Content-Type": "application/json" },
+                                                                body: JSON.stringify({
+                                                                    transactionId: payload?.paymentId || `txn_${Date.now()}`,
+                                                                    amount: payableTotal,
+                                                                    paymentId: payload?.paymentId,
+                                                                    status: "completed",
+                                                                }),
+                                                            }).catch(err => console.warn("[Payment] Failed to record transaction:", err));
                                                         } catch (err) {
                                                             console.error("[Payment] Failed to record order:", err);
                                                         }

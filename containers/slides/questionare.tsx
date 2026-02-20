@@ -347,6 +347,23 @@ export default function Questionnaire() {
         return;
       }
 
+      // Save user to local SQLite database for tracking
+      try {
+        await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: formattedPhoneNumber, // Use phone as unique ID
+            name,
+            phone: formattedPhoneNumber,
+            email,
+          }),
+        });
+      } catch (localDbError) {
+        console.warn('Failed to save user to local DB:', localDbError);
+        // Don't block registration if local save fails
+      }
+
       // Store skinType in Redux
       dispatch(setSkinType(skinTypeId));
 

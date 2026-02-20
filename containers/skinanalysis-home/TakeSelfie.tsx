@@ -606,6 +606,25 @@ const TakeSelfie = () => {
                     type: "SUCCESS",
                     message: response?.data?.message || "Analysis completed successfully!",
                   });
+                  
+                  // Save scan record to local SQLite database
+                  try {
+                    fetch('/api/admin/scans', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        userId: resolvedUserId,
+                        imageUrl: _res?.config?.url,
+                        localCapturedImage: fileName,
+                        skinType: formValues?.skinType,
+                        detectedAttributes: response?.data?.detected_attributes || response?.data?.detectedAttributes,
+                        analysisAiSummary: response?.data?.analysis_ai_summary || response?.data?.analysisAiSummary,
+                        recommendedProducts: response?.data?.recommended_products || response?.data?.recommendedProducts,
+                      }),
+                    }).catch(err => console.warn('Failed to save scan to local DB:', err));
+                  } catch (localDbError) {
+                    console.warn('Failed to save scan to local DB:', localDbError);
+                  }
                 }
               })
               .catch((error) => {

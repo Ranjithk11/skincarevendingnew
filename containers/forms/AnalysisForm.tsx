@@ -112,6 +112,21 @@ const AnalysisForm = () => {
           alert("Something went wrong please try again");
           setIsSubmit(false);
         } else {
+          // Save user to local SQLite database for tracking
+          try {
+            await fetch('/api/admin/users', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: phoneNumber,
+                name,
+                phone: phoneNumber,
+                email,
+              }),
+            });
+          } catch (localDbError) {
+            console.warn('Failed to save user to local DB:', localDbError);
+          }
           setIsSubmit(false);
           setShowOtpForm(true);
         }
