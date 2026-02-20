@@ -22,6 +22,8 @@ interface HelpDialogProps {
 export default function HelpDialog({ open, onClose }: HelpDialogProps) {
   const [isHoming, setIsHoming] = useState(false);
   const [homeStatus, setHomeStatus] = useState<"idle" | "success" | "error">("idle");
+  const [isReopening, setIsReopening] = useState(false);
+  const [reopenStatus, setReopenStatus] = useState<"idle" | "success" | "error">("idle");
 
   const handleHomeTray = async () => {
     setIsHoming(true);
@@ -54,6 +56,40 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
       }, 3000);
     } finally {
       setIsHoming(false);
+    }
+  };
+
+  const handleReopenTray = async () => {
+    setIsReopening(true);
+    setReopenStatus("idle");
+
+    try {
+      const response = await fetch("/api/admin/motor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ command: "REOPEN" }),
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        setReopenStatus("success");
+        setTimeout(() => {
+          setReopenStatus("idle");
+        }, 3000);
+      } else {
+        setReopenStatus("error");
+        setTimeout(() => {
+          setReopenStatus("idle");
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Reopen tray error:", error);
+      setReopenStatus("error");
+      setTimeout(() => {
+        setReopenStatus("idle");
+      }, 3000);
+    } finally {
+      setIsReopening(false);
     }
   };
 
@@ -201,6 +237,55 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
               {homeStatus === "error" && (
                 <Typography sx={{ mt: 2, fontSize: 18, color: "#dc2626", textAlign: "center" }}>
                   Failed to home tray. Please contact support.
+                </Typography>
+              )}
+
+              {/* Reopen Tray Button */}
+              <Button
+                variant="outlined"
+                onClick={handleReopenTray}
+                disabled={isReopening}
+                sx={{
+                  width: "100%",
+                  py: 2,
+                  mt: 2,
+                  fontSize: 24,
+                  fontWeight: 600,
+                  color: "#2d5a3d",
+                  borderColor: "#2d5a3d",
+                  borderWidth: 2,
+                  borderRadius: 2,
+                  textTransform: "none",
+                  "&:hover": { 
+                    bgcolor: "#f0fdf4",
+                    borderColor: "#1e3d2a",
+                    borderWidth: 2,
+                  },
+                  "&:disabled": { 
+                    color: "#9ca3af",
+                    borderColor: "#9ca3af",
+                  },
+                }}
+              >
+                {isReopening ? (
+                  <CircularProgress size={28} sx={{ color: "#2d5a3d" }} />
+                ) : reopenStatus === "success" ? (
+                  "✓ Tray Opened"
+                ) : reopenStatus === "error" ? (
+                  "✗ Failed - Try Again"
+                ) : (
+                  "Reopen Tray Door"
+                )}
+              </Button>
+
+              {reopenStatus === "success" && (
+                <Typography sx={{ mt: 2, fontSize: 18, color: "#16a34a", textAlign: "center" }}>
+                  The tray door has been reopened.
+                </Typography>
+              )}
+              {reopenStatus === "error" && (
+                <Typography sx={{ mt: 2, fontSize: 18, color: "#dc2626", textAlign: "center" }}>
+                  Failed to reopen tray. Please contact support.
                 </Typography>
               )}
             </Box>

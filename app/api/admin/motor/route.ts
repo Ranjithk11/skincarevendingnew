@@ -121,6 +121,41 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Handle REOPEN command - reopens the tray door
+    if (command === "REOPEN") {
+      if (cfg.mock) {
+        console.log("[STM32 Mock] Simulating REOPEN command");
+        return NextResponse.json({
+          success: true,
+          message: "Reopen command sent (mock)",
+          response: "Tray door reopened",
+          rawLines: ["[MOCK] REOPEN command", "[MOCK] Door opened"],
+        });
+      }
+      
+      try {
+        const result = await stm32Dispense(cfg, "REOPEN", {
+          commandPrefix: "",
+          okPattern: /OK|opened|success|complete/i,
+          errorPattern: /error|fail|invalid/i,
+        });
+        
+        return NextResponse.json({
+          success: true,
+          message: "Reopen command sent",
+          response: result.okLine || "Tray door reopened",
+          rawLines: result.rawLines,
+        });
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error("[STM32] Reopen error:", error);
+        return NextResponse.json({
+          success: false,
+          message: error.message,
+        }, { status: 500 });
+      }
+    }
+
     // Handle DISPENSE command (generic - no slot selected)
     if (command === "DISPENSE") {
       // In mock mode, return helpful message
