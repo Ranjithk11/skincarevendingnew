@@ -2,7 +2,7 @@
 const nextConfig = {
   experimental: {
     missingSuspenseWithCSRBailout: false,
-    serverComponentsExternalPackages: ["serialport", "@serialport/parser-readline"],
+    serverComponentsExternalPackages: ["serialport", "@serialport/parser-readline", "better-sqlite3"],
   },
   images: {
     remotePatterns: [

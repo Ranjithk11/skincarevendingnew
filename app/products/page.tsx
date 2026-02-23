@@ -481,6 +481,45 @@ export default function BrowseProductsPage() {
                 scrollbarWidth: "none",
               }}
             >
+              {/* All Brands Option */}
+              <Box
+                onClick={() => setSelectedBrand("all")}
+                sx={{
+                  flex: "0 0 auto",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  minWidth: 100,
+                }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: 58, md: 86 },
+                    height: { xs: 58, md: 86 },
+                    borderRadius: "50%",
+                    mx: "auto",
+                    border: selectedBrand === "all" ? "2px solid #0f766e" : "2px solid #e5e7eb",
+                    bgcolor: "#ffffff",
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#0f766e" }}>All</Typography>
+                </Box>
+                <Typography
+                  sx={{
+                    mt: 0.75,
+                    fontSize: 18,
+                    color: "#000",
+                    fontWeight: selectedBrand === "all" ? 600 : 400,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  All Brands
+                </Typography>
+              </Box>
+
               {brands
                 .filter((brand: any) => !isAllBrandName(brand?.name))
                 .map((brand: any) => {

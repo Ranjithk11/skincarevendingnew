@@ -1,23 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/admin-db";
+
+// Check if we're running on Vercel (serverless) or locally
+const IS_VERCEL = process.env.VERCEL === "1";
 
 // GET all vending slots
 export async function GET() {
   try {
+    if (IS_VERCEL) {
+      // Return empty slots object when on Vercel (SQLite not available)
+      return NextResponse.json({});
+    }
+    
+    const { adminDb } = await import("@/lib/admin-db");
     const slots = adminDb.getAllSlots();
     return NextResponse.json(slots);
   } catch (error) {
     console.error("Error fetching slots:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch slots" },
-      { status: 500 }
-    );
+    return NextResponse.json({});
   }
 }
 
 // POST to assign product to slot
 export async function POST(request: NextRequest) {
   try {
+    if (IS_VERCEL) {
+      return NextResponse.json(
+        { success: false, message: "Database not available in this environment" },
+        { status: 503 }
+      );
+    }
+
+    const { adminDb } = await import("@/lib/admin-db");
     const body = await request.json();
     const { slot_id, product_id, quantity = 0, product_name, category, retail_price } = body;
 

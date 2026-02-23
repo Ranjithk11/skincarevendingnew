@@ -1,39 +1,54 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/admin-db";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 const DB_TOKEN = process.env.NEXT_PUBLIC_DB_TOKEN;
 
+// Check if we're running on Vercel (serverless) or locally
+const IS_VERCEL = process.env.VERCEL === "1";
+
 // Apply product overrides and calculate quantity from slots
-function applyOverrides(products: any[]) {
-  const overrides = adminDb.getAllProductOverrides();
-  return products.map((product) => {
-    const productId = product.id?.toString() || "";
-    // Try both with and without 'products/' prefix
-    const cleanId = productId.replace(/^products\//, '');
-    const override = overrides[productId] || overrides[cleanId];
+async function applyOverrides(products: any[]) {
+  // Skip overrides on Vercel since SQLite isn't available
+  if (IS_VERCEL) {
+    return products;
+  }
+  
+  try {
+    // Dynamic import to avoid build-time errors on Vercel
+    const { adminDb } = await import("@/lib/admin-db");
     
-    // Calculate quantity from slots (sum of all slot quantities for this product)
-    const slots = adminDb.getSlotsForProduct(productId, product.name);
-    const totalQuantity = slots.reduce((sum, slot) => sum + slot.quantity, 0);
-    
-    if (override) {
-      // Use override quantity if explicitly set, otherwise use slot calculation
-      const quantity = override.quantity !== undefined ? override.quantity : (totalQuantity > 0 ? totalQuantity : product.quantity);
+    const overrides = adminDb.getAllProductOverrides();
+    return products.map((product) => {
+      const productId = product.id?.toString() || "";
+      // Try both with and without 'products/' prefix
+      const cleanId = productId.replace(/^products\//, '');
+      const override = overrides[productId] || overrides[cleanId];
+      
+      // Calculate quantity from slots (sum of all slot quantities for this product)
+      const slots = adminDb.getSlotsForProduct(productId, product.name);
+      const totalQuantity = slots.reduce((sum, slot) => sum + slot.quantity, 0);
+      
+      if (override) {
+        // Use override quantity if explicitly set, otherwise use slot calculation
+        const quantity = override.quantity !== undefined ? override.quantity : (totalQuantity > 0 ? totalQuantity : product.quantity);
+        return {
+          ...product,
+          name: override.name ?? product.name,
+          category: override.category ?? product.category,
+          retail_price: override.retail_price ?? product.retail_price,
+          quantity: quantity,
+          discount: (override as any).discount ?? product.discount,
+        };
+      }
       return {
         ...product,
-        name: override.name ?? product.name,
-        category: override.category ?? product.category,
-        retail_price: override.retail_price ?? product.retail_price,
-        quantity: quantity,
-        discount: (override as any).discount ?? product.discount,
+        quantity: totalQuantity > 0 ? totalQuantity : product.quantity,
       };
-    }
-    return {
-      ...product,
-      quantity: totalQuantity > 0 ? totalQuantity : product.quantity,
-    };
-  });
+    });
+  } catch (e) {
+    console.warn("[Admin Products API] Error applying overrides:", e);
+    return products;
+  }
 }
 
 // Fallback - return empty array when API is unavailable
@@ -103,7 +118,7 @@ export async function GET(request: Request) {
         discount: p.discount || null,
       }));
       // Apply local overrides to external products (like Flask's SQLite storage)
-      const productsWithOverrides = applyOverrides(products);
+      const productsWithOverrides = await applyOverrides(products);
       return NextResponse.json(productsWithOverrides);
     }
 
