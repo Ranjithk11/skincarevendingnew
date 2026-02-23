@@ -67,11 +67,44 @@ export default function VendingProducts({ data }: Props) {
   const [categoryIndex, setCategoryIndex] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumber: number; quantity: number }>>({});
 
   useEffect(() => {
     setBrands([]);
     setSelectedBrand(null);
   }, [categories]);
+
+  // Fetch all slots once on mount
+  useEffect(() => {
+    const fetchSlots = async () => {
+      try {
+        const res = await fetch("/api/admin/slots");
+        if (res.ok) {
+          const slotsData = await res.json();
+          const map: Record<string, { slotNumber: number; quantity: number }> = {};
+          // Handle both array and object formats
+          const slotsArray = Array.isArray(slotsData) 
+            ? slotsData 
+            : Object.values(slotsData);
+          slotsArray.forEach((slot: any) => {
+            if (slot.product_id) {
+              const existing = map[slot.product_id];
+              if (!existing || slot.quantity > existing.quantity) {
+                map[slot.product_id] = {
+                  slotNumber: slot.slot_id,
+                  quantity: slot.quantity || 0,
+                };
+              }
+            }
+          });
+          setSlotsMap(map);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch slots:", err);
+      }
+    };
+    fetchSlots();
+  }, []);
 
   // const brandImageMap = useMemo(() => {
   //   const map = new Map<string, string>();
@@ -336,35 +369,45 @@ export default function VendingProducts({ data }: Props) {
               </Typography>
             </Grid>
           ) : (
-            visibleProducts.map((product: any) => (
-              <Grid
-                item
-                xs={6}
-                md={4}
-                key={product?._id}
-                sx={{ display: "flex", justifyContent: "center" }}
-              >
-                <ProductCard
-                  {...product}
-                  category={activeCategory?.productCategory?.title}
-                  enabledMask={false}
-                  compact={false}
-                  horizontalLayout={true}
-                  cardSx={{
-                    width: "100%",
-                    ...(isDesktop
-                      ? {
-                        maxWidth: 700,
-                        minHeight: 380,
-                      }
-                      : {
-                        maxWidth: 700,
-                        height: 300,
-                      }),
-                  }}
-                />
-              </Grid>
-            ))
+            visibleProducts.map((product: any) => {
+              const productId = product?._id || product?.id;
+              const slotInfo = slotsMap[productId];
+              // Product must be assigned to a slot to be available from vending machine
+              const productQty = slotInfo?.quantity ?? 0;
+              const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
+              return (
+                <Grid
+                  item
+                  xs={6}
+                  md={4}
+                  key={productId}
+                  sx={{ display: "flex", justifyContent: "center" }}
+                >
+                  <ProductCard
+                    {...product}
+                    category={activeCategory?.productCategory?.title}
+                    enabledMask={false}
+                    compact={false}
+                    horizontalLayout={true}
+                    slotNumber={slotInfo?.slotNumber ?? null}
+                    isAvailable={isAvailable}
+                    quantity={productQty}
+                    cardSx={{
+                      width: "100%",
+                      ...(isDesktop
+                        ? {
+                          maxWidth: 700,
+                          minHeight: 380,
+                        }
+                        : {
+                          maxWidth: 700,
+                          height: 300,
+                        }),
+                    }}
+                  />
+                </Grid>
+              );
+            })
           )}
         </Grid>
       </Box>

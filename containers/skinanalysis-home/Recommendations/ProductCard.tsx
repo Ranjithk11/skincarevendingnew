@@ -36,6 +36,9 @@ interface ProductCardProps {
   compact?: boolean;
   cardSx?: any;
   horizontalLayout?: boolean;
+  slotNumber?: number | null;
+  isAvailable?: boolean;
+  quantity?: number;
 }
 
 const StyledProductCard = styled(Card, {
@@ -203,6 +206,9 @@ const ProductCard = ({
   compact,
   cardSx,
   horizontalLayout,
+  slotNumber,
+  isAvailable = true,
+  quantity,
 }: ProductCardProps) => {
   const { data: session } = useSession();
   const pathName = usePathname();
@@ -310,6 +316,50 @@ const ProductCard = ({
         ...(cardSx || {}),
       }}
     >
+      {/* Slot Number Badge */}
+      {slotNumber != null && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            bgcolor: "#0f766e",
+            color: "#fff",
+            px: 1.5,
+            py: 0.5,
+            borderRadius: 1,
+            fontSize: 14,
+            fontWeight: 600,
+            zIndex: 3,
+          }}
+        >
+          Slot {slotNumber}
+        </Box>
+      )}
+
+      {/* Availability Badge - only show for available products */}
+      {isAvailable && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: slotNumber != null ? 45 : 8,
+            right: 2,
+            bgcolor: "#16a34a",
+            color: "#fff",
+            px: 1.5,
+            py: 0.5,
+            borderRadius: 1,
+            fontSize: 12,
+            fontWeight: 600,
+            zIndex: 3,
+            mt: 2,
+          }}
+        >
+          {quantity != null ? `In Stock (${quantity})` : "Available"}
+        </Box>
+      )}
+
+      {/* Discount Ribbon */}
       {discount?.value ? (
         <Box component="div" className="ribbon">
           {discount.value}% Flat Discount
@@ -415,24 +465,30 @@ const ProductCard = ({
                 color="primary"
                 onClick={handleOpenBuyNow}
                 size="small"
+                disabled={!isAvailable}
                 sx={{
                   marginTop: 1.5,
                   padding: "6px 12px",
                   typography: "body1",
                   whiteSpace: "nowrap",
                   alignSelf: "flex-start",
-                  gap:1
+                  gap:1,
+                  "&.Mui-disabled": {
+                    bgcolor: "#9ca3af",
+                    color: "#fff",
+                  },
                 }}
               >
-                Buy Now
-                <Box
-                  component="img"
-                  src="/icons/buy.svg"
-                  alt="Buy"
-                  sx={{ width: 18, height: 18, objectFit: "contain", display: "block" }}
-                />
+                {isAvailable ? "Buy Now" : "Unavailable"}
+                {isAvailable && (
+                  <Box
+                    component="img"
+                    src="/icons/buy.svg"
+                    alt="Buy"
+                    sx={{ width: 18, height: 18, objectFit: "contain", display: "block" }}
+                  />
+                )}
               </Button>
-
             )}
           </Grid>
         </Grid>
@@ -443,16 +499,21 @@ const ProductCard = ({
           color="primary"
           onClick={handleOpenBuyNow}
           size="small"
-          startIcon={<Icon icon="uil:cart" />}
+          disabled={!isAvailable}
+          startIcon={isAvailable ? <Icon icon="uil:cart" /> : undefined}
           sx={{
             marginTop: 2,
             padding: "6px 12px",
             typography: "body1",
             whiteSpace: "nowrap",
             alignSelf: "stretch",
+            "&.Mui-disabled": {
+              bgcolor: "#9ca3af",
+              color: "#fff",
+            },
           }}
         >
-          Buy Now
+          {isAvailable ? "Buy Now" : "Unavailable"}
         </Button>
       )}
 

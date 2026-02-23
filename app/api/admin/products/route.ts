@@ -26,6 +26,7 @@ function applyOverrides(products: any[]) {
         category: override.category ?? product.category,
         retail_price: override.retail_price ?? product.retail_price,
         quantity: quantity,
+        discount: (override as any).discount ?? product.discount,
       };
     }
     return {
@@ -99,6 +100,7 @@ export async function GET(request: Request) {
         quantity: p.quantity || 0,
         in_stock: p.inStock ?? p.in_stock ?? true,
         shopify_url: p.shopifyUrl || p.shopify_url || "",
+        discount: p.discount || null,
       }));
       // Apply local overrides to external products (like Flask's SQLite storage)
       const productsWithOverrides = applyOverrides(products);

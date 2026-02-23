@@ -299,6 +299,7 @@ export interface ProductOverride {
   category?: string;
   retail_price?: number;
   quantity?: number;
+  discount?: { value: number } | null;
   updated_at: string;
 }
 
@@ -733,12 +734,24 @@ export const sqliteDb = {
   getProductOverride(productId: string): ProductOverride | undefined {
     const row = db.prepare('SELECT * FROM product_overrides WHERE id = ?').get(productId) as any;
     if (!row) return undefined;
+    // Parse discount if stored as JSON string
+    let discount = row.discount;
+    if (typeof discount === 'string') {
+      try {
+        discount = JSON.parse(discount);
+      } catch {
+        // If it's a number string like "10", convert to { value: 10 }
+        const num = parseFloat(discount);
+        if (!isNaN(num)) discount = { value: num };
+      }
+    }
     return {
       id: row.id,
       name: row.name,
       category: row.category,
       retail_price: row.retail_price,
       quantity: row.quantity,
+      discount: discount,
       updated_at: row.updated_at,
     };
   },
@@ -747,12 +760,23 @@ export const sqliteDb = {
     const rows = db.prepare('SELECT * FROM product_overrides').all() as any[];
     const result: Record<string, ProductOverride> = {};
     for (const row of rows) {
+      // Parse discount if stored as JSON string
+      let discount = row.discount;
+      if (typeof discount === 'string') {
+        try {
+          discount = JSON.parse(discount);
+        } catch {
+          const num = parseFloat(discount);
+          if (!isNaN(num)) discount = { value: num };
+        }
+      }
       result[row.id] = {
         id: row.id,
         name: row.name,
         category: row.category,
         retail_price: row.retail_price,
         quantity: row.quantity,
+        discount: discount,
         updated_at: row.updated_at,
       };
     }

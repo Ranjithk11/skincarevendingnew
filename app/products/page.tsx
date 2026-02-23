@@ -3,9 +3,9 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Box, Typography, Grid, useMediaQuery, useTheme } from "@mui/material";
 import { useRouter } from "next/navigation";
-import { 
+import {
   useGetProductCategoriesQuery,
-  useGetAllBrandsQuery 
+  useGetAllBrandsQuery
 } from "@/redux/api/products";
 import { APP_ROUTES } from "@/utils/routes";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
@@ -95,6 +95,7 @@ export default function BrowseProductsPage() {
 
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumber: number; quantity: number }>>({});
   const { data: categoriesData } = useGetProductCategoriesQuery({});
   const { data: brandsData } = useGetAllBrandsQuery({});
 
@@ -116,6 +117,39 @@ export default function BrowseProductsPage() {
   const categoryDragRef = useRef<{ dragging: boolean; startX: number; startScrollLeft: number }>(
     { dragging: false, startX: 0, startScrollLeft: 0 }
   );
+
+  // Fetch all slots once on mount
+  useEffect(() => {
+    const fetchSlots = async () => {
+      try {
+        const res = await fetch("/api/admin/slots");
+        if (res.ok) {
+          const slotsData = await res.json();
+          const map: Record<string, { slotNumber: number; quantity: number }> = {};
+          // Handle both array and object formats
+          const slotsArray = Array.isArray(slotsData)
+            ? slotsData
+            : Object.values(slotsData);
+          slotsArray.forEach((slot: any) => {
+            if (slot.product_id) {
+              // Store by product_id, keep the slot with highest quantity if multiple
+              const existing = map[slot.product_id];
+              if (!existing || slot.quantity > existing.quantity) {
+                map[slot.product_id] = {
+                  slotNumber: slot.slot_id,
+                  quantity: slot.quantity || 0,
+                };
+              }
+            }
+          });
+          setSlotsMap(map);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch slots:", err);
+      }
+    };
+    fetchSlots();
+  }, []);
 
   // Fetch products for selected category
   useEffect(() => {
@@ -168,11 +202,11 @@ export default function BrowseProductsPage() {
   // Fetch all category images in parallel once categories are loaded
   useEffect(() => {
     if (imagesLoaded || categories.length === 0) return;
-    
+
     const fetchAllCategoryImages = async () => {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
-      
+
       // Create fetch promises for all categories (except "all")
       const fetchPromises = categories
         .filter((cat: any) => cat._id !== "all")
@@ -189,7 +223,7 @@ export default function BrowseProductsPage() {
             return { catId: cat._id, imgUrl: undefined };
           }
         });
-      
+
       // Also fetch for "all" category
       fetchPromises.push(
         fetch(`${apiUrl}/product/fetch-by-filter?limit=1&isShopifyAvailable=true&hasBrand=true`, {
@@ -199,20 +233,20 @@ export default function BrowseProductsPage() {
           .then(data => ({ catId: "all", imgUrl: data?.data?.[0]?.products?.[0]?.images?.[0]?.url }))
           .catch(() => ({ catId: "all", imgUrl: undefined }))
       );
-      
+
       // Execute all in parallel
       const results = await Promise.all(fetchPromises);
-      
+
       // Build images map
       const images: Record<string, string | undefined> = {};
       results.forEach(({ catId, imgUrl }) => {
         if (imgUrl) images[catId] = imgUrl;
       });
-      
+
       setCategoryImages(images);
       setImagesLoaded(true);
     };
-    
+
     fetchAllCategoryImages();
   }, [categories, imagesLoaded]);
 
@@ -425,79 +459,84 @@ export default function BrowseProductsPage() {
               );
             })}
 
-            {showBrandFilters ? (
-              <>
-                {/* Vertical divider */}
-                <Box
-                  aria-hidden
-                  sx={{
-                    flex: "0 0 auto",
-                    width: 4,
-                    height: 100,
-                    bgcolor: "#79797aff",
-                    alignSelf: "center",
-                    mx: 2,
-                    borderRadius: 999,
-                  }}
-                />
+          </Box>
+          <Typography sx={{
+            fontSize: 24,
+            color: "#9A9A9A",
+            fontWeight: 400,
+            letterSpacing: 1,
+            textTransform: "uppercase",
+          }}>Brand filter</Typography>
 
-                {brands
-                  .filter((brand: any) => !isAllBrandName(brand?.name))
-                  .map((brand: any) => {
-                    const active = selectedBrand === brand._id;
-                    const firstImg = brandImages[brand._id];
+          {/* Brand Filters Row */}
+          {showBrandFilters && (
+            <Box
+              sx={{
+                display: "flex",
+                gap: 2,
+                overflowX: "auto",
+                py: 2,
+                px: 1,
+                "&::-webkit-scrollbar": { display: "none" },
+                scrollbarWidth: "none",
+              }}
+            >
+              {brands
+                .filter((brand: any) => !isAllBrandName(brand?.name))
+                .map((brand: any) => {
+                  const active = selectedBrand === brand._id;
+                  const firstImg = brandImages[brand._id];
 
-                    return (
+                  return (
+                    <Box
+                      key={brand._id}
+                      onClick={() => setSelectedBrand(brand._id)}
+                      sx={{
+                        flex: "0 0 auto",
+                        cursor: "pointer",
+                        textAlign: "center",
+                        minWidth: 100,
+                      }}
+                    >
                       <Box
-                        key={brand._id}
-                        onClick={() => setSelectedBrand(brand._id)}
                         sx={{
-                          flex: "0 0 auto",
-                          cursor: "pointer",
-                          textAlign: "center",
-                          minWidth: 100,
+                          width: { xs: 58, md: 86 },
+                          height: { xs: 58, md: 86 },
+                          borderRadius: "50%",
+                          mx: "auto",
+                          border: active ? "2px solid #0f766e" : "2px solid #e5e7eb",
+                          bgcolor: "#ffffff",
+                          overflow: "hidden",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                         }}
                       >
-                        <Box
-                          sx={{
-                            width: { xs: 58, md: 86 },
-                            height: { xs: 58, md: 86 },
-                            borderRadius: "50%",
-                            mx: "auto",
-                            border: active ? "2px solid #0f766e" : "2px solid #e5e7eb",
-                            bgcolor: "#ffffff",
-                            overflow: "hidden",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          {firstImg ? (
-                            <Box
-                              component="img"
-                              src={firstImg}
-                              alt={brand?.name || "brand"}
-                              sx={{ width: "122px", height: "122px", objectFit: "contain" }}
-                            />
-                          ) : null}
-                        </Box>
-                        <Typography
-                          sx={{
-                            mt: 0.75,
-                            fontSize: 18,
-                            color: "#000",
-                            fontWeight: active ? 600 : 400,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {brand.name}
-                        </Typography>
+                        {firstImg ? (
+                          <Box
+                            component="img"
+                            src={firstImg}
+                            alt={brand?.name || "brand"}
+                            sx={{ width: "122px", height: "122px", objectFit: "contain" }}
+                          />
+                        ) : null}
                       </Box>
-                    );
-                  })}
-              </>
-            ) : null}
-          </Box>
+                      <Typography
+                        sx={{
+                          mt: 0.75,
+                          fontSize: 18,
+                          color: "#000",
+                          fontWeight: active ? 600 : 400,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {brand.name}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+            </Box>
+          )}
 
           {/* Products Grid */}
           <Box
@@ -530,18 +569,28 @@ export default function BrowseProductsPage() {
               </Box>
             ) : (
               <Grid container spacing={2}>
-                {products.map((product: any) => (
-                  <Grid
-                    item
-                    xs={6}
-                    md={6}
-                    key={product._id}
-                  >
-                    <ProductCard
-                      {...mapProductToCardProps(product)}
-                    />
-                  </Grid>
-                ))}
+                {products.map((product: any) => {
+                  const productId = product?._id || product?.id;
+                  const slotInfo = slotsMap[productId];
+                  // Product must be assigned to a slot to be available from vending machine
+                  const productQty = slotInfo?.quantity ?? 0;
+                  const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
+                  return (
+                    <Grid
+                      item
+                      xs={6}
+                      md={6}
+                      key={productId}
+                    >
+                      <ProductCard
+                        {...mapProductToCardProps(product)}
+                        slotNumber={slotInfo?.slotNumber ?? null}
+                        isAvailable={isAvailable}
+                        quantity={productQty}
+                      />
+                    </Grid>
+                  );
+                })}
               </Grid>
             )}
           </Box>
