@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
   const [homeStatus, setHomeStatus] = useState<"idle" | "success" | "error">("idle");
   const [isReopening, setIsReopening] = useState(false);
   const [reopenStatus, setReopenStatus] = useState<"idle" | "success" | "error">("idle");
+  const [pickupTimer, setPickupTimer] = useState<number>(0);
 
   const handleHomeTray = async () => {
     setIsHoming(true);
@@ -62,6 +63,7 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
   const handleReopenTray = async () => {
     setIsReopening(true);
     setReopenStatus("idle");
+    setPickupTimer(0);
 
     try {
       const response = await fetch("/api/admin/motor", {
@@ -73,9 +75,8 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
       const result = await response.json();
       if (result.success) {
         setReopenStatus("success");
-        setTimeout(() => {
-          setReopenStatus("idle");
-        }, 3000);
+        // Start pickup timer on success
+        setPickupTimer(30);
       } else {
         setReopenStatus("error");
         setTimeout(() => {
@@ -92,6 +93,24 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
       setIsReopening(false);
     }
   };
+
+  // Pickup timer countdown after reopen succeeds
+  useEffect(() => {
+    if (pickupTimer <= 0) return;
+    
+    const interval = setInterval(() => {
+      setPickupTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setReopenStatus("idle");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [pickupTimer > 0]);
 
   return (
     <Dialog
@@ -279,9 +298,31 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
               </Button>
 
               {reopenStatus === "success" && (
-                <Typography sx={{ mt: 2, fontSize: 18, color: "#16a34a", textAlign: "center" }}>
-                  The tray door has been reopened.
-                </Typography>
+                <>
+                  <Typography sx={{ mt: 2, fontSize: 18, color: "#16a34a", textAlign: "center" }}>
+                    The tray door has been reopened.
+                  </Typography>
+                  {pickupTimer > 0 && (
+                    <Box sx={{ 
+                      mt: 2, 
+                      p: 2, 
+                      bgcolor: "#fef3c7", 
+                      borderRadius: 2,
+                      border: "2px solid #f59e0b",
+                      textAlign: "center"
+                    }}>
+                      <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#92400e" }}>
+                        ⏱️ Pickup your product
+                      </Typography>
+                      <Typography sx={{ fontSize: 36, fontWeight: 800, color: "#d97706", mt: 1 }}>
+                        {pickupTimer}s
+                      </Typography>
+                      <Typography sx={{ fontSize: 16, color: "#92400e", mt: 0.5 }}>
+                        Tray door will close soon
+                      </Typography>
+                    </Box>
+                  )}
+                </>
               )}
               {reopenStatus === "error" && (
                 <Typography sx={{ mt: 2, fontSize: 18, color: "#dc2626", textAlign: "center" }}>

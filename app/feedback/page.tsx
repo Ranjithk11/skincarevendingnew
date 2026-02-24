@@ -29,6 +29,7 @@ export default function FeedbackPage() {
 
   const autoHomeTimerRef = useRef<number | null>(null);
   const hasCompletedRef = useRef(false);
+  const textFieldRef = useRef<HTMLDivElement>(null);
 
   const userId = (session?.user as any)?.id as string | undefined;
 
@@ -46,6 +47,7 @@ export default function FeedbackPage() {
     | { status: "done"; results: any }
     | { status: "error"; message: string }
   >({ status: "idle" });
+  const [pickupTimer, setPickupTimer] = useState<number>(0);
 
   const goHome = async () => {
     hasCompletedRef.current = true;
@@ -107,6 +109,26 @@ export default function FeedbackPage() {
         autoHomeTimerRef.current = null;
       }
     };
+  }, [dispenseState.status]);
+
+  // Pickup timer countdown after dispense succeeds
+  useEffect(() => {
+    if (dispenseState.status !== "done") return;
+    
+    // Start 30 second countdown for pickup
+    setPickupTimer(30);
+    
+    const interval = setInterval(() => {
+      setPickupTimer((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
   }, [dispenseState.status]);
 
   const checkoutItems = useMemo(() => {
@@ -433,9 +455,31 @@ export default function FeedbackPage() {
                     Dispensing...
                   </Typography>
                 ) : dispenseState.status === "done" ? (
-                  <Typography sx={{ fontSize: 20, color: "#166534" }}>
-                    Dispensed successfully
-                  </Typography>
+                  <>
+                    <Typography sx={{ fontSize: 20, color: "#166534" }}>
+                      Dispensed successfully
+                    </Typography>
+                    {pickupTimer > 0 && (
+                      <Box sx={{ 
+                        mt: 2, 
+                        p: 2, 
+                        bgcolor: "#fef3c7", 
+                        borderRadius: 2,
+                        border: "2px solid #f59e0b",
+                        textAlign: "center"
+                      }}>
+                        <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#92400e" }}>
+                          ⏱️ Pickup your product
+                        </Typography>
+                        <Typography sx={{ fontSize: 36, fontWeight: 800, color: "#d97706", mt: 1 }}>
+                          {pickupTimer}s
+                        </Typography>
+                        <Typography sx={{ fontSize: 16, color: "#92400e", mt: 0.5 }}>
+                          Tray door will close soon
+                        </Typography>
+                      </Box>
+                    )}
+                  </>
                 ) : (
                   <Typography sx={{ fontSize: 20, color: "#b91c1c" }}>
                     {dispenseState.message}
@@ -502,7 +546,7 @@ export default function FeedbackPage() {
             ))}
           </Box>
 
-          <Box sx={{ width: "min(520px, 100%)", mt: 2.5 }}>
+          <Box sx={{ width: "min(520px, 100%)", mt: 2.5, pb: isKeyboardOpen ? "320px" : 0 }} ref={textFieldRef}>
             <TextField
               fullWidth
               multiline
@@ -510,8 +554,19 @@ export default function FeedbackPage() {
               placeholder="Tell us more (optional)"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              onFocus={() => setIsKeyboardOpen(true)}
-              onClick={() => setIsKeyboardOpen(true)}
+              onFocus={() => {
+                setIsKeyboardOpen(true);
+                // Scroll TextField into view after keyboard opens
+                setTimeout(() => {
+                  textFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 100);
+              }}
+              onClick={() => {
+                setIsKeyboardOpen(true);
+                setTimeout(() => {
+                  textFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 100);
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "12px",

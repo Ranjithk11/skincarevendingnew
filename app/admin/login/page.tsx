@@ -142,8 +142,8 @@ export default function AdminLoginPage() {
           <Box
             sx={{
               position: "relative",
-              width: 140,
-              height: 140,
+              width: 240,
+              height: 240,
               flexShrink: 0,
             }}
           >
@@ -226,7 +226,7 @@ export default function AdminLoginPage() {
                   borderRadius: 2,
                   bgcolor: "white",
                   minHeight: "56px",
-                  "& fieldset": { borderColor: activeField === "username" ? "#2d5a3d" : "#e5e7eb" },
+                  "& fieldset": { borderColor: activeField === "username" ? "#2d5a3d" : "#6e6f70ff" },
                 },
                 "& .MuiOutlinedInput-input": {
                   py: "14px",
@@ -258,7 +258,7 @@ export default function AdminLoginPage() {
                   borderRadius: 2,
                   bgcolor: "white",
                   minHeight: "56px",
-                  "& fieldset": { borderColor: activeField === "password" ? "#2d5a3d" : "#e5e7eb" },
+                  "& fieldset": { borderColor: activeField === "password" ? "#2d5a3d" : "#6e6f70ff" },
                 },
                 "& .MuiOutlinedInput-input": {
                   py: "14px",
@@ -270,47 +270,56 @@ export default function AdminLoginPage() {
         </Box>
 
         {/* Next Button */}
-        <Box
-          sx={{
-            bgcolor: "#2d5a3d",
-            py: 2.5,
-            width: "100%",
-            textAlign: "center",
-            cursor: isLoading ? "not-allowed" : "pointer",
-            opacity: isLoading ? 0.7 : 1,
-            flexShrink: 0,
-          }}
-          onClick={!isLoading ? handleNext : undefined}
-        >
-          <Typography sx={{ color: "white", fontWeight: 600, fontSize: "24px" }}>
-            {isLoading ? "Loading..." : "Next"}
-          </Typography>
-        </Box>
+        {!isKeyboardOpen && (
+          <Box
+            sx={{
+              bgcolor: "#2d5a3d",
+              py: 2.5,
+              width: "100%",
+              textAlign: "center",
+              cursor: isLoading ? "not-allowed" : "pointer",
+              opacity: isLoading ? 0.7 : 1,
+              flexShrink: 0,
+            }}
+            onClick={!isLoading ? handleNext : undefined}
+          >
+            <Typography sx={{ color: "white", fontWeight: 600, fontSize: "24px" }}>
+              {isLoading ? "Loading..." : "Next"}
+            </Typography>
+          </Box>
+        )}
 
         {isKeyboardOpen ? (
           <Box
-            onClick={() => setIsKeyboardOpen(false)}
             sx={{
               position: "fixed",
-              inset: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
               zIndex: 1400,
             }}
           >
+            {/* Next Button above keyboard */}
             <Box
-              onClick={(e) => e.stopPropagation()}
               sx={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                bottom: 0,
+                bgcolor: "#2d5a3d",
+                py: 2.5,
+                width: "100%",
+                textAlign: "center",
+                cursor: isLoading ? "not-allowed" : "pointer",
+                opacity: isLoading ? 0.7 : 1,
               }}
+              onClick={!isLoading ? handleNext : undefined}
             >
-              <VirtualKeyboard
-                onKeyPress={handleKeyboardKeyPress}
-                layout="default"
-                visible={isKeyboardOpen}
-              />
+              <Typography sx={{ color: "white", fontWeight: 600, fontSize: "24px" }}>
+                {isLoading ? "Loading..." : "Next"}
+              </Typography>
             </Box>
+            <VirtualKeyboard
+              onKeyPress={handleKeyboardKeyPress}
+              layout="default"
+              visible={isKeyboardOpen}
+            />
           </Box>
         ) : null}
       </PageBackground>
