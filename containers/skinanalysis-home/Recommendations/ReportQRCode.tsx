@@ -16,17 +16,24 @@ interface ReportQRCodeProps {
   analysisSummary?: AnalysisSummaryItem[];
 }
 
+// Production base URL for QR codes - should be set in environment
+const PRODUCTION_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://skincarevendingnew.vercel.app";
+
 const ReportQRCode: React.FC<ReportQRCodeProps> = ({
   reportUrl,
   title = "View Your Report",
   subtitle = "Scan to view on your phone",
   analysisSummary = [],
 }) => {
-  // Generate the report URL - use current page URL if not provided
+  // Generate the report URL - prefer passed reportUrl, fallback to production URL with current path
   const qrUrl = useMemo(() => {
+    // If a specific report URL is provided, use it directly
     if (reportUrl) return reportUrl;
+    
+    // Fallback: construct URL using production base + current path
     if (typeof window !== "undefined") {
-      return window.location.href;
+      const currentPath = window.location.pathname + window.location.search;
+      return `${PRODUCTION_BASE_URL}${currentPath}`;
     }
     return "";
   }, [reportUrl]);

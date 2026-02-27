@@ -88,6 +88,25 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
         analysisData ||
         null;
 
+    // Generate the public report URL for QR code
+    const reportUserId = 
+        analysisData?.data?.user?._id ||
+        analysisData?.user?._id ||
+        analysisData?.data?.[0]?.userId ||
+        analysisData?.data?.userId ||
+        analysisData?.productRecommendation?.userId ||
+        null;
+    
+    const productRecommendationId = 
+        analysisData?.data?.productRecommendation?._id ||
+        analysisData?.productRecommendation?._id ||
+        reportSource?._id ||
+        null;
+    
+    const publicReportUrl = reportUserId && productRecommendationId
+        ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://skincarevendingnew.vercel.app"}${APP_ROUTES.VIEW_SKINCARE_REC_VIA_PUBLIC_URL}?userId=${reportUserId}&productRecommendationId=${productRecommendationId}`
+        : undefined;
+
     const overallSkinHealthScore = reportSource?.skinHealthScore?.overall;
     const overallSkinHealthRating = reportSource?.skinHealthScore?.rating;
 
@@ -624,6 +643,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
                         {/* QR Code for Report with Analysis Summary */}
                         <Box sx={{ mt: 5 }}>
                             <ReportQRCode
+                                reportUrl={publicReportUrl}
                                 title="View Your Report"
                                 subtitle="Scan to view on your phone"
                                 analysisSummary={reportSource?.analysisAiSummary || []}
