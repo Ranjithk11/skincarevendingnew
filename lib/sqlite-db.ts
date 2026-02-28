@@ -1055,6 +1055,12 @@ export const sqliteDb = {
     recommendedSalonServices?: any;
     recommendedCosmeticServices?: any;
   }): number {
+    // Ensure user exists before inserting scan record (foreign key constraint)
+    const existingUser = db.prepare('SELECT id FROM users WHERE id = ?').get(scanData.userId);
+    if (!existingUser) {
+      db.prepare('INSERT INTO users (id) VALUES (?)').run(scanData.userId);
+    }
+
     const result = db.prepare(`
       INSERT INTO scan_records (
         user_id, image_url, local_captured_image, skin_type, detected_attributes, detected_lip_attributes,
