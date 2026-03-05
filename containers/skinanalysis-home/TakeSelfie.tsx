@@ -33,6 +33,7 @@ import PageBackground from "@/components/ui/PageBackground";
 import { useAppSelector } from "@/redux/store/store";
 import Image from "next/image";
 import { ArrowBack } from "@mui/icons-material";
+import { useVoiceMessages } from "@/contexts/VoiceContext";
 
 const StyledTakeSelfie = styled(Container)(({ theme }) => ({
   flexGrow: 1,
@@ -300,6 +301,7 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
 }));
 
 const TakeSelfie = () => {
+  const { speakMessage } = useVoiceMessages();
   const [initializing, setInitializing] = useState(false);
   const [croppedFace, setCroppedFace] = useState(null);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
@@ -350,7 +352,27 @@ const TakeSelfie = () => {
     }
   }, [router, status]);
 
+  // Welcome message when selfie page loads
+  useEffect(() => {
+    setTimeout(() => {
+      speakMessage('scanFace');
+    }, 500);
+  }, [speakMessage]);
+
   const resolvedUserId = (session?.user?.id as string) || "";
+
+  const hasAnnouncedAnalysisSuccessRef = useRef(false);
+
+  useEffect(() => {
+    if (skinAttributeStatus?.type === "SUCCESS") {
+      if (hasAnnouncedAnalysisSuccessRef.current) return;
+      hasAnnouncedAnalysisSuccessRef.current = true;
+      speakMessage("analysisCompleteClickRecommendations");
+      return;
+    }
+
+    hasAnnouncedAnalysisSuccessRef.current = false;
+  }, [skinAttributeStatus?.type, speakMessage]);
 
   const extractFaceWithForehead = async (
     imageElement: any,
@@ -507,6 +529,7 @@ const TakeSelfie = () => {
   };
 
   const handleGetSkinRecommendations = () => {
+    speakMessage('recommendations');
     router.push(APP_ROUTES.RECOMMENDATIONS);
   };
 
@@ -574,6 +597,7 @@ const TakeSelfie = () => {
 
           autoAnalyzeTimerRef.current = setTimeout(() => {
             setIsAutoAnalyzing(true);
+            speakMessage('analyzing');
             getRecommnedSkinAttributes({
               userId: resolvedUserId,
               fileName: fileName,

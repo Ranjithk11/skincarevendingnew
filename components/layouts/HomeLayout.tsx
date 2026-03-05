@@ -22,6 +22,7 @@ import { useSession, signOut } from "next-auth/react";
 import FooterComponent from "../footer";
 import { useAppDispatch } from "@/redux/store/store";
 import { clearCart } from "@/redux/reducers/cartSlice";
+import VoiceControl from "@/components/ui/VoiceControl";
 
 const drawerWidth = 200;
 interface HomeLayoutProps {
@@ -138,7 +139,8 @@ const HomeLayout = ({ children }: HomeLayoutProps) => {
           <Box flexGrow={1}>
             <img width={150} src="/logo/logo_gold_white.png" />
           </Box>
-          <Box paddingRight="15px">
+          <Box paddingRight="15px" display="flex" alignItems="center" gap={1}>
+            <VoiceControl />
             <IconButton
               onClick={() => {
                 dispatch(clearCart());

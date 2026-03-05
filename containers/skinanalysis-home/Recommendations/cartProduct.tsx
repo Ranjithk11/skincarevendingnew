@@ -18,6 +18,7 @@
     import { toast } from "react-toastify";
     import { useRouter } from "next/navigation";
     import { APP_ROUTES } from "@/utils/routes";
+    import { useVoiceMessages } from "@/contexts/VoiceContext";
 
     type CartProductProps = {
         open: boolean;
@@ -39,6 +40,7 @@
         const router = useRouter();
         const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
         const { items, setQuantity, removeItem, clear } = useCart();
+        const { speakMessage } = useVoiceMessages();
         const [showPriceDetails, setShowPriceDetails] = useState(false);
         const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
         const [couponApplied, setCouponApplied] = useState(false);
@@ -263,7 +265,10 @@
                                 {step === "cart" && (
                                     <Button
                                         variant="contained"
-                                        onClick={() => setStep("checkout")}
+                                        onClick={() => {
+                                            setStep("checkout");
+                                            speakMessage('checkout');
+                                        }}
                                         sx={{
                                             fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                                             fontWeight: 600,
@@ -283,7 +288,10 @@
                                 {step === "checkout" && (
                                     <Button
                                         variant="contained"
-                                        onClick={() => setStep("payment")}
+                                        onClick={() => {
+                                            setStep("payment");
+                                            speakMessage('payment');
+                                        }}
                                         sx={{
                                             fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                                             fontWeight: 600,
@@ -631,7 +639,10 @@
                                             >
                                                 <IconButton
                                                     size="small"
-                                                    onClick={() => removeItem(key)}
+                                                    onClick={() => {
+                                                        removeItem(key);
+                                                        speakMessage('removeFromCart');
+                                                    }}
                                                     sx={{
                                                         position: "absolute",
                                                         top: 8,
@@ -717,6 +728,7 @@
                                                                     const newQty = (item.quantity || 1) - 1;
                                                                     if (newQty <= 0) {
                                                                         removeItem(key);
+                                                                        speakMessage('removeFromCart');
                                                                     } else {
                                                                         setQuantity(key, newQty);
                                                                     }
@@ -745,7 +757,10 @@
                                                             />
                                                             <IconButton
                                                                 size="small"
-                                                                onClick={() => setQuantity(key, (item.quantity || 1) + 1)}
+                                                                onClick={() => {
+                                                                    setQuantity(key, (item.quantity || 1) + 1);
+                                                                    speakMessage('addToCart');
+                                                                }}
                                                                 sx={{ borderRadius: 0, width: 30, height: 30 }}
                                                             >
                                                                 <Icon icon="mdi:plus" />

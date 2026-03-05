@@ -8,6 +8,7 @@ import { GoogleTagManager } from "@next/third-parties/google";
 import CSPostHogProvider from "@/components/PostHog/PostHog";
 import HomeLayout from "@/components/layouts/HomeLayout";
 import DefaultLayout from "@/components/layouts/DefaultLayout";
+import { VoiceProvider } from "@/contexts/VoiceContext";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -32,9 +33,11 @@ export default async function RootLayout({
           <ReduxStateProviders>
             <NextAuthSessionProvider>
               <MuiThemeProvider>
-                <DefaultLayout>
-                  {children}   
-                </DefaultLayout>
+                <VoiceProvider>
+                  <DefaultLayout>
+                    {children}   
+                  </DefaultLayout>
+                </VoiceProvider>
               </MuiThemeProvider>
             </NextAuthSessionProvider>
           </ReduxStateProviders>

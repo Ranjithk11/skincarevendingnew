@@ -14,6 +14,7 @@ import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { setSkinType } from "@/redux/reducers/analysisSlice";
 import { clearCart } from "@/redux/reducers/cartSlice";
+import { useVoiceMessages } from "@/contexts/VoiceContext";
 
 // Email validation - same as Skincare project
 const isValidateEmail = (input: string): boolean | string => {
@@ -70,6 +71,7 @@ const skinTypeOptions = [
 export default function Questionnaire() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { speakMessage } = useVoiceMessages();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("+91");
@@ -91,7 +93,17 @@ export default function Questionnaire() {
         setMachineLocation(storedLocation);
       }
     }
-  }, []);
+  }, [speakMessage]);
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      speakMessage("questionnaireIntro");
+      if (currentSlide === 0) speakMessage("questionnaireSlide1");
+      if (currentSlide === 1) speakMessage("questionnaireSlide2");
+    }, 500);
+
+    return () => window.clearTimeout(t);
+  }, [currentSlide, speakMessage]);
 
   const handleKeyPress = useCallback((key: string) => {
     const setValue = activeField === "name" ? setName : activeField === "phone" ? setPhone : setEmail;
@@ -244,6 +256,7 @@ export default function Questionnaire() {
     if (currentSlide === 0) {
       if (!name.trim()) {
         setValidationError("Please enter your name");
+        speakMessage('invalidInput');
         setTimeout(() => setValidationError(""), 3000);
         return;
       }
@@ -251,11 +264,13 @@ export default function Questionnaire() {
       const phoneValidation = isValidatePhone(phone);
       if (phoneValidation !== true) {
         setValidationError(phoneValidation as string);
+        speakMessage('invalidInput');
         setTimeout(() => setValidationError(""), 3000);
         return;
       }
       if (!email.trim()) {
         setValidationError("Please enter your email address");
+        speakMessage('invalidInput');
         setTimeout(() => setValidationError(""), 3000);
         return;
       }
@@ -263,6 +278,7 @@ export default function Questionnaire() {
       const emailValidation = isValidateEmail(email.trim());
       if (emailValidation !== true) {
         setValidationError(emailValidation as string);
+        speakMessage('invalidInput');
         setTimeout(() => setValidationError(""), 3000);
         return;
       }
@@ -280,6 +296,7 @@ export default function Questionnaire() {
     // Validate skin type is selected on Slide 2
     if (!skinType) {
       setValidationError("Please select your skin type");
+      speakMessage('invalidInput');
       setTimeout(() => setValidationError(""), 2000);
       return;
     }
@@ -367,6 +384,9 @@ export default function Questionnaire() {
       // Store skinType in Redux
       dispatch(setSkinType(skinTypeId));
 
+      // Announce completion
+      speakMessage('success');
+      
       router.push(APP_ROUTES.SELFIE);
     } catch (err) {
       const e: any = err;

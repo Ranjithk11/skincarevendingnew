@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { Box, Typography } from "@mui/material";
 import Image from "next/image";
 import ActionButton from "./ActionButton";
 import Logo from "./Logo";
 import FeatureCard from "./FeatureCard";
+import { useVoiceMessages } from "@/contexts/VoiceContext";
 
 interface LandingTopSectionProps {
   onStartScan: () => void;
@@ -17,6 +19,20 @@ export default function LandingTopSection({
   onBrowseProducts,
   onAdminDashboard,
 }: LandingTopSectionProps) {
+  const { speakMessage, speakSequence } = useVoiceMessages();
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      speakSequence(["welcome", "homeStartScan"]);
+    }, 500);
+
+    return () => window.clearTimeout(t);
+  }, [speakSequence]);
+
+  const handleStartScanWithVoice = () => {
+    speakMessage("questionnaireIntro");
+    onStartScan();
+  };
   return (
     <Box
       sx={{
@@ -83,7 +99,7 @@ export default function LandingTopSection({
           borderRadius: "20px",
           gap: "20px",
         }}
-        onClick={onStartScan}
+        onClick={handleStartScanWithVoice}
       >
         <Typography
           sx={{

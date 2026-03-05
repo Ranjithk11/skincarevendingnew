@@ -20,12 +20,14 @@ import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { clearCart } from "@/redux/reducers/cartSlice";
 import { persistor } from "@/redux/store/store";
+import { useVoiceMessages } from "@/contexts/VoiceContext";
 
 export default function FeedbackPage() {
   const theme = useTheme();
   const router = useRouter();
   const { data: session } = useSession();
   const dispatch = useAppDispatch();
+  const { speakMessage } = useVoiceMessages();
 
   const autoHomeTimerRef = useRef<number | null>(null);
   const hasCompletedRef = useRef(false);
@@ -118,6 +120,9 @@ export default function FeedbackPage() {
     // Start 30 second countdown for pickup
     setPickupTimer(30);
     
+    // Announce successful dispense
+    speakMessage('dispense');
+    
     const interval = setInterval(() => {
       setPickupTimer((prev) => {
         if (prev <= 1) {
@@ -129,7 +134,14 @@ export default function FeedbackPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [dispenseState.status]);
+  }, [dispenseState.status, speakMessage]);
+
+  // Voice announcement for errors
+  useEffect(() => {
+    if (dispenseState.status === "error") {
+      speakMessage('error');
+    }
+  }, [dispenseState.status, speakMessage]);
 
   const checkoutItems = useMemo(() => {
     const items = checkoutSummary?.items;
