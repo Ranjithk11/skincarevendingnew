@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { capitalizeWords } from "@/utils/func";
 import { useCart } from "./CartContext";
 import { SuccessOverlay, QuantitySelector, AddToCartButton, ProductPrice } from "./components";
+import { useVoiceMessages } from "@/contexts/VoiceContext";
 
 interface BuyNowDialogProps {
   open: boolean;
@@ -34,6 +35,7 @@ const BuyNowDialog = ({
 }: BuyNowDialogProps) => {
   const theme = useTheme();
   const { addItem } = useCart();
+  const { speakMessage } = useVoiceMessages();
   const [quantity, setQuantity] = useState<number>(1);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
@@ -55,6 +57,8 @@ const BuyNowDialog = ({
       priceText,
       quantity,
     });
+
+    speakMessage("addToCart");
     
     setShowSuccess(true);
     

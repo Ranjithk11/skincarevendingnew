@@ -51,6 +51,17 @@
             router.prefetch(APP_ROUTES.FEEDBACK);
         }, [router]);
 
+        useEffect(() => {
+            if (!open) return;
+            if (step === "checkout") {
+                speakMessage("checkoutTapCart");
+                return;
+            }
+            if (step === "payment") {
+                speakMessage("paymentContinue");
+            }
+        }, [open, step, speakMessage]);
+
         // Function to dispense products via STM32
         const dispenseProducts = useCallback(async (cartItems: CartItem[]) => {
             console.log("[Dispense] Starting dispense for items:", cartItems);
@@ -422,6 +433,9 @@
                                                 currency="INR"
                                                 mode={paymentMode}
                                                 receipt={`cart_${Date.now()}`}
+                                                onProcessingStart={() => {
+                                                    speakMessage("paymentProcessing");
+                                                }}
                                                 onVerified={async (payload) => {
                                                     console.log("[Payment] onVerified called, items:", items, "payload:", payload);
                                                     const itemsToDispense = [...items];

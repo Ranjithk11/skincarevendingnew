@@ -103,6 +103,7 @@ export interface RazorpayCheckoutButtonProps {
     productId?: string;
   }) => void;
   onError?: (message: string) => void;
+  onProcessingStart?: () => void;
   label?: string;
 }
 
@@ -116,6 +117,7 @@ export default function RazorpayCheckoutButton({
   customer,
   onVerified,
   onError,
+  onProcessingStart,
   label = "Pay Now",
 }: RazorpayCheckoutButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -139,6 +141,7 @@ export default function RazorpayCheckoutButton({
     try {
       inFlightRef.current = true;
       setIsLoading(true);
+      onProcessingStart?.();
 
       const unlock = () => {
         setIsLoading(false);

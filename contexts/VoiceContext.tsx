@@ -46,16 +46,21 @@ export const useVoiceMessages = () => {
     () => ({
     welcome: "Welcome to Leaf Water Skincare Vending Machine",
     homeStartScan: "Tap Start A I Skin Scan to begin.",
-    questionnaireIntro: "Please answer a few questions to personalize your skin analysis.",
+    questionnaireIntro: "",
     questionnaireSlide1: "Enter your details.",
     questionnaireSlide2: "Select your skin type to continue.",
     selectProduct: "Please select a product",
     addToCart: "Product added to cart",
     removeFromCart: "Product removed from cart",
     checkout: "Proceeding to checkout",
+    checkoutTapCart: "Please  proceed to checkout.",
     payment: "Please complete your payment",
+    paymentContinue: "Please complete your payment to continue.",
+    paymentProcessing: "Your payment is being processed. Please wait.",
     dispense: "Dispensing your product",
+    dispenseCollect: "Please collect your product from the tray below.",
     thankYou: "Thank you for your purchase",
+    feedbackPrompt: "Please rate your experience. Your feedback helps us improve.",
     scanFace: "Please position your face in the frame",
     analyzing: "Analyzing your skin",
     analysisCompleteClickRecommendations: "Analysis completed successfully. Please tap Get Our Recommendations.",
@@ -63,8 +68,8 @@ export const useVoiceMessages = () => {
     error: "An error occurred. Please try again",
     networkError: "Network error. Please check your connection",
     invalidInput: "Invalid input. Please try again",
-    success: "Operation completed successfully",
-    }),
+    success: "",
+  }),
     []
   );
 
@@ -72,6 +77,7 @@ export const useVoiceMessages = () => {
     (key: keyof typeof messages, customText?: string) => {
       if (!voiceEnabled) return;
       const text = customText || messages[key];
+      if (!text) return;
       cancel();
       speakQueued(text);
     },
@@ -87,6 +93,7 @@ export const useVoiceMessages = () => {
 
       keys.forEach((key) => {
         const text = messages[key];
+        if (!text) return;
         speakQueued(text);
       });
     },

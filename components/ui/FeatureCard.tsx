@@ -22,7 +22,7 @@ export default function FeatureCard({
   label,
   title,
   description,
-  qrCodeSrc = "/qrcode/locationqr.jpeg",
+  qrCodeSrc = "/products/vendingQr.jpeg",
   activeIndex = 0,
   totalDots = 3,
   qrBoxWidth = 140,

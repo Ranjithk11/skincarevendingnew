@@ -31,6 +31,7 @@ export default function FeedbackPage() {
 
   const autoHomeTimerRef = useRef<number | null>(null);
   const hasCompletedRef = useRef(false);
+  const hasAnnouncedFeedbackPromptRef = useRef(false);
   const textFieldRef = useRef<HTMLDivElement>(null);
 
   const userId = (session?.user as any)?.id as string | undefined;
@@ -89,6 +90,16 @@ export default function FeedbackPage() {
     void persistor.purge();
   }, []);
 
+  useEffect(() => {
+    if (hasAnnouncedFeedbackPromptRef.current) return;
+    hasAnnouncedFeedbackPromptRef.current = true;
+    const t = window.setTimeout(() => {
+      speakMessage("feedbackPrompt");
+    }, 500);
+
+    return () => window.clearTimeout(t);
+  }, [speakMessage]);
+
   // Start 60s auto-home timer only after dispense succeeds
   useEffect(() => {
     if (dispenseState.status !== "done") return;
@@ -120,8 +131,9 @@ export default function FeedbackPage() {
     // Start 30 second countdown for pickup
     setPickupTimer(30);
     
-    // Announce successful dispense
+    // Announce successful dispense and pickup instruction
     speakMessage('dispense');
+    speakMessage('dispenseCollect');
     
     const interval = setInterval(() => {
       setPickupTimer((prev) => {
@@ -407,7 +419,7 @@ export default function FeedbackPage() {
               </Typography>
             </Box>
             <Box sx={{ bgcolor: "#ffffff", borderRadius: 2, p: 1, flexShrink: 0 }}>
-              <Image src="/qrcode/leafqr.jpeg" alt="QR" width={120} height={120} />
+              <Image src="/products/leafwatwerQR.jpeg" alt="QR" width={120} height={120} />
             </Box>
           </Box>
         </Box>
@@ -728,7 +740,7 @@ export default function FeedbackPage() {
                 Scan this <br /> QR Code
               </Typography>
               <Box sx={{ bgcolor: "#ffffff", borderRadius: 1, p: 0.75, flexShrink: 0 }}>
-                <Image src="/qrcode/leafqr.jpeg" alt="QR" width={120} height={120} />
+                <Image src="/products/latestQr.jpeg" alt="QR" width={120} height={120} />
               </Box>
             </Box>
           </Box>

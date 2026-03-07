@@ -151,9 +151,9 @@ const HowToUseCard = ({
           component="img"
           src={image}
           sx={{
-            width: { xs: 200, md: 244 },
+            width: { xs: 240, md: 244 },
             height: { xs: 240, md: 244 },
-            objectFit: "contain",
+            objectFit: "cover",
             flexShrink: 0,
             alignSelf: "flex-start",
           }}
@@ -228,24 +228,24 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         title: "Cleanser",
         subtitle: "A cleanser gently removes dirt, oil, and impurities, leaving your skin fresh and clean. It’s the first step to a clear, healthy, and glowing complexion.",
         howTitle: "How to Use Your Cleanser",
-        howBody: "Wet your face with lukewarm water and apply a small amount of cleanser to your fingertips. Gently massage it onto your skin in circular motions for 20–30 seconds, focusing on areas with excess oil or buildup. Rinse thoroughly and pat your skin dry with a clean towel. Use twice daily for best results.",
-        howImg: "/products/ceta1.svg",
+        howBody: " Wet your face with lukewarm water and apply a small amount of cleanser. Gently massage your face in circular motions for 30–60 seconds, then rinse thoroughly. Pat your face dry with a clean towel and apply moisturizer.",
+        howImg: "/products/dummyProduct.jpeg",
         products: cleanserProducts,
       },
       {
         title: "Face Serum",
         subtitle: "A face serum is a lightweight, fast-absorbing treatment designed to deliver concentrated active ingredients deep into the skin. It helps target specific concerns such as dullness, uneven tone, fine lines, or dehydration.",
         howTitle: "How to Use Serum",
-        howBody: "After cleansing, apply 2–3 drops of serum to your face and neck. Gently press or massage it into the skin until fully absorbed. Allow it to settle for a minute before applying moisturizer. Use once or twice daily depending on your skin’s needs and the serum’s instructions.",
-        howImg: "/products/pilgram.svg",
+        howBody: " Apply a few drops of face serum on clean, dry skin after washing your face. Gently pat or massage it into your skin until fully absorbed. Use it before applying moisturizer, usually once or twice a day (morning and night).",
+        howImg: "/products/dummyProduct.jpeg",
         products: serumProducts,
       },
            {
         title: "Night Cream",
         subtitle: "Night cream provides essential hydration and protection, shielding your skin from environmental damage. It keeps your complexion smooth, radiant, and ready to face the day.",
         howTitle: "How to Use Your Night Cream",
-        howBody: "Take a small amount of night cream and apply it on your clean face. Gently massage in circular motions until it is fully absorbed. Use it every night before going to bed to nourish your skin.",
-        howImg: "/products/nightcream.jpeg",
+        howBody: "Take a small amount of under eye cream on your fingertip. Gently dab it around the under eye area without rubbing. Use it every night to help reduce dark circles and keep the skin hydrated.",
+        howImg: "/products/dummyProduct.jpeg",
         products: nightcreamProducts,
       },
     ]
@@ -254,16 +254,16 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         title: "Cleanser",
         subtitle: "A cleanser gently removes dirt, oil, and impurities, leaving your skin fresh and clean. It’s the first step to a clear, healthy, and glowing complexion.",
         howTitle: "How to Use Your Cleanser",
-        howBody: "Wet your face with lukewarm water and apply a small amount of cleanser to your fingertips. Gently massage it onto your skin in circular motions for 20–30 seconds, focusing on areas with excess oil or buildup. Rinse thoroughly and pat your skin dry with a clean towel. Use twice daily for best results.",
-        howImg: "/products/ceta1.svg",
+        howBody: " Wet your face with lukewarm water and apply a small amount of cleanser. Gently massage your face in circular motions for 30–60 seconds, then rinse thoroughly. Pat your face dry with a clean towel and apply moisturizer.",
+        howImg: "/products/dummyProduct.jpeg",
         products: cleanserProducts,
       },
       {
         title: "Daycream",
         subtitle: "Day cream provides essential hydration and protection, shielding your skin from environmental damage. It keeps your complexion smooth, radiant, and ready to face the day.",
         howTitle: "How to Use Daycream",
-        howBody: "After cleansing, apply a small amount of day cream to your face and neck. Gently massage it in using upward, circular motions until fully absorbed. Allow it to settle for a minute before applying sunscreen or makeup. Use every morning for optimal hydration and protection.",
-        howImg: "/products/cetapik.svg",
+        howBody: "Take a small amount of day cream and apply it on your clean face. Gently massage in circular motions until it is fully absorbed into the skin. Use it every morning to keep your skin moisturized and protected.",
+        howImg: "/products/dummyProduct.jpeg",
         products: daycreamProducts,
       },
       {
@@ -271,7 +271,7 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         subtitle: "Sunscreen protects your skin from harmful UV rays, preventing sunburn and premature aging. It's an essential daily step for healthy, radiant, and safeguarded skin.",
         howTitle: "How to Use Sunscreen",
         howBody: "Take a small amount of sunscreen and apply it evenly on your face and neck. Gently spread it until it is fully absorbed into the skin. Apply it every morning and reapply if you are exposed to sunlight for a long time.",
-        howImg: "/products/cetayellow.svg",
+        howImg: "/products/dummyProduct.jpeg",
         products: sunscreenProducts,
       },
     ];
