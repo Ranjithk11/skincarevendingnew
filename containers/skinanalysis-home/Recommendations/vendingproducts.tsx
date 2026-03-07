@@ -58,6 +58,26 @@ export default function VendingProducts({ data }: Props) {
   const normalizeBrandKey = (name: unknown) =>
     String(name ?? "").trim().toLowerCase();
 
+  const normalizeProductId = (id: unknown) => {
+    const raw = String(id ?? "").trim();
+    if (!raw) return "";
+
+    // Common formats:
+    // - "products/33945035"
+    // - "gid://shopify/Product/33945035"
+    // - "33945035"
+    const numericMatch = raw.match(/(\d{5,})\/?$/);
+    if (numericMatch?.[1]) return numericMatch[1];
+
+    return raw.replace(/^products\//, "");
+  };
+
+  const normalizeProductName = (name: unknown) =>
+    String(name ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
   const categories = useMemo(() => {
     const high = data?.recommendedProducts?.highRecommendation;
     if (!Array.isArray(high)) return [];
@@ -68,6 +88,7 @@ export default function VendingProducts({ data }: Props) {
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumber: number; quantity: number }>>({});
+  const [slotsNameMap, setSlotsNameMap] = useState<Record<string, { slotNumber: number; quantity: number }>>({});
 
   useEffect(() => {
     setBrands([]);
@@ -82,22 +103,40 @@ export default function VendingProducts({ data }: Props) {
         if (res.ok) {
           const slotsData = await res.json();
           const map: Record<string, { slotNumber: number; quantity: number }> = {};
+          const nameMap: Record<string, { slotNumber: number; quantity: number }> = {};
           // Handle both array and object formats
           const slotsArray = Array.isArray(slotsData) 
             ? slotsData 
             : Object.values(slotsData);
           slotsArray.forEach((slot: any) => {
-            if (slot.product_id) {
-              const existing = map[slot.product_id];
-              if (!existing || slot.quantity > existing.quantity) {
-                map[slot.product_id] = {
+            const quantity = Number(slot?.quantity || 0);
+
+            const update = (
+              target: Record<string, { slotNumber: number; quantity: number }>,
+              key: string
+            ) => {
+              if (!key) return;
+              const existing = target[key];
+              if (!existing || quantity > existing.quantity) {
+                target[key] = {
                   slotNumber: slot.slot_id,
-                  quantity: slot.quantity || 0,
+                  quantity,
                 };
               }
+            };
+
+            if (slot?.product_id) {
+              const rawId = String(slot.product_id);
+              const cleanId = normalizeProductId(rawId);
+              update(map, rawId);
+              if (cleanId && cleanId !== rawId) update(map, cleanId);
             }
+
+            const slotNameKey = normalizeProductName(slot?.product_name);
+            if (slotNameKey) update(nameMap, slotNameKey);
           });
           setSlotsMap(map);
+          setSlotsNameMap(nameMap);
         }
       } catch (err) {
         console.warn("Failed to fetch slots:", err);
@@ -370,8 +409,11 @@ export default function VendingProducts({ data }: Props) {
             </Grid>
           ) : (
             visibleProducts.map((product: any) => {
-              const productId = product?._id || product?.id;
-              const slotInfo = slotsMap[productId];
+              const productId = product?.id ?? product?._id;
+              const slotInfo =
+                slotsMap[String(productId)] ||
+                slotsMap[normalizeProductId(productId)] ||
+                slotsNameMap[normalizeProductName(product?.name)];
               // Product must be assigned to a slot to be available from vending machine
               const productQty = slotInfo?.quantity ?? 0;
               const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;

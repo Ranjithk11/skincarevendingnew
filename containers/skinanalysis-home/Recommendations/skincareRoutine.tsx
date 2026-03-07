@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Card, Grid, Switch, Typography } from "@mui/material";
 import ProductCard from "./ProductCard";
 
@@ -184,6 +184,79 @@ const RoutineProductCard = ({ product, category }: { product: any; category?: st
 ================================ */
 export default function SkincareRoutinePage({ recommendationData }: Props) {
   const [night, setNight] = useState(false);
+
+  const normalizeProductId = (id: unknown) => {
+    const raw = String(id ?? "").trim();
+    if (!raw) return "";
+
+    const numericMatch = raw.match(/(\d{5,})\/?$/);
+    if (numericMatch?.[1]) return numericMatch[1];
+
+    return raw.replace(/^products\//, "");
+  };
+
+  const normalizeProductName = (name: unknown) =>
+    String(name ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+
+  const [slotsMap, setSlotsMap] = useState<
+    Record<string, { slotNumber: number; quantity: number }>
+  >({});
+
+  const [slotsNameMap, setSlotsNameMap] = useState<
+    Record<string, { slotNumber: number; quantity: number }>
+  >({});
+
+  useEffect(() => {
+    const fetchSlots = async () => {
+      try {
+        const res = await fetch("/api/admin/slots");
+        if (!res.ok) return;
+
+        const slotsData = await res.json();
+        const map: Record<string, { slotNumber: number; quantity: number }> = {};
+        const nameMap: Record<string, { slotNumber: number; quantity: number }> = {};
+        const slotsArray = Array.isArray(slotsData) ? slotsData : Object.values(slotsData);
+
+        slotsArray.forEach((slot: any) => {
+          const quantity = Number(slot?.quantity || 0);
+
+          const update = (
+            target: Record<string, { slotNumber: number; quantity: number }>,
+            key: string
+          ) => {
+            if (!key) return;
+            const existing = target[key];
+            if (!existing || quantity > existing.quantity) {
+              target[key] = {
+                slotNumber: slot.slot_id,
+                quantity,
+              };
+            }
+          };
+
+          if (slot?.product_id) {
+            const rawId = String(slot.product_id);
+            const cleanId = normalizeProductId(rawId);
+            update(map, rawId);
+            if (cleanId && cleanId !== rawId) update(map, cleanId);
+          }
+
+          const slotNameKey = normalizeProductName(slot?.product_name);
+          if (slotNameKey) update(nameMap, slotNameKey);
+        });
+
+        setSlotsMap(map);
+        setSlotsNameMap(nameMap);
+      } catch (err) {
+        console.warn("Failed to fetch slots:", err);
+      }
+    };
+
+    fetchSlots();
+  }, []);
 
   const normalize = (v: any) => String(v ?? "").toLowerCase().trim();
 
@@ -447,7 +520,29 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
               <Grid container spacing={1.5} sx={{ mt: 1 }}>
                 {s.products.map((p: any, idx: number) => (
                   <Grid item xs={6} key={idx}>
-                    <RoutineProductCard product={p} category={s.title} />
+                    {(() => {
+                      const productId = p?.id ?? p?._id;
+                      const slotInfo =
+                        slotsMap[String(productId)] ||
+                        slotsMap[normalizeProductId(productId)] ||
+                        slotsNameMap[normalizeProductName(p?.name)];
+                      const productQty = slotInfo?.quantity ?? 0;
+                      const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
+
+                      return (
+                        <ProductCard
+                          {...p}
+                          category={s.title}
+                          enabledMask={false}
+                          compact={false}
+                          horizontalLayout={true}
+                          slotNumber={slotInfo?.slotNumber ?? null}
+                          isAvailable={isAvailable}
+                          quantity={productQty}
+                          cardSx={{ width: "100%" }}
+                        />
+                      );
+                    })()}
                   </Grid>
                 ))}
               </Grid>

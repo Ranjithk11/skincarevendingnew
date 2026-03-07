@@ -740,7 +740,7 @@ export default function FeedbackPage() {
                 Scan this <br /> QR Code
               </Typography>
               <Box sx={{ bgcolor: "#ffffff", borderRadius: 1, p: 0.75, flexShrink: 0 }}>
-                <Image src="/products/latestQr.jpeg" alt="QR" width={120} height={120} />
+                <Image src="/products/needsupportQR.jpeg" alt="QR" width={100} height={100} />
               </Box>
             </Box>
           </Box>
