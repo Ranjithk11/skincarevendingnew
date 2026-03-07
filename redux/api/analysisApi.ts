@@ -112,8 +112,11 @@ export const analysisApi = createApi({
         productRecommendationId: string;
       }
     >({
-      query: ({ userId, productRecommendationId }) =>
-        `${API_ROUTES.FETCH_SKIN_CARE_RECOMMENDATIONS_BY_ID}?userId=${userId}&productRecommendationId=${productRecommendationId}`,
+      query: ({ userId, productRecommendationId }) => {
+        const u = encodeURIComponent(String(userId ?? ""));
+        const p = encodeURIComponent(String(productRecommendationId ?? ""));
+        return `${API_ROUTES.FETCH_SKIN_CARE_RECOMMENDATIONS_BY_ID}?userId=${u}&productRecommendationId=${p}`;
+      },
     }),
     fetchUserQuestionsResponse: builder.query<any, { userId: string }>({
       query: ({ userId }) =>

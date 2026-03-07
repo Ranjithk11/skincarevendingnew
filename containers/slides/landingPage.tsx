@@ -14,6 +14,10 @@ export default function LandingPage() {
     router.push("/products");
   };
 
+  const handleSlots = () => {
+    router.push("/slots");
+  };
+
   const handleAdminDashboard = () => {
     router.push("/admin/login");
   };
@@ -23,6 +27,7 @@ export default function LandingPage() {
       <LandingTopSection 
         onStartScan={handleStartScan} 
         onBrowseProducts={handleBrowseProducts}
+        onSlots={handleSlots}
         onAdminDashboard={handleAdminDashboard}
       />
     </PageBackground>

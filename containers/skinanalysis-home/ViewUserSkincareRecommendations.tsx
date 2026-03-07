@@ -9,28 +9,18 @@ import {
   Container,
   styled,
   Typography,
-  Grid,
   Button,
   Paper,
 } from "@mui/material";
-import React, { Fragment, useEffect } from "react";
+import React, { Fragment, useEffect, useMemo } from "react";
 import LoadingComponent from "@/components/loaders/Loading";
-import SalonServices from "./Recommendations/SalonServices";
 import DietChart from "./Recommendations/DietChart";
-import MeetTeam from "./Recommendations/MeetTeam";
-import CoverPage from "./Recommendations/Cover";
-import UserInfo from "./ViewUserRecommendations/UserInfo";
 import _ from "lodash";
-import CosmeticRecommdations from "./Recommendations/CosmeticRecommdations";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { updateVisitCount } from "@/redux/reducers/analysisSlice";
 import { Icon } from "@iconify/react";
-import Payment from "./Recommendations/Payment";
-import PreventingView from "./Recommendations/Preventing";
-import ProductsView from "./Recommendations/Products";
-import Routine from "./Recommendations/Routines";
-import LipsProductsView from "./Recommendations/LipProducts";
+import NewUiPage from "./Recommendations/newUi";
 
 const StyledUserSkinAnalysisRecommendation = styled(Container)(({ theme }) => ({
   minHeight: "100vh",
@@ -132,16 +122,17 @@ const UserSkinAnalysisRecommendation = () => {
   const handleScrollToTop = () => {
     window.scrollTo({ top: 64, behavior: "smooth" });
   };
+
+  const userId = searchParams?.get("userId") || "";
+  const productRecommendationId = searchParams?.get("productRecommendationId") || "";
+
   useEffect(() => {
-    if (searchParams) {
-      fetchRecommnedSkinAttributesById({
-        userId: searchParams.get("userId") as string,
-        productRecommendationId: searchParams.get(
-          "productRecommendationId"
-        ) as string,
-      });
-    }
-  }, [searchParams]);
+    if (!userId || !productRecommendationId) return;
+    fetchRecommnedSkinAttributesById({
+      userId,
+      productRecommendationId,
+    });
+  }, [fetchRecommnedSkinAttributesById, userId, productRecommendationId]);
 
   useEffect(() => {
     if (!_.isEmpty(data)) {
@@ -154,93 +145,26 @@ const UserSkinAnalysisRecommendation = () => {
     }
   }, [data]);
 
+  const dataFUQR = useMemo(() => {
+    const age = data?.data?.user?.onBoardingQuestions?.[0]?.responses?.[0]?.value;
+    const gender = data?.data?.user?.onBoardingQuestions?.[1]?.responses?.[0]?.value;
+    return { age, gender };
+  }, [data]);
+
   return (
     <StyledUserSkinAnalysisRecommendation disableGutters maxWidth="xl">
       {!isLoading && !isError && !isLoadingImageInfo && data && (
         <Fragment>
-          <CoverPage
+          <NewUiPage
+            useData={dataImageInfo}
+            dataFUQR={dataFUQR}
             publicUserProfile={data?.data?.user}
-            useData={dataImageInfo}
             analysisData={data?.data?.productRecommendation}
-            dataFUQR={{
-              age: data?.data?.user?.onBoardingQuestions?.[0]?.responses?.[0]
-                ?.value,
-              gender:
-                data?.data?.user?.onBoardingQuestions?.[1]?.responses?.[0]
-                  ?.value,
-            }}
           />
-          <PreventingView
-            useData={dataImageInfo}
-            data={{
-              data: [
-                {
-                  lipAnalysisSummary:
-                    data?.data?.productRecommendation?.lipAnalysisSummary,
-                  analysedImages:
-                    data?.data?.productRecommendation?.analysedImages,
-                  userId: data?.data?.user?._id,
-                  attributeCode:
-                    data?.data?.productRecommendation?.attributeCode,
-                  skinSummary: data?.data?.productRecommendation?.skinSummary,
-                  analysisAiSummary:
-                    data?.data?.productRecommendation?.analysisAiSummary,
-                  detectedLipAttributes:
-                    data?.data?.productRecommendation?.detectedLipAttributes,
-                  lipColor: data?.data?.productRecommendation?.lipColor,
-                  lipShape: data?.data?.productRecommendation?.lipShape,
-                  recommendedLipProducts:
-                    data?.data?.productRecommendation?.recommendedLipProducts,
-                },
-              ],
-            }}
-          />
-
-          <ProductsView
-            data={{
-              data: [
-                {
-                  recommendedProducts: {
-                    lowRecommendation:
-                      data?.data?.productRecommendation?.recommendedProducts
-                        ?.lowRecommendation,
-                    highRecommendation:
-                      data?.data?.productRecommendation?.recommendedProducts
-                        ?.highRecommendation,
-                  },
-                },
-              ],
-            }}
-          />
-          {/* {data?.data?.productRecommendation?.recommendedLipProducts?.length >
-            0 && (
-              <LipsProductsView
-                dataFUQR={{
-                  age: data?.data?.user?.onBoardingQuestions?.[0]?.responses?.[0]
-                    ?.value,
-                  gender:
-                    data?.data?.user?.onBoardingQuestions?.[1]?.responses?.[0]
-                      ?.value,
-                }}
-                data={data?.data?.productRecommendation?.recommendedLipProducts}
-              />
-            )} */}
-
-          <Routine userData={dataImageInfo} />
-          <SalonServices
-            data={
-              data?.data?.productRecommendation?.recommendedSalonServices || []
-            }
-          />
-          <CosmeticRecommdations
-            data={
-              data?.data?.productRecommendation?.recommendedCosmeticServices ||
-              []
-            }
-          />
+{/* 
           {data?.data?.productRecommendation?.dietPlan && (
             <DietChart dietPlan={data?.data?.productRecommendation?.dietPlan} />
-          )}
+          )} */}
         </Fragment>
       )}
 

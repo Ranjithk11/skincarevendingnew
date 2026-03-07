@@ -9,6 +9,7 @@ interface LogoProps {
   showText?: boolean;
   header?: boolean;
   onBrowseProducts?: () => void;
+  onSlots?: () => void;
 }
 
 /** Scale based on original logo size: 464 x 110 */
@@ -23,6 +24,7 @@ export default function Logo({
   showText = true,
   header = false,
   onBrowseProducts,
+  onSlots,
 }: LogoProps) {
   const { width, height } = sizeMap[size];
 
@@ -62,28 +64,53 @@ export default function Logo({
       >
         {logoMark}
 
-        <ActionButton
-          variant="outline"
-          icon={
-            <Image
-              src="/wending/productlog.svg"
-              alt="Products"
-              width={35}
-              height={35}
-            />
-          }
-          onClick={onBrowseProducts}
-        >
-          <Typography
-            sx={{
-              fontWeight: 510,
-              fontSize: 24,
-              lineHeight: "100%",
-            }}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+          <ActionButton
+            variant="outline"
+            icon={
+              <Image
+                src="/wending/productlog.svg"
+                alt="Products"
+                width={35}
+                height={35}
+              />
+            }
+            onClick={onBrowseProducts}
           >
-            Browse Products
-          </Typography>
-        </ActionButton>
+            <Typography
+              sx={{
+                fontWeight: 510,
+                fontSize: 24,
+                lineHeight: "100%",
+              }}
+            >
+              Browse Products
+            </Typography>
+          </ActionButton>
+
+          {/* <ActionButton
+            variant="outline"
+            icon={
+              <Image
+                src="/wending/dashboard-gauge.svg"
+                alt="Slots"
+                width={35}
+                height={35}
+              />
+            }
+            onClick={onSlots}
+          >
+            <Typography
+              sx={{
+                fontWeight: 510,
+                fontSize: 24,
+                lineHeight: "100%",
+              }}
+            >
+              Slots
+            </Typography>
+          </ActionButton> */}
+        </Box>
       </Box>
     );
   }

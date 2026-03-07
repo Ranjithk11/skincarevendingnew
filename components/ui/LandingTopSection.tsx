@@ -11,12 +11,14 @@ import { useVoiceMessages } from "@/contexts/VoiceContext";
 interface LandingTopSectionProps {
   onStartScan: () => void;
   onBrowseProducts?: () => void;
+  onSlots?: () => void;
   onAdminDashboard?: () => void;
 }
 
 export default function LandingTopSection({
   onStartScan,
   onBrowseProducts,
+  onSlots,
   onAdminDashboard,
 }: LandingTopSectionProps) {
   const { speakMessage, speakSequence } = useVoiceMessages();
@@ -53,7 +55,7 @@ export default function LandingTopSection({
         overflowY: "auto",
       }}
     >
-      <Logo header onBrowseProducts={onBrowseProducts} />
+      <Logo header onBrowseProducts={onBrowseProducts} onSlots={onSlots} />
 
       <Box sx={{ mb: { xs: 2, sm: 3, md: 3.5 }, mt: 5 }}>
         <Typography

@@ -229,7 +229,7 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         subtitle: "A cleanser gently removes dirt, oil, and impurities, leaving your skin fresh and clean. It’s the first step to a clear, healthy, and glowing complexion.",
         howTitle: "How to Use Your Cleanser",
         howBody: " Wet your face with lukewarm water and apply a small amount of cleanser. Gently massage your face in circular motions for 30–60 seconds, then rinse thoroughly. Pat your face dry with a clean towel and apply moisturizer.",
-        howImg: "/products/dummyProduct.jpeg",
+        howImg: "/products/dummyproduct2.jpeg",
         products: cleanserProducts,
       },
       {
@@ -237,7 +237,7 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         subtitle: "A face serum is a lightweight, fast-absorbing treatment designed to deliver concentrated active ingredients deep into the skin. It helps target specific concerns such as dullness, uneven tone, fine lines, or dehydration.",
         howTitle: "How to Use Serum",
         howBody: " Apply a few drops of face serum on clean, dry skin after washing your face. Gently pat or massage it into your skin until fully absorbed. Use it before applying moisturizer, usually once or twice a day (morning and night).",
-        howImg: "/products/dummyProduct.jpeg",
+        howImg: "/products/dummyproduct2.jpeg",
         products: serumProducts,
       },
            {
@@ -245,7 +245,7 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         subtitle: "Night cream provides essential hydration and protection, shielding your skin from environmental damage. It keeps your complexion smooth, radiant, and ready to face the day.",
         howTitle: "How to Use Your Night Cream",
         howBody: "Take a small amount of under eye cream on your fingertip. Gently dab it around the under eye area without rubbing. Use it every night to help reduce dark circles and keep the skin hydrated.",
-        howImg: "/products/dummyProduct.jpeg",
+        howImg: "/products/dummyproduct2.jpeg",
         products: nightcreamProducts,
       },
     ]
