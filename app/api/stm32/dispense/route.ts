@@ -3,6 +3,8 @@ import { getStm32Config, stm32Dispense, stm32DispenseMany } from "@/utils/stm32"
 
 export const runtime = "nodejs";
 
+const IS_VERCEL = process.env.VERCEL === "1";
+
 function getEnvNumber(name: string): number | undefined {
   const v = process.env[name];
   if (typeof v !== "string") return undefined;
@@ -64,6 +66,26 @@ function applySlotOffset(code: string, offset: number): string {
     const n = Number(trimmed);
     if (!Number.isFinite(n)) return trimmed;
     return String(n + offset);
+  }
+
+  return trimmed;
+}
+
+function removeSlotOffset(code: string, offset: number): string {
+  if (!Number.isFinite(offset) || offset === 0) return code;
+  const trimmed = code.trim();
+
+  const rqMatch = trimmed.match(/^RQ\s*(\d+)$/i);
+  if (rqMatch) {
+    const n = Number(rqMatch[1]);
+    if (!Number.isFinite(n)) return trimmed;
+    return `RQ${n - offset}`;
+  }
+
+  if (/^\d+$/.test(trimmed)) {
+    const n = Number(trimmed);
+    if (!Number.isFinite(n)) return trimmed;
+    return String(n - offset);
   }
 
   return trimmed;
@@ -292,6 +314,31 @@ export async function POST(req: Request) {
     }
 
     const success = results.every((r) => r.ok);
+
+    if (success && !IS_VERCEL) {
+      try {
+        const { adminDb } = await import("@/lib/admin-db");
+
+        // Only decrement for actual product dispense commands; ignore TRAY.
+        const slotCodes = sentCommands.filter((c) => String(c).trim().toUpperCase() !== "TRAY");
+
+        // Decrement each code by 1 (or by the number of times it appears).
+        const counts = new Map<number, number>();
+        for (const code of slotCodes) {
+          const originalCode = removeSlotOffset(String(code), slotOffset);
+          const motor = getRqMotorNumber(originalCode);
+          if (!motor) continue;
+          counts.set(motor, (counts.get(motor) ?? 0) + 1);
+        }
+
+        counts.forEach((qty, slotId) => {
+          adminDb.updateSlotQuantity(slotId, -qty);
+          console.log(`[STM32] Decremented slot ${slotId} by ${qty} after successful dispense`);
+        });
+      } catch (e) {
+        console.warn("[STM32] Dispense succeeded but failed to decrement slot inventory:", e);
+      }
+    }
 
     return NextResponse.json({
       success,

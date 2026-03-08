@@ -128,8 +128,8 @@ export default function FeedbackPage() {
   useEffect(() => {
     if (dispenseState.status !== "done") return;
     
-    // Start 30 second countdown for pickup
-    setPickupTimer(30);
+    // Start 10 second countdown for pickup
+    setPickupTimer(10);
     
     // Announce successful dispense and pickup instruction
     speakMessage('dispense');
