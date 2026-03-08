@@ -428,7 +428,7 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
                   color: night ? "#fff" : "#6b7280",
                 }}
               >
-                Night
+                NIGHT
               </Typography>
             </Box>
           </Box>
