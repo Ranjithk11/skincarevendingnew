@@ -76,7 +76,7 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
       if (result.success) {
         setReopenStatus("success");
         // Start pickup timer on success
-        setPickupTimer(30);
+        setPickupTimer(10);
       } else {
         setReopenStatus("error");
         setTimeout(() => {
@@ -110,7 +110,7 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [pickupTimer > 0]);
+  }, [pickupTimer]);
 
   return (
     <Dialog
@@ -298,31 +298,32 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
               </Button>
 
               {reopenStatus === "success" && (
-                <>
-                  <Typography sx={{ mt: 2, fontSize: 18, color: "#16a34a", textAlign: "center" }}>
-                    The tray door has been reopened.
+                <Typography sx={{ mt: 2, fontSize: 18, color: "#16a34a", textAlign: "center" }}>
+                  The tray door has been reopened.
+                </Typography>
+              )}
+
+              {pickupTimer > 0 && (
+                <Box
+                  sx={{
+                    mt: 2,
+                    p: 2,
+                    bgcolor: "#fef3c7",
+                    borderRadius: 2,
+                    border: "2px solid #f59e0b",
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#92400e" }}>
+                    ⏱️ Pickup your product
                   </Typography>
-                  {pickupTimer > 0 && (
-                    <Box sx={{ 
-                      mt: 2, 
-                      p: 2, 
-                      bgcolor: "#fef3c7", 
-                      borderRadius: 2,
-                      border: "2px solid #f59e0b",
-                      textAlign: "center"
-                    }}>
-                      <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#92400e" }}>
-                        ⏱️ Pickup your product
-                      </Typography>
-                      <Typography sx={{ fontSize: 36, fontWeight: 800, color: "#d97706", mt: 1 }}>
-                        {pickupTimer}s
-                      </Typography>
-                      <Typography sx={{ fontSize: 16, color: "#92400e", mt: 0.5 }}>
-                        Tray door will close soon
-                      </Typography>
-                    </Box>
-                  )}
-                </>
+                  <Typography sx={{ fontSize: 36, fontWeight: 800, color: "#d97706", mt: 1 }}>
+                    {pickupTimer}s
+                  </Typography>
+                  <Typography sx={{ fontSize: 16, color: "#92400e", mt: 0.5 }}>
+                    Tray door will close soon
+                  </Typography>
+                </Box>
               )}
               {reopenStatus === "error" && (
                 <Typography sx={{ mt: 2, fontSize: 18, color: "#dc2626", textAlign: "center" }}>

@@ -95,7 +95,15 @@ export default function BrowseProductsPage() {
 
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumber: number; quantity: number }>>({});
+  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumbers: number[]; quantity: number }>>({});
+
+  const normalizeProductId = (id: unknown) => {
+    const raw = String(id ?? "").trim();
+    if (!raw) return "";
+    const numericMatch = raw.match(/(\d{5,})\/?$/);
+    if (numericMatch?.[1]) return numericMatch[1];
+    return raw.replace(/^products\//, "");
+  };
   const { data: categoriesData } = useGetProductCategoriesQuery({});
   const { data: brandsData } = useGetAllBrandsQuery({});
 
@@ -125,21 +133,36 @@ export default function BrowseProductsPage() {
         const res = await fetch("/api/admin/slots");
         if (res.ok) {
           const slotsData = await res.json();
-          const map: Record<string, { slotNumber: number; quantity: number }> = {};
+          const map: Record<string, { slotNumbers: number[]; quantity: number }> = {};
           // Handle both array and object formats
           const slotsArray = Array.isArray(slotsData)
             ? slotsData
             : Object.values(slotsData);
           slotsArray.forEach((slot: any) => {
             if (slot.product_id) {
-              // Store by product_id, keep the slot with highest quantity if multiple
-              const existing = map[slot.product_id];
-              if (!existing || slot.quantity > existing.quantity) {
-                map[slot.product_id] = {
-                  slotNumber: slot.slot_id,
-                  quantity: slot.quantity || 0,
-                };
-              }
+              const rawId = String(slot.product_id);
+              const cleanId = normalizeProductId(rawId);
+              const quantity = Number(slot.quantity || 0);
+
+              const update = (key: string) => {
+                if (!key) return;
+                const slotId = Number(slot.slot_id);
+                if (!Number.isFinite(slotId)) return;
+
+                const existing = map[key];
+                if (!existing) {
+                  map[key] = { slotNumbers: [slotId], quantity };
+                  return;
+                }
+
+                if (!existing.slotNumbers.includes(slotId)) {
+                  existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
+                }
+                existing.quantity = Number(existing.quantity || 0) + quantity;
+              };
+
+              update(rawId);
+              if (cleanId && cleanId !== rawId) update(cleanId);
             }
           });
           setSlotsMap(map);
@@ -150,6 +173,28 @@ export default function BrowseProductsPage() {
     };
     fetchSlots();
   }, []);
+
+  const sortedProducts = useMemo(() => {
+    const getSlotInfo = (p: any) => {
+      const productId = p?.id ?? p?._id;
+      return slotsMap[String(productId)] || slotsMap[normalizeProductId(productId)];
+    };
+
+    const decorated = products.map((product: any) => {
+      const slotInfo = getSlotInfo(product);
+      const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
+      const quantity = slotInfo?.quantity ?? 0;
+      return { product, slotInfo, isAvailable, quantity };
+    });
+
+    decorated.sort((a: any, b: any) => {
+      if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+      if (a.quantity !== b.quantity) return b.quantity - a.quantity;
+      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""));
+    });
+
+    return decorated;
+  }, [products, slotsMap]);
 
   // Fetch products for selected category
   useEffect(() => {
@@ -408,7 +453,7 @@ export default function BrowseProductsPage() {
           >
             {categories.map((category: any, idx: number) => {
               const active = selectedCategory === category._id;
-              // Get first product image for this category from state
+              const isAllCategory = category?._id === "all";
               const firstImg = categoryImages[category._id];
               return (
                 <Box
@@ -435,7 +480,11 @@ export default function BrowseProductsPage() {
                       justifyContent: "center",
                     }}
                   >
-                    {firstImg ? (
+                    {isAllCategory ? (
+                      <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#0f766e" }}>
+                        All
+                      </Typography>
+                    ) : firstImg ? (
                       <Box
                         component="img"
                         src={firstImg}
@@ -608,9 +657,10 @@ export default function BrowseProductsPage() {
               </Box>
             ) : (
               <Grid container spacing={2}>
-                {products.map((product: any) => {
-                  const productId = product?._id || product?.id;
-                  const slotInfo = slotsMap[productId];
+                {sortedProducts.map((row: any, idx: number) => {
+                  const product = row?.product;
+                  const slotInfo = row?.slotInfo;
+                  const productId = product?.id ?? product?._id;
                   // Product must be assigned to a slot to be available from vending machine
                   const productQty = slotInfo?.quantity ?? 0;
                   const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
@@ -619,11 +669,11 @@ export default function BrowseProductsPage() {
                       item
                       xs={6}
                       md={6}
-                      key={productId}
+                      key={`${String(productId)}-${(slotInfo?.slotNumbers || []).join("-") || "na"}-${idx}`}
                     >
                       <ProductCard
                         {...mapProductToCardProps(product)}
-                        slotNumber={slotInfo?.slotNumber ?? null}
+                        slotNumbers={slotInfo?.slotNumbers ?? null}
                         isAvailable={isAvailable}
                         quantity={productQty}
                       />

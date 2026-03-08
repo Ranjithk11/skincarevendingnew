@@ -37,6 +37,7 @@ interface ProductCardProps {
   cardSx?: any;
   horizontalLayout?: boolean;
   slotNumber?: number | null;
+  slotNumbers?: number[] | null;
   isAvailable?: boolean;
   quantity?: number;
 }
@@ -207,6 +208,7 @@ const ProductCard = ({
   cardSx,
   horizontalLayout,
   slotNumber,
+  slotNumbers,
   isAvailable = true,
   quantity,
 }: ProductCardProps) => {
@@ -250,6 +252,13 @@ const ProductCard = ({
   };
 
   const matchLabel = matches?.[0]?.name?.replace("_", " ") || "";
+
+  const slotLabel =
+    Array.isArray(slotNumbers) && slotNumbers.length > 0
+      ? `Slot ${slotNumbers.join(", ")}`
+      : slotNumber != null
+        ? `Slot ${slotNumber}`
+        : null;
 
   return (
     <StyledProductCard
@@ -317,7 +326,7 @@ const ProductCard = ({
       }}
     >
       {/* Slot Number Badge */}
-      {slotNumber != null && (
+      {slotLabel && (
         <Box
           sx={{
             position: "absolute",
@@ -333,29 +342,7 @@ const ProductCard = ({
             zIndex: 3,
           }}
         >
-          Slot {slotNumber}
-        </Box>
-      )}
-
-      {/* Availability Badge - only show for available products */}
-      {isAvailable && (
-        <Box
-          sx={{
-            position: "absolute",
-            top: slotNumber != null ? 45 : 8,
-            right: 2,
-            bgcolor: "#16a34a",
-            color: "#fff",
-            px: 1.5,
-            py: 0.5,
-            borderRadius: 1,
-            fontSize: 12,
-            fontWeight: 600,
-            zIndex: 3,
-            mt: 2,
-          }}
-        >
-          {quantity != null ? `In Stock (${quantity})` : "Available"}
+          {slotLabel}
         </Box>
       )}
 

@@ -88,7 +88,7 @@ export default function Logo({
             </Typography>
           </ActionButton>
 
-          {/* <ActionButton
+          <ActionButton
             variant="outline"
             icon={
               <Image
@@ -109,7 +109,7 @@ export default function Logo({
             >
               Slots
             </Typography>
-          </ActionButton> */}
+          </ActionButton>
         </Box>
       </Box>
     );

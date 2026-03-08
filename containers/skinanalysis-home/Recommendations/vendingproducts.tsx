@@ -87,8 +87,8 @@ export default function VendingProducts({ data }: Props) {
   const [categoryIndex, setCategoryIndex] = useState(0);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumber: number; quantity: number }>>({});
-  const [slotsNameMap, setSlotsNameMap] = useState<Record<string, { slotNumber: number; quantity: number }>>({});
+  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumbers: number[]; quantity: number }>>({});
+  const [slotsNameMap, setSlotsNameMap] = useState<Record<string, { slotNumbers: number[]; quantity: number }>>({});
 
   useEffect(() => {
     setBrands([]);
@@ -102,8 +102,8 @@ export default function VendingProducts({ data }: Props) {
         const res = await fetch("/api/admin/slots");
         if (res.ok) {
           const slotsData = await res.json();
-          const map: Record<string, { slotNumber: number; quantity: number }> = {};
-          const nameMap: Record<string, { slotNumber: number; quantity: number }> = {};
+          const map: Record<string, { slotNumbers: number[]; quantity: number }> = {};
+          const nameMap: Record<string, { slotNumbers: number[]; quantity: number }> = {};
           // Handle both array and object formats
           const slotsArray = Array.isArray(slotsData) 
             ? slotsData 
@@ -112,17 +112,23 @@ export default function VendingProducts({ data }: Props) {
             const quantity = Number(slot?.quantity || 0);
 
             const update = (
-              target: Record<string, { slotNumber: number; quantity: number }>,
+              target: Record<string, { slotNumbers: number[]; quantity: number }>,
               key: string
             ) => {
               if (!key) return;
+              const slotId = Number(slot.slot_id);
+              if (!Number.isFinite(slotId)) return;
+
               const existing = target[key];
-              if (!existing || quantity > existing.quantity) {
-                target[key] = {
-                  slotNumber: slot.slot_id,
-                  quantity,
-                };
+              if (!existing) {
+                target[key] = { slotNumbers: [slotId], quantity };
+                return;
               }
+
+              if (!existing.slotNumbers.includes(slotId)) {
+                existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
+              }
+              existing.quantity = Number(existing.quantity || 0) + quantity;
             };
 
             if (slot?.product_id) {
@@ -206,6 +212,32 @@ export default function VendingProducts({ data }: Props) {
     return filtered;
   }, [products, selectedBrand]);
 
+  const sortedProducts = useMemo(() => {
+    const getSlotInfo = (product: any) => {
+      const productId = product?.id ?? product?._id;
+      return (
+        slotsMap[String(productId)] ||
+        slotsMap[normalizeProductId(productId)] ||
+        slotsNameMap[normalizeProductName(product?.name)]
+      );
+    };
+
+    const decorated = visibleProducts.map((product: any) => {
+      const slotInfo = getSlotInfo(product);
+      const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
+      const quantity = slotInfo?.quantity ?? 0;
+      return { product, slotInfo, isAvailable, quantity };
+    });
+
+    decorated.sort((a: any, b: any) => {
+      if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+      if (a.quantity !== b.quantity) return b.quantity - a.quantity;
+      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""));
+    });
+
+    return decorated;
+  }, [visibleProducts, slotsMap, slotsNameMap]);
+
   return (
     <PageBackground>
       <Box
@@ -237,7 +269,7 @@ export default function VendingProducts({ data }: Props) {
           }}
         >
           {categories.slice(0, 8).map((c: any, idx: number) => {
-            const firstImg = c?.products?.[0]?.images?.[0]?.url;
+            const isAllCategory = idx === 0;
             return (
               <Box
                 key={c?.productCategory?._id || idx}
@@ -264,13 +296,16 @@ export default function VendingProducts({ data }: Props) {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-
                   }}
                 >
-                  {firstImg ? (
+                  {isAllCategory ? (
+                    <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#0f766e" }}>
+                      All
+                    </Typography>
+                  ) : c?.products?.[0]?.images?.[0]?.url ? (
                     <Box
                       component="img"
-                      src={firstImg}
+                      src={c?.products?.[0]?.images?.[0]?.url}
                       alt={c?.productCategory?.title || "category"}
                       sx={{ width: "122px", height: "122px", objectFit: "contain" }}
                     />
@@ -408,12 +443,10 @@ export default function VendingProducts({ data }: Props) {
               </Typography>
             </Grid>
           ) : (
-            visibleProducts.map((product: any) => {
+            sortedProducts.map((row: any, idx: number) => {
+              const product = row?.product;
+              const slotInfo = row?.slotInfo;
               const productId = product?.id ?? product?._id;
-              const slotInfo =
-                slotsMap[String(productId)] ||
-                slotsMap[normalizeProductId(productId)] ||
-                slotsNameMap[normalizeProductName(product?.name)];
               // Product must be assigned to a slot to be available from vending machine
               const productQty = slotInfo?.quantity ?? 0;
               const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
@@ -422,7 +455,7 @@ export default function VendingProducts({ data }: Props) {
                   item
                   xs={6}
                   md={4}
-                  key={productId}
+                  key={`${String(productId)}-${(slotInfo?.slotNumbers || []).join("-") || "na"}-${idx}`}
                   sx={{ display: "flex", justifyContent: "center" }}
                 >
                   <ProductCard
@@ -431,7 +464,7 @@ export default function VendingProducts({ data }: Props) {
                     enabledMask={false}
                     compact={false}
                     horizontalLayout={true}
-                    slotNumber={slotInfo?.slotNumber ?? null}
+                    slotNumbers={slotInfo?.slotNumbers ?? null}
                     isAvailable={isAvailable}
                     quantity={productQty}
                     cardSx={{
