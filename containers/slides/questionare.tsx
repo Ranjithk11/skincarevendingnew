@@ -75,6 +75,8 @@ export default function Questionnaire() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("+91");
+  const [country, setCountry] = useState<string>("IN");
+  const [callingCode, setCallingCode] = useState<string>("91");
   const [email, setEmail] = useState("");
   const [activeField, setActiveField] = useState<"name" | "phone" | "email">("name");
   const [cursorPosition, setCursorPosition] = useState<number | null>(null); // null = end of text
@@ -114,8 +116,13 @@ export default function Questionnaire() {
 
     if (key === "backspace") {
       if (activeField === "phone") {
-        // For phone, just remove last character
-        setValue(currentValue.slice(0, -1));
+        // For phone, remove the last digit from the national number, but keep the calling code.
+        // This avoids corrupting the MuiTelInput formatting (spaces) and keeps the selected country code stable.
+        const digitsOnly = String(currentValue).replace(/\D/g, "");
+        const code = String(callingCode || "").replace(/\D/g, "");
+        const nationalDigits = digitsOnly.slice(code.length);
+        const nextNational = nationalDigits.slice(0, -1);
+        setPhone(nextNational ? `+${code} ${nextNational}` : `+${code}`);
       } else {
         // For name/email, remove character at cursor position
         if (pos > 0) {
@@ -168,31 +175,26 @@ export default function Questionnaire() {
       } else if (activeField === "phone") {
         // Phone: only digits
         if (!/^[0-9]$/.test(key)) return;
-        // Extract country code and national number from phone
-        // Phone format: "+91 XXXXX" or "+1 XXX XXX XXXX"
-        const allDigits = phone.replace(/\D/g, '');
-        
-        // Determine country code length and max national number length
-        let countryCodeLength = 2; // Default for India (91)
-        let maxNationalLength = 10; // Default for India
-        
-        if (phone.startsWith('+1')) {
-          countryCodeLength = 1; // US/Canada
-          maxNationalLength = 10;
-        } else if (phone.startsWith('+44')) {
-          countryCodeLength = 2;
-          maxNationalLength = 11; // UK
-        } else if (phone.startsWith('+61')) {
-          countryCodeLength = 2;
-          maxNationalLength = 9; // Australia
-        } else if (phone.startsWith('+86')) {
-          countryCodeLength = 2;
-          maxNationalLength = 11; // China
-        }
-        
-        const nationalDigits = allDigits.length - countryCodeLength;
-        if (nationalDigits >= maxNationalLength) return;
-        setPhone(phone + key);
+
+        const code = String(callingCode || "91").replace(/\D/g, "") || "91";
+        const digitsOnly = String(phone).replace(/\D/g, "");
+        const nationalDigits = digitsOnly.slice(code.length);
+
+        // Determine max national number length based on calling code
+        const maxLengthByCountry: { [key: string]: number } = {
+          "91": 10,
+          "1": 10,
+          "44": 11,
+          "61": 9,
+          "86": 11,
+        };
+        const maxNationalLength = maxLengthByCountry[code] || 15;
+        if (nationalDigits.length >= maxNationalLength) return;
+
+        // Keep an explicit separator after calling code so partial values don't become ambiguous
+        // (e.g. '+1 9' instead of '+19'), which can cause MuiTelInput to switch countries.
+        const nextNational = `${nationalDigits}${key}`;
+        setPhone(`+${code} ${nextNational}`);
       } else {
         // Email: allow all characters
         const char = isShift && !isNumeric ? key.toUpperCase() : key.toLowerCase();
@@ -202,7 +204,7 @@ export default function Questionnaire() {
         if (isShift && !isNumeric) setIsShift(false);
       }
     }
-  }, [activeField, name, phone, email, isShift, isNumeric, cursorPosition]);
+  }, [activeField, name, phone, email, isShift, isNumeric, cursorPosition, callingCode]);
 
   // Physical keyboard support
   useEffect(() => {
@@ -468,6 +470,8 @@ export default function Questionnaire() {
             name={name}
             phone={phone}
             email={email}
+            country={country}
+            callingCode={callingCode}
             activeField={activeField}
             cursorPosition={cursorPosition}
             isNumeric={isNumeric}
@@ -475,6 +479,8 @@ export default function Questionnaire() {
             setCursorPosition={setCursorPosition}
             setIsNumeric={setIsNumeric}
             setPhone={setPhone}
+            setCountry={setCountry}
+            setCallingCode={setCallingCode}
             handleKeyPress={handleKeyPress}
             handleNext={handleNext}
             currentSlide={currentSlide}

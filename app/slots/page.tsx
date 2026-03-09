@@ -337,10 +337,10 @@ export default function SlotsPage() {
           <Typography
             sx={{
               textAlign: "center",
-              fontSize: 24,
+              fontSize: 28,
               fontWeight: 800,
               color: "#111827",
-              mb: 2,
+              mb: 5,
             }}
           >
             SELECT PRODUCT SLOT
@@ -352,7 +352,10 @@ export default function SlotsPage() {
               borderRadius: 3,
               border: "1px solid #e5e7eb",
               boxShadow: "0 10px 22px rgba(0,0,0,0.08)",
-              p: { xs: 2, sm: 2.5, md: 3 },
+              p: { xs: 3, sm: 2.5, md: 3 },
+              minHeight: { xs: "calc(80vh - 200px)", sm: "calc(80vh - 260px)" },
+              display: "flex",
+              flexDirection: "column",
             }}
           >
             <SlotsGrid slots={gridSlots} columns={10} onSelect={handleSelect} />
@@ -361,7 +364,7 @@ export default function SlotsPage() {
               {selectedSlotId ? "1 Product selected" : ""}
             </Typography>
 
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+            <Box sx={{ display: "flex", justifyContent: "center", mt: "auto", pt: 2 }}>
               <ActionButton
                 variant="primary"
                 onClick={() => setOpenCart(true)}

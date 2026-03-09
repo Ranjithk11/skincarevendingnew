@@ -9,6 +9,8 @@ interface Slide1Props {
   name: string;
   phone: string;
   email: string;
+  country: string;
+  callingCode: string;
   activeField: "name" | "phone" | "email";
   cursorPosition: number | null;
   isNumeric: boolean;
@@ -16,6 +18,8 @@ interface Slide1Props {
   setCursorPosition: (pos: number | null) => void;
   setIsNumeric: (value: boolean) => void;
   setPhone: (value: string) => void;
+  setCountry: (value: string) => void;
+  setCallingCode: (value: string) => void;
   handleKeyPress: (key: string) => void;
   handleNext: () => void;
   currentSlide: number;
@@ -26,6 +30,8 @@ export default function Slide1({
   name,
   phone,
   email,
+  country,
+  callingCode,
   activeField,
   cursorPosition,
   isNumeric,
@@ -33,6 +39,8 @@ export default function Slide1({
   setCursorPosition,
   setIsNumeric,
   setPhone,
+  setCountry,
+  setCallingCode,
   handleKeyPress,
   handleNext,
   currentSlide,
@@ -148,6 +156,7 @@ export default function Slide1({
             {/* Phone Number Field */}
             <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Phone Number</Typography>
             <MuiTelInput
+              key={country}
               value={phone}
               onChange={(value, info) => {
                 // Use country-specific validation
@@ -155,6 +164,31 @@ export default function Slide1({
                 // India: 10 digits, US: 10 digits, UK: 10-11 digits, etc.
                 const nationalNumber = info.nationalNumber || '';
                 const countryCode = info.countryCallingCode || '';
+                const iso2 = (info as any)?.countryCode;
+
+                const nextCountry = typeof iso2 === "string" && iso2 ? iso2 : country;
+                const didCountryChange = nextCountry !== country;
+
+                if (didCountryChange) {
+                  setCountry(nextCountry);
+                }
+
+                if (countryCode && countryCode !== callingCode) {
+                  setCallingCode(countryCode);
+                }
+
+                // If the user just switched countries and hasn't entered a national number yet,
+                // force the value to the selected calling code to avoid showing the previous country flag/calling code.
+                if (didCountryChange) {
+                  if (!nationalNumber) {
+                    setPhone(countryCode ? `+${countryCode}` : value);
+                    return;
+                  }
+
+                  // Country changed with existing digits; always accept the new formatted value.
+                  setPhone(value);
+                  return;
+                }
                 
                 // Define max lengths per country code
                 const maxLengthByCountry: { [key: string]: number } = {
@@ -171,7 +205,7 @@ export default function Slide1({
                   setPhone(value);
                 }
               }}
-              defaultCountry="IN"
+              defaultCountry={country as any}
               focusOnSelectCountry
               forceCallingCode
               onFocus={() => {

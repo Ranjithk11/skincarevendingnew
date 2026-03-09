@@ -13,6 +13,8 @@ import {
   FormControl,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import Image from "next/image";
 import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 
@@ -101,6 +103,20 @@ export default function SlotAssignmentModal({
   };
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
+
+  const maxQuantity = selectedProduct?.amount;
+  const hasMaxQuantity =
+    typeof maxQuantity === "number" && Number.isFinite(maxQuantity) && maxQuantity > 0;
+  const canIncrement = hasMaxQuantity ? quantity < Math.trunc(maxQuantity) : true;
+  const canDecrement = quantity > 0;
+
+  const clampQuantity = (next: number) => {
+    let q = Number.isFinite(next) ? Math.max(0, Math.trunc(next)) : 0;
+    if (hasMaxQuantity) {
+      q = Math.min(q, Math.trunc(maxQuantity));
+    }
+    return q;
+  };
 
   const handleQuantityButton = (delta: number) => {
     setQuantityAdjustment((prev) => prev + delta);
@@ -207,7 +223,7 @@ export default function SlotAssignmentModal({
                 Currently Assigned Product
               </Typography>
               <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-                {currentProduct?.image && (
+                {/* {currentProduct?.image && (
                   <Box
                     sx={{
                       width: 50,
@@ -226,7 +242,7 @@ export default function SlotAssignmentModal({
                       style={{ objectFit: "cover" }}
                     />
                   </Box>
-                )}
+                )} */}
                 <Box sx={{ flex: 1 }}>
                   <Typography
                     sx={{
@@ -253,7 +269,7 @@ export default function SlotAssignmentModal({
               </Box>
 
               {/* Update Quantity Controls */}
-              <Typography
+              {/* <Typography
                 sx={{
                   fontSize: 24,
                   fontWeight: 600,
@@ -354,7 +370,7 @@ export default function SlotAssignmentModal({
                 >
                   Update
                 </Button>
-              </Box>
+              </Box> */}
             </Box>
           )}
 
@@ -569,41 +585,82 @@ export default function SlotAssignmentModal({
                 (Must be less than or equal to product stock)
               </Typography>
             </Typography>
-            <TextField
-              type="number"
-              value={quantity === 0 ? "" : quantity}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "") {
-                  setQuantity(0);
-                } else {
-                  const parsed = parseInt(val, 10);
-                  if (!isNaN(parsed) && parsed >= 0) {
-                    setQuantity(parsed);
-                  }
-                }
-              }}
-              fullWidth
-              sx={{
-                mt: 1,
-                "& .MuiOutlinedInput-root": {
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
+              <IconButton
+                onClick={() => setQuantity((prev) => clampQuantity(prev - 1))}
+                disabled={!canDecrement}
+                sx={{
+                  width: 48,
                   height: 48,
+                  flexShrink: 0,
                   borderRadius: "8px",
-                  fontSize: 24,
-                  fontFamily: "Roboto, sans-serif",
-                  "& fieldset": {
-                    borderColor: "#22c55e",
-                    borderWidth: 2,
+                  border: "2px solid #22c55e",
+                  color: "#22c55e",
+                  "&:disabled": {
+                    borderColor: "#e5e7eb",
+                    color: "#9ca3af",
                   },
-                  "&:hover fieldset": {
-                    borderColor: "#16a34a",
+                }}
+              >
+                <RemoveIcon />
+              </IconButton>
+
+              <TextField
+                type="number"
+                value={quantity === 0 ? "" : quantity}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setQuantity(0);
+                  } else {
+                    const parsed = parseInt(val, 10);
+                    if (!isNaN(parsed)) {
+                      setQuantity(clampQuantity(parsed));
+                    }
+                  }
+                }}
+                fullWidth
+                inputProps={{ min: 0, max: hasMaxQuantity ? Math.trunc(maxQuantity) : undefined }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    height: 48,
+                    borderRadius: "8px",
+                    fontSize: 24,
+                    fontFamily: "Roboto, sans-serif",
+                    "& fieldset": {
+                      borderColor: "#22c55e",
+                      borderWidth: 2,
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#16a34a",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#16a34a",
+                    },
                   },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#16a34a",
+                }}
+              />
+
+              <IconButton
+                onClick={() => setQuantity((prev) => clampQuantity(prev + 1))}
+                disabled={!canIncrement}
+                sx={{
+                  width: 48,
+                  height: 48,
+                  flexShrink: 0,
+                  borderRadius: "8px",
+                  border: "2px solid #22c55e",
+                  color: "#22c55e",
+                  "&:disabled": {
+                    borderColor: "#e5e7eb",
+                    color: "#9ca3af",
                   },
-                },
-              }}
-            />
+                }}
+              >
+                <AddIcon />
+              </IconButton>
+            </Box>
           </Box>
 
           {/* Action Buttons */}

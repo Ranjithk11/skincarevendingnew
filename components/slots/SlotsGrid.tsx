@@ -36,10 +36,11 @@ export default function SlotsGrid({ slots, columns = 10, onSelect }: SlotsGridPr
         sx={{
           display: "grid",
           gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
-          gap: 1.25,
+          gap: 5,
           justifyItems: "center",
           alignItems: "center",
           width: "100%",
+
         }}
       >
         {slots.map((slot) => {
@@ -61,8 +62,8 @@ export default function SlotsGrid({ slots, columns = 10, onSelect }: SlotsGridPr
                 if (e.key === "Enter" || e.key === " ") onSelect(slot.slotId);
               }}
               sx={{
-                width: 52,
-                height: 52,
+                width: 60,
+                height: 60,
                 borderRadius: "9999px",
                 display: "flex",
                 alignItems: "center",
@@ -76,7 +77,7 @@ export default function SlotsGrid({ slots, columns = 10, onSelect }: SlotsGridPr
                 "&:active": slot.isAvailable ? { transform: "scale(0.98)" } : undefined,
               }}
             >
-              <Typography sx={{ fontSize: 16, fontWeight: 700, color }}>{slot.slotId}</Typography>
+              <Typography sx={{ fontSize: 24, fontWeight: 700, color }}>{slot.slotId}</Typography>
             </Box>
           );
         })}
