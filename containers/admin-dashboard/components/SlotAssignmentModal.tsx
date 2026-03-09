@@ -484,7 +484,7 @@ export default function SlotAssignmentModal({
                 {filteredProducts.length === 0 && searchQuery && (
                   <MenuItem disabled>
                     <Typography sx={{ color: "#999", fontStyle: "italic" }}>
-                      No products found for "{searchQuery}"
+                      No products found fOR "{searchQuery}"
                     </Typography>
                   </MenuItem>
                 )}
