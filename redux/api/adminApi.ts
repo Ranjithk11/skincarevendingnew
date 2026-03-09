@@ -14,11 +14,12 @@ export interface Product {
 
 export interface VendingSlot {
   slot_id: number;
-  product_id?: number;
+  product_id?: string | number;
   quantity: number;
   product_name?: string;
   category?: string;
   retail_price?: number;
+  image_url?: string;
   last_updated?: string;
 }
 

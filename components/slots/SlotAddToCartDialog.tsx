@@ -113,9 +113,16 @@ export default function SlotAddToCartDialog({ open, onClose, product }: SlotAddT
           {product ? `Slot ${product.slotId}` : ""}
         </Typography>
 
+        {(() => {
+          const src =
+            typeof product?.imageUrl === "string" && product.imageUrl.trim()
+              ? product.imageUrl
+              : "/wending/productlog.svg";
+
+          return (
         <Box
           component="img"
-          src={product?.imageUrl || "/wending/productlog.svg"}
+          src={src}
           alt={product?.name || "Product"}
           sx={{
             width: 140,
@@ -126,6 +133,8 @@ export default function SlotAddToCartDialog({ open, onClose, product }: SlotAddT
             transition: "opacity 0.3s ease",
           }}
         />
+          );
+        })()}
 
         <Box sx={{ width: "100%", maxWidth: 520 }}>
           <Typography sx={{ textAlign: "left", fontWeight: 800, fontSize: 20 }}>

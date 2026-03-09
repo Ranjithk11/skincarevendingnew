@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const { adminDb } = await import("@/lib/admin-db");
     const body = await request.json();
-    const { slot_id, product_id, quantity = 0, product_name, category, retail_price } = body;
+    const { slot_id, product_id, quantity = 0, product_name, category, retail_price, image_url } = body;
 
     if (!slot_id) {
       return NextResponse.json(
@@ -42,11 +42,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Pass product info for external API products
-    const productInfo = product_name ? {
+    const productInfo = {
       name: product_name,
       category: category,
       retail_price: retail_price ? parseFloat(retail_price) : undefined,
-    } : undefined;
+      image_url: image_url,
+    };
 
     const slot = adminDb.assignProductToSlot(
       parseInt(slot_id),

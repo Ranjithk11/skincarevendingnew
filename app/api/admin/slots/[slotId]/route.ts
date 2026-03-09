@@ -35,19 +35,20 @@ export async function PATCH(
   try {
     const { slotId } = await params;
     const body = await request.json();
-    const { change_amount } = body;
+    const { change_amount, quantity } = body;
 
-    if (change_amount === undefined) {
+    if (change_amount === undefined && quantity === undefined) {
       return NextResponse.json(
-        { success: false, message: "change_amount is required" },
+        { success: false, message: "change_amount or quantity is required" },
         { status: 400 }
       );
     }
 
-    const slot = adminDb.updateSlotQuantity(
-      parseInt(slotId),
-      parseInt(change_amount)
-    );
+    const slotIdNum = parseInt(slotId);
+    const slot =
+      quantity !== undefined
+        ? adminDb.setSlotQuantity(slotIdNum, parseInt(quantity))
+        : adminDb.updateSlotQuantity(slotIdNum, parseInt(change_amount));
 
     if (!slot) {
       return NextResponse.json(

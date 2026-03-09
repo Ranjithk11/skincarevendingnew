@@ -26,6 +26,15 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
   const [reopenStatus, setReopenStatus] = useState<"idle" | "success" | "error">("idle");
   const [pickupTimer, setPickupTimer] = useState<number>(0);
 
+  useEffect(() => {
+    if (open) return;
+    setIsHoming(false);
+    setHomeStatus("idle");
+    setIsReopening(false);
+    setReopenStatus("idle");
+    setPickupTimer(0);
+  }, [open]);
+
   const handleHomeTray = async () => {
     setIsHoming(true);
     setHomeStatus("idle");
@@ -63,7 +72,7 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
   const handleReopenTray = async () => {
     setIsReopening(true);
     setReopenStatus("idle");
-    setPickupTimer(0);
+    setPickupTimer(10);
 
     try {
       const response = await fetch("/api/admin/motor", {
@@ -75,10 +84,9 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
       const result = await response.json();
       if (result.success) {
         setReopenStatus("success");
-        // Start pickup timer on success
-        setPickupTimer(10);
       } else {
         setReopenStatus("error");
+        setPickupTimer(0);
         setTimeout(() => {
           setReopenStatus("idle");
         }, 3000);
@@ -86,6 +94,7 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
     } catch (error) {
       console.error("Reopen tray error:", error);
       setReopenStatus("error");
+      setPickupTimer(0);
       setTimeout(() => {
         setReopenStatus("idle");
       }, 3000);

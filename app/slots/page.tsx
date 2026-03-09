@@ -18,10 +18,14 @@ type VendingSlot = {
   product_name?: string;
   category?: string;
   retail_price?: number;
+  image_url?: string;
 };
 
 const normalizeProductId = (id: unknown) => {
   const raw = String(id ?? "").trim();
+  if (!raw) return "";
+  const numericMatch = raw.match(/(\d{5,})\/?$/);
+  if (numericMatch?.[1]) return numericMatch[1];
   return raw.replace(/^products\//, "");
 };
 
@@ -34,6 +38,96 @@ export default function SlotsPage() {
   const [productsMap, setProductsMap] = useState<Record<string, any>>({});
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (!addDialogOpen || !selectedSlotId) return;
+      const slot = slotsData[selectedSlotId];
+      if (!slot?.product_id) return;
+      if (typeof slot.image_url === "string" && slot.image_url.trim()) return;
+
+      const slotName = String(slot.product_name || "").trim();
+      if (!slotName) return;
+
+      try {
+        const params = new URLSearchParams();
+        params.set("page", "1");
+        params.set("limit", "50");
+        params.set("search", slotName);
+
+        const res = await fetch(`/api/admin/products?${params.toString()}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
+
+        if (!res.ok) return;
+        const json = await res.json();
+        if (cancelled) return;
+
+        const arr: any[] = Array.isArray(json)
+          ? json
+          : Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json?.data?.[0]?.products)
+              ? json.data[0].products
+              : [];
+
+        const rawSlotProductId = String(slot.product_id);
+        const nId = normalizeProductId(rawSlotProductId);
+
+        const match =
+          arr.find((p) => normalizeProductId(p?.id ?? p?._id) === nId) ||
+          arr.find((p) => String(p?.id ?? p?._id) === rawSlotProductId) ||
+          arr.find((p) => String(p?.name ?? "").toUpperCase().includes(slotName.toUpperCase().substring(0, 15)));
+
+        const imageUrlCandidate =
+          match?.image_url ||
+          match?.images?.[0]?.url ||
+          match?.imageUrl ||
+          match?.images?.[0] ||
+          "";
+        const image_url = typeof imageUrlCandidate === "string" ? imageUrlCandidate.trim() : "";
+        if (!image_url) return;
+
+        await fetch("/api/admin/slots", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slot_id: selectedSlotId,
+            product_id: slot.product_id,
+            quantity: slot.quantity,
+            product_name: slot.product_name,
+            category: slot.category,
+            retail_price: slot.retail_price,
+            image_url,
+          }),
+        });
+
+        if (cancelled) return;
+        setSlotsData((prev) => {
+          const cur = prev[selectedSlotId];
+          if (!cur) return prev;
+          return {
+            ...prev,
+            [selectedSlotId]: {
+              ...cur,
+              image_url,
+            },
+          };
+        });
+      } catch {
+        return;
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [addDialogOpen, selectedSlotId, slotsData]);
 
   // Fetch slot assignments/quantity
   useEffect(() => {
@@ -62,6 +156,7 @@ export default function SlotsPage() {
             product_name: slot.product_name,
             category: slot.category,
             retail_price: slot.retail_price !== undefined ? Number(slot.retail_price) : undefined,
+            image_url: slot.image_url ? String(slot.image_url) : undefined,
           };
         });
 
@@ -86,8 +181,6 @@ export default function SlotsPage() {
         const params = new URLSearchParams();
         params.set("page", "1");
         params.set("limit", "1000");
-        params.set("hasBrand", "true");
-        params.set("isShopifyAvailable", "true");
 
         const res = await fetch(`/api/admin/products?${params.toString()}`, {
           method: "GET",
@@ -103,12 +196,19 @@ export default function SlotsPage() {
         const json = await res.json();
         if (cancelled) return;
 
-        const arr: any[] = Array.isArray(json) ? json : [];
+        const arr: any[] = Array.isArray(json)
+          ? json
+          : Array.isArray(json?.data)
+            ? json.data
+            : Array.isArray(json?.data?.[0]?.products)
+              ? json.data[0].products
+              : [];
         const map: Record<string, any> = {};
         arr.forEach((p) => {
-          const nId = normalizeProductId(p?.id);
-          if (!nId) return;
-          map[nId] = p;
+          const rawId = p?.id ?? p?._id;
+          const nId = normalizeProductId(rawId);
+          if (rawId != null) map[String(rawId)] = p;
+          if (nId) map[nId] = p;
         });
 
         setProductsMap(map);
@@ -144,11 +244,40 @@ export default function SlotsPage() {
     const slot = slotsData[selectedSlotId];
     if (!slot?.product_id) return null;
 
-    const nId = normalizeProductId(slot.product_id);
-    const product = productsMap[nId];
+    const rawSlotProductId = String(slot.product_id);
+    const nId = normalizeProductId(rawSlotProductId);
+    const productFromId =
+      productsMap[nId] ||
+      productsMap[rawSlotProductId] ||
+      productsMap[normalizeProductId(rawSlotProductId)];
+
+    const productFromName = (() => {
+      const slotName = (slot.product_name || "").toString().trim();
+      if (!slotName) return undefined;
+      const slotUpper = slotName.toUpperCase();
+      const slotPrefix = slotUpper.substring(0, 15);
+
+      const values = Object.values(productsMap);
+      return values.find((p: any) => {
+        const pName = (p?.name || "").toString().trim();
+        if (!pName) return false;
+        const pUpper = pName.toUpperCase();
+        const pPrefix = pUpper.substring(0, 15);
+        return pUpper.includes(slotPrefix) || slotUpper.includes(pPrefix);
+      });
+    })();
+
+    const product = productFromId || productFromName;
 
     const name = product?.name || slot.product_name || "Product";
-    const imageUrl = product?.image_url || product?.imageUrl || "";
+    const imageUrlRaw =
+      slot.image_url ||
+      product?.images?.[0]?.url ||
+      product?.image_url ||
+      product?.imageUrl ||
+      product?.images?.[0] ||
+      "";
+    const imageUrl = typeof imageUrlRaw === "string" ? imageUrlRaw : "";
     const retailPrice = product?.retail_price ?? slot.retail_price;
     const discountValue = product?.discount?.value;
 

@@ -95,18 +95,20 @@ export default function VendingProducts({ data }: Props) {
     setSelectedBrand(null);
   }, [categories]);
 
-  // Fetch all slots once on mount
   useEffect(() => {
+    let cancelled = false;
+
     const fetchSlots = async () => {
       try {
         const res = await fetch("/api/admin/slots");
         if (res.ok) {
           const slotsData = await res.json();
+          if (cancelled) return;
           const map: Record<string, { slotNumbers: number[]; quantity: number }> = {};
           const nameMap: Record<string, { slotNumbers: number[]; quantity: number }> = {};
           // Handle both array and object formats
-          const slotsArray = Array.isArray(slotsData) 
-            ? slotsData 
+          const slotsArray = Array.isArray(slotsData)
+            ? slotsData
             : Object.values(slotsData);
           slotsArray.forEach((slot: any) => {
             const quantity = Number(slot?.quantity || 0);
@@ -148,7 +150,19 @@ export default function VendingProducts({ data }: Props) {
         console.warn("Failed to fetch slots:", err);
       }
     };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchSlots();
+    };
+
     fetchSlots();
+    const interval = window.setInterval(fetchSlots, 5000);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   // const brandImageMap = useMemo(() => {

@@ -43,7 +43,7 @@ const NewUiPage: React.FC<NewUiProps> = ({
     );
 };
 
-const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
+const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, useData }) => {
     const theme = useTheme();
     const router = useRouter();
     const isKiosk = useMediaQuery(theme.breakpoints.up("md"));
@@ -62,13 +62,22 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
 
     useEffect(() => {
         const userId =
+            publicUserProfile?._id ||
+            analysisData?.data?.user?._id ||
+            analysisData?.user?._id ||
             analysisData?.data?.[0]?.userId ||
             analysisData?.data?.userId ||
-            analysisData?.productRecommendation?.userId;
+            analysisData?.productRecommendation?.userId ||
+            analysisData?.userId;
 
         const fileName =
+            analysisData?.data?.[0]?.capturedImages?.[0]?.fileName ||
+            analysisData?.data?.capturedImages?.[0]?.fileName ||
+            analysisData?.capturedImages?.[0]?.fileName ||
+            analysisData?.productRecommendation?.capturedImages?.[0]?.fileName ||
             analysisData?.data?.[0]?.analysedImages?.[0]?.fileName ||
             analysisData?.data?.analysedImages?.[0]?.fileName ||
+            analysisData?.analysedImages?.[0]?.fileName ||
             analysisData?.productRecommendation?.analysedImages?.[0]?.fileName;
 
         if (!userId || !fileName) return;
@@ -79,7 +88,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData }) => {
         });
     }, [analysisData, getUploadImageInfo]);
 
-    const userImageUrl = dataImageInfo?.data?.url;
+    const userImageUrl = useData?.data?.url || dataImageInfo?.data?.url;
 
     const reportSource =
         analysisData?.data?.[0] ||

@@ -39,6 +39,20 @@ export async function POST(request: NextRequest) {
       // In mock mode, simulate success
       if (cfg.mock) {
         console.log(`[STM32 Mock] Simulating ${action} for slot ${slotId}`);
+
+        if (action === "dispense") {
+          try {
+            const { adminDb } = await import("@/lib/admin-db");
+            const slotNum = Number(slotId);
+            if (Number.isFinite(slotNum)) {
+              adminDb.updateSlotQuantity(slotNum, -1);
+              console.log(`[STM32 Mock] Decremented slot ${slotNum} by 1`);
+            }
+          } catch (e) {
+            console.warn("[STM32 Mock] Failed to decrement slot inventory:", e);
+          }
+        }
+
         return NextResponse.json({
           success: true,
           message: `Motor ${action} command sent for slot ${slotId} (mock)`,
@@ -53,6 +67,17 @@ export async function POST(request: NextRequest) {
           const result = await stm32Dispense(cfg, slotId);
           
           if (result.okLine) {
+            try {
+              const { adminDb } = await import("@/lib/admin-db");
+              const slotNum = Number(slotId);
+              if (Number.isFinite(slotNum)) {
+                adminDb.updateSlotQuantity(slotNum, -1);
+                console.log(`[STM32] Decremented slot ${slotNum} by 1 after successful dispense`);
+              }
+            } catch (e) {
+              console.warn("[STM32] Dispense succeeded but failed to decrement slot inventory:", e);
+            }
+
             return NextResponse.json({
               success: true,
               message: `Motor ${action} command sent for slot ${slotId}`,

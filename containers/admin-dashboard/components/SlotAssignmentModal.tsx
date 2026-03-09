@@ -69,8 +69,9 @@ export default function SlotAssignmentModal({
   useEffect(() => {
     if (open) {
       setSelectedProductId(currentProduct?.id || "");
-      // Use current quantity if editing existing slot, otherwise default to 10 for new assignment
-      setQuantity(currentQuantity > 0 ? currentQuantity : 10);
+      // Use current quantity when editing an existing slot (even when it is 0).
+      // Only default to 10 for brand-new assignments (no product currently assigned).
+      setQuantity(currentProduct ? currentQuantity : 10);
       setQuantityAdjustment(0);
       setSearchQuery(""); // Reset search when modal opens
       setIsKeyboardOpen(false);

@@ -13,8 +13,9 @@ import {
   Grid,
   Button,
   Paper,
+  useMediaQuery,
 } from "@mui/material";
-import React, { Fragment, useEffect } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 import LoadingComponent from "@/components/loaders/Loading";
 import SalonServices from "./Recommendations/SalonServices";
 import DietChart from "./Recommendations/DietChart";
@@ -29,6 +30,9 @@ import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import Payment from "./Recommendations/Payment";
 import LipsProductsView from "./Recommendations/LipProducts";
+import TopLogo from "./Recommendations/TopLogo";
+import { APP_ROUTES } from "@/utils/routes";
+import { useTheme } from "@mui/material/styles";
 
 const StyledViewAdminSkincareReport = styled(Container)(({ theme }) => ({
   minHeight: "100vh",
@@ -111,6 +115,10 @@ const StyledViewAdminSkincareReport = styled(Container)(({ theme }) => ({
 const ViewAdminSkincareReport = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const theme = useTheme();
+  const isKiosk = useMediaQuery(theme.breakpoints.up("md"));
+  const [openCart, setOpenCart] = useState(false);
+  const cartCount = 0;
   const whatsappNumber = "918977016605";
   const whatsappMessage = "Hello, I need help with my skin analysis!";
   const [fetchAdminRecommendationsById, { isLoading, isError, data }] =
@@ -154,7 +162,14 @@ const ViewAdminSkincareReport = () => {
     <StyledViewAdminSkincareReport disableGutters maxWidth={false}>
       {!isLoading && !isError && !isLoadingImageInfo && data && (
         <Fragment>
-          <CoverPage
+          {/* <TopLogo
+            isKiosk={isKiosk}
+            cartCount={cartCount}
+            onCartClick={() => setOpenCart(true)}
+            onScanAgainClick={() => router.push(APP_ROUTES.SELFIE)}
+          /> */}
+
+          {/* <CoverPage
             publicUserProfile={data?.data?.user}
             useData={dataImageInfo}
             dataFUQR={{
@@ -164,7 +179,7 @@ const ViewAdminSkincareReport = () => {
                 data?.data?.user?.onBoardingQuestions?.[1]?.responses?.[0]
                   ?.value,
             }}
-          />
+          /> */}
           <PreventingView
             useData={dataImageInfo}
             data={{
@@ -232,7 +247,7 @@ const ViewAdminSkincareReport = () => {
               []
             }
           />
-          <Payment />
+          {/* <Payment /> */}
           {data?.data?.productRecommendation?.dietPlan && (
             <DietChart dietPlan={data?.data?.productRecommendation?.dietPlan} />
           )}

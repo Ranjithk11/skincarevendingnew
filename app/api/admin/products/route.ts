@@ -74,6 +74,7 @@ export async function GET(request: Request) {
     const page = searchParams.get("page") || "1";
     const limit = searchParams.get("limit") || "1000";
     const hasBrand = searchParams.get("hasBrand") || "false";
+    const isShopifyAvailable = searchParams.get("isShopifyAvailable") || "";
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -89,9 +90,8 @@ export async function GET(request: Request) {
     if (limit) params.append("limit", limit);
     if (catId && catId !== "all") params.append("catId", catId);
     if (brandId && brandId !== "all") params.append("brandId", brandId);
-    // Match Browse Products page parameters to show same products
-    params.append("hasBrand", "true");
-    params.append("isShopifyAvailable", "true");
+    if (hasBrand) params.append("hasBrand", hasBrand);
+    if (isShopifyAvailable) params.append("isShopifyAvailable", isShopifyAvailable);
 
     const response = await fetch(
       `${API_BASE}/product/fetch-by-filter?${params.toString()}`,
