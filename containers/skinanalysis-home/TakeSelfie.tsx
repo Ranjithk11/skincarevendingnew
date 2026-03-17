@@ -40,6 +40,9 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
   display: "flex",
   alignItems: "stretch",
 
+  "--selfiePreviewWidth": "min(250vw, 360px)",
+  "--selfiePreviewHeight": "min(250vh, 440px)",
+
   "& .photo-wrapper": {
     flexGrow: 1,
     display: "flex",
@@ -52,8 +55,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
 
     "& .selfy_image": {
       overflow: "hidden",
-      width: "clamp(360px, 70vw, 720px)",
-      height: "clamp(440px, 70vh, 780px)",
+      width: "var(--selfiePreviewWidth)",
+      height: "var(--selfiePreviewHeight)",
       borderRadius: "10px",
       backgroundRepeat: "no-repeat",
       backgroundSize: "cover",
@@ -136,8 +139,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
     },
     "& .selfy_image": {
       overflow: "hidden",
-      width: "clamp(360px, 70vw, 720px)",
-      height: "clamp(440px, 70vh, 780px)",
+      width: "var(--selfiePreviewWidth)",
+      height: "var(--selfiePreviewHeight)",
       borderRadius: "10px",
       backgroundRepeat: "no-repeat",
       backgroundSize: "cover",
@@ -227,8 +230,8 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
     flexDirection: "column",
     "& .selfy_image": {
       overflow: "hidden",
-      width: "clamp(360px, 70vw, 720px)",
-      height: "clamp(440px, 70vh, 780px)",
+      width: "var(--selfiePreviewWidth)",
+      height: "var(--selfiePreviewHeight)",
       borderRadius: "10px",
       backgroundRepeat: "no-repeat",
       backgroundSize: "cover",
@@ -268,7 +271,7 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
       },
       "& .successInfo": {
         padding: 10,
-        width: "100%",
+        width: "75%",
         height: "100%",
         backgroundColor: "rgba(70, 138, 11, 0.6)",
         display: "flex",
@@ -827,7 +830,7 @@ const TakeSelfie = () => {
                     <Box
                       mt={3}
                       sx={{
-                        width: "clamp(360px, 70vw, 720px)",
+                        width: "var(--selfiePreviewWidth)",
                         mx: "auto",
                       }}
                     >
