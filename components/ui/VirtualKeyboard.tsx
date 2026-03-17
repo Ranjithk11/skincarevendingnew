@@ -17,6 +17,7 @@ export default function VirtualKeyboard({
   visible = true,
 }: VirtualKeyboardProps) {
   const keyboardRef = useRef<any>(null);
+  const lastEditableRef = useRef<HTMLElement | null>(null);
   const [layoutName, setLayoutName] = useState(layout === "numeric" ? "numeric" : "default");
 
   const setNativeValue = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
@@ -33,21 +34,23 @@ export default function VirtualKeyboard({
 
   const applyToActiveElement = (key: string) => {
     if (typeof document === "undefined") return;
-    const active = document.activeElement as any;
-    if (!active) return;
+    const active = (document.activeElement as any) || null;
+    const candidate = active || lastEditableRef.current;
+    const target = candidate || null;
+    if (!target) return;
 
     const isInput =
-      active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+      target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
     const isEditable =
       !isInput &&
-      typeof active.isContentEditable === "boolean" &&
-      active.isContentEditable;
+      typeof (target as any).isContentEditable === "boolean" &&
+      (target as any).isContentEditable;
 
     if (!isInput && !isEditable) return;
 
     if (key === "return") {
       try {
-        active.dispatchEvent(
+        (target as any).dispatchEvent(
           new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
         );
       } catch {}
@@ -65,7 +68,7 @@ export default function VirtualKeyboard({
       return;
     }
 
-    const el = active as HTMLInputElement | HTMLTextAreaElement;
+    const el = target as HTMLInputElement | HTMLTextAreaElement;
     const start = typeof el.selectionStart === "number" ? el.selectionStart : el.value.length;
     const end = typeof el.selectionEnd === "number" ? el.selectionEnd : el.value.length;
     const prev = el.value ?? "";
@@ -111,6 +114,23 @@ export default function VirtualKeyboard({
       setLayoutName("default");
     }
   }, [layout]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target as any;
+      if (!t) return;
+      const isInput = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
+      const isEditable = !isInput && typeof t.isContentEditable === "boolean" && t.isContentEditable;
+      if (isInput || isEditable) {
+        lastEditableRef.current = t as HTMLElement;
+      }
+    };
+    document.addEventListener("focusin", onFocusIn, true);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn, true);
+    };
+  }, []);
 
   const handleKeyPress = (button: string) => {
     if (button === "{shift}" || button === "{lock}") {
