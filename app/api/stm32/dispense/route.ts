@@ -173,6 +173,9 @@ export async function POST(req: Request) {
       const delayBetweenCommandsMs = getEnvNumber("STM32_DELAY_BETWEEN_COMMANDS_MS") ?? 0;
       const delayBeforeFinalizeMs = getEnvNumber("STM32_DELAY_BEFORE_FINALIZE_MS") ?? 0;
 
+
+      const trayBatchSize = getEnvNumber("STM32_TRAY_BATCH_SIZE") ?? 0;
+
       const finalizeModeRaw = (getEnvString("STM32_FINALIZE_MODE") || "row").toLowerCase();
 
       // Check if any products share the same column (last digit of slot ID)
@@ -205,7 +208,61 @@ export async function POST(req: Request) {
       const trayOkPattern = /^200$|Closing door|Waiting 5s for pickup/i;
       const trayErrorPattern = rqErrorPattern;
 
-      if (finalizeMode === "row") {
+      const shouldBatchSingleSlot = (() => {
+        if (!(trayBatchSize > 0)) return false;
+        if (normalized.length <= Math.max(1, Math.floor(trayBatchSize))) return false;
+
+        const motors = normalized
+          .map((c) => getRqMotorNumber(c))
+          .filter((n): n is number => typeof n === "number");
+
+        if (motors.length !== normalized.length) return false;
+        return new Set(motors).size === 1;
+      })();
+
+      if (shouldBatchSingleSlot) {
+        const effectiveBatchSize = Math.max(1, Math.floor(trayBatchSize));
+        const expanded: string[] = [];
+        let batchCount = 0;
+
+        for (let i = 0; i < normalized.length; i++) {
+          const c = normalized[i];
+          const trimmed = c.trim();
+          const isRq = /^RQ\s*\d+$/i.test(trimmed);
+          const isNumeric = /^\d+$/.test(trimmed);
+
+          expanded.push(isRq ? trimmed : isNumeric ? `RQ${trimmed}` : trimmed);
+          batchCount++;
+
+          const isLast = i === normalized.length - 1;
+          if (!isLast && batchCount >= effectiveBatchSize) {
+            expanded.push("TRAY");
+            batchCount = 0;
+          }
+        }
+
+        // Always end at home for pickup.
+        expanded.push("TRAY");
+
+        sentCommands = expanded;
+
+        const batch = await stm32DispenseMany(cfg, expanded, {
+          commandPrefix: "",
+          okPattern: /Turning off motors|^200$|Closing door|Waiting 5s for pickup/i,
+          errorPattern: /^(500|501)$|No detection|Sensor already/i,
+          delayBetweenCommandsMs,
+        });
+
+        for (const { productCode, result: res } of batch) {
+          results.push({
+            productCode,
+            ok: Boolean(res.okLine) && !res.errorLine,
+            okLine: res.okLine,
+            errorLine: res.errorLine,
+            rawLines: res.rawLines,
+          });
+        }
+      } else if (finalizeMode === "row") {
         // Group products by row (first digit of slot ID), dispense all from one row, TRAY, then next row
         // Preserve original order within each row
         const motorNums = normalized.map((c, idx) => ({
@@ -224,8 +281,8 @@ export async function POST(req: Request) {
 
         // Sort rows by the minimum original index in each row (preserves order of first appearance)
         const sortedRows = Array.from(rowGroups.keys()).sort((a, b) => {
-          const minA = Math.min(...(rowGroups.get(a)?.map(x => x.originalIndex) || [0]));
-          const minB = Math.min(...(rowGroups.get(b)?.map(x => x.originalIndex) || [0]));
+          const minA = Math.min(...(rowGroups.get(a)?.map((x) => x.originalIndex) || [0]));
+          const minB = Math.min(...(rowGroups.get(b)?.map((x) => x.originalIndex) || [0]));
           return minA - minB;
         });
 

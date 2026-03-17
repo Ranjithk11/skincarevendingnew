@@ -11,6 +11,7 @@ import {
   TextField,
   IconButton,
   FormControl,
+  ListSubheader,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
@@ -56,6 +57,7 @@ export default function SlotAssignmentModal({
   const [quantityAdjustment, setQuantityAdjustment] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [isProductMenuOpen, setIsProductMenuOpen] = useState(false);
 
   const keyboardContainerRef = useRef<HTMLDivElement>(null);
   const searchInputContainerRef = useRef<HTMLDivElement>(null);
@@ -77,6 +79,7 @@ export default function SlotAssignmentModal({
       setQuantityAdjustment(0);
       setSearchQuery(""); // Reset search when modal opens
       setIsKeyboardOpen(false);
+      setIsProductMenuOpen(false);
     }
   }, [open, currentProduct, currentQuantity]);
 
@@ -104,17 +107,8 @@ export default function SlotAssignmentModal({
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
 
-  const maxQuantity = selectedProduct?.amount;
-  const hasMaxQuantity =
-    typeof maxQuantity === "number" && Number.isFinite(maxQuantity) && maxQuantity > 0;
-  const canIncrement = hasMaxQuantity ? quantity < Math.trunc(maxQuantity) : true;
-  const canDecrement = quantity > 0;
-
   const clampQuantity = (next: number) => {
     let q = Number.isFinite(next) ? Math.max(0, Math.trunc(next)) : 0;
-    if (hasMaxQuantity) {
-      q = Math.min(q, Math.trunc(maxQuantity));
-    }
     return q;
   };
 
@@ -390,19 +384,30 @@ export default function SlotAssignmentModal({
             <FormControl fullWidth>
               <Select
                 value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
+                open={isProductMenuOpen}
+                onOpen={() => setIsProductMenuOpen(true)}
+                onClose={() => setIsProductMenuOpen(false)}
+                onChange={(e) => {
+                  setSelectedProductId(e.target.value);
+                  setIsKeyboardOpen(false);
+                  setIsProductMenuOpen(false);
+                  if (typeof document !== "undefined") {
+                    const el = document.activeElement;
+                    if (el && el instanceof HTMLElement) el.blur();
+                  }
+                }}
                 displayEmpty
                 MenuProps={{
                   disableScrollLock: true,
                   disablePortal: true,
                   disableAutoFocusItem: true,
                   sx: {
-                    zIndex: 3000,
+                    zIndex: 4500,
                   },
                   PaperProps: {
                     sx: {
-                      pointerEvents: isKeyboardOpen ? "none" : "auto",
                       maxHeight: 500,
+                      overflowY: "auto",
                       WebkitOverflowScrolling: "touch",
                       touchAction: "pan-y",
                     },
@@ -435,9 +440,9 @@ export default function SlotAssignmentModal({
                   },
                 }}
               >
-                {/* Search Input - Sticky at top */}
-                <Box
+                <ListSubheader
                   ref={searchInputContainerRef}
+                  component="div"
                   sx={{
                     position: "sticky",
                     top: 0,
@@ -445,6 +450,7 @@ export default function SlotAssignmentModal({
                     zIndex: 1,
                     p: 1,
                     borderBottom: "1px solid #e5e5e5",
+                    lineHeight: "unset",
                   }}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
@@ -454,14 +460,17 @@ export default function SlotAssignmentModal({
                     value={searchQuery}
                     onClick={(e) => {
                       e.stopPropagation();
+                      setIsProductMenuOpen(true);
                       setIsKeyboardOpen(true);
                     }}
-                    onFocus={() => setIsKeyboardOpen(true)}
+                    onFocus={() => {
+                      setIsProductMenuOpen(true);
+                      setIsKeyboardOpen(true);
+                    }}
                     onKeyDown={(e) => e.stopPropagation()}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     fullWidth
                     size="small"
-                    autoFocus
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: "6px",
@@ -470,9 +479,11 @@ export default function SlotAssignmentModal({
                     }}
                   />
                   <Typography sx={{ fontSize: 16, color: "#666", mt: 0.5, textAlign: "right" }}>
-                    {searchQuery ? `${filteredProducts.length} of ${products.length} products` : `Total: ${products.length} products`}
+                    {searchQuery
+                      ? `${filteredProducts.length} of ${products.length} products`
+                      : `Total: ${products.length} products`}
                   </Typography>
-                </Box>
+                </ListSubheader>
                 <MenuItem value="">
                   <Typography sx={{ color: "#666" }}>-- Select a product --</Typography>
                 </MenuItem>
@@ -484,7 +495,7 @@ export default function SlotAssignmentModal({
                 {filteredProducts.length === 0 && searchQuery && (
                   <MenuItem disabled>
                     <Typography sx={{ color: "#999", fontStyle: "italic" }}>
-                      No products found fOR "{searchQuery}"
+                      No products found for "{searchQuery}"
                     </Typography>
                   </MenuItem>
                 )}
@@ -589,7 +600,7 @@ export default function SlotAssignmentModal({
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
               <IconButton
                 onClick={() => setQuantity((prev) => clampQuantity(prev - 1))}
-                disabled={!canDecrement}
+                disabled={false}
                 sx={{
                   width: 48,
                   height: 48,
@@ -621,7 +632,7 @@ export default function SlotAssignmentModal({
                   }
                 }}
                 fullWidth
-                inputProps={{ min: 0, max: hasMaxQuantity ? Math.trunc(maxQuantity) : undefined }}
+                inputProps={{ min: 0 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     height: 48,
@@ -644,7 +655,7 @@ export default function SlotAssignmentModal({
 
               <IconButton
                 onClick={() => setQuantity((prev) => clampQuantity(prev + 1))}
-                disabled={!canIncrement}
+                disabled={false}
                 sx={{
                   width: 48,
                   height: 48,
@@ -726,7 +737,7 @@ export default function SlotAssignmentModal({
             sx={{
               position: "fixed",
               inset: 0,
-              zIndex: 5000,
+              zIndex: 4000,
               pointerEvents: "auto",
             }}
           >
