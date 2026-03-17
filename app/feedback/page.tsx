@@ -209,9 +209,27 @@ export default function FeedbackPage() {
             .filter((s: any) => Number(s?.quantity) > 0)
             .sort((a: any, b: any) => Number(b?.slot_id) - Number(a?.slot_id));
 
-          const chosen = availableSlots[0] || slots[0];
-          if (chosen?.slot_id) {
-            for (let i = 0; i < quantity; i++) productCodes.push(String(chosen.slot_id));
+          let remaining = quantity;
+
+          for (const s of availableSlots) {
+            if (remaining <= 0) break;
+            const slotId = Number(s?.slot_id);
+            const slotQty = Number(s?.quantity);
+            if (!Number.isFinite(slotId) || slotId <= 0) continue;
+            if (!Number.isFinite(slotQty) || slotQty <= 0) continue;
+
+            const take = Math.min(remaining, Math.floor(slotQty));
+            for (let i = 0; i < take; i++) productCodes.push(String(slotId));
+            remaining -= take;
+          }
+
+          if (remaining > 0) {
+            const fallback = slots[0];
+            const slotId = Number(fallback?.slot_id);
+            if (Number.isFinite(slotId) && slotId > 0) {
+              for (let i = 0; i < remaining; i++) productCodes.push(String(slotId));
+              remaining = 0;
+            }
           }
         }
 

@@ -84,17 +84,31 @@ export default function SlotAssignmentModal({
   }, [open, currentProduct, currentQuantity]);
 
 
+  const focusSearchInput = () => {
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(() => searchInputRef.current?.focus());
+      return;
+    }
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  };
+
+
   const handleKeyboardKeyPress = (key: string) => {
+    console.debug("[VirtualKeyboard] key:", key);
+    setIsProductMenuOpen(true);
     if (key === "backspace") {
       setSearchQuery((prev) => prev.slice(0, -1));
+      focusSearchInput();
       return;
     }
     if (key === "space") {
       setSearchQuery((prev) => `${prev} `);
+      focusSearchInput();
       return;
     }
     if (key === "return") {
       setIsKeyboardOpen(false);
+      focusSearchInput();
       return;
     }
    if (["shift", "arrowleft", "arrowright", "123", "ABC"].includes(key)) {
@@ -103,6 +117,7 @@ export default function SlotAssignmentModal({
 
 
     setSearchQuery((prev) => `${prev}${key}`);
+    focusSearchInput();
   };
 
   const selectedProduct = products.find((p) => p.id === selectedProductId);
@@ -386,7 +401,10 @@ export default function SlotAssignmentModal({
                 value={selectedProductId}
                 open={isProductMenuOpen}
                 onOpen={() => setIsProductMenuOpen(true)}
-                onClose={() => setIsProductMenuOpen(false)}
+                onClose={() => {
+                  if (isKeyboardOpen) return;
+                  setIsProductMenuOpen(false);
+                }}
                 onChange={(e) => {
                   setSelectedProductId(e.target.value);
                   setIsKeyboardOpen(false);
@@ -401,11 +419,23 @@ export default function SlotAssignmentModal({
                   disableScrollLock: true,
                   disablePortal: true,
                   disableAutoFocusItem: true,
+                  disableAutoFocus: true,
+                  disableEnforceFocus: true,
+                  disableRestoreFocus: true,
+                  keepMounted: true,
+                  hideBackdrop: true,
+                  BackdropProps: {
+                    sx: {
+                      pointerEvents: "none",
+                    },
+                  },
                   sx: {
                     zIndex: 4500,
+                    pointerEvents: "none",
                   },
                   PaperProps: {
                     sx: {
+                      pointerEvents: "auto",
                       maxHeight: 500,
                       overflowY: "auto",
                       WebkitOverflowScrolling: "touch",
@@ -733,18 +763,22 @@ export default function SlotAssignmentModal({
 
         {isKeyboardOpen ? (
           <Box
-            onClick={() => setIsKeyboardOpen(false)}
             sx={{
               position: "fixed",
               inset: 0,
-              zIndex: 4000,
-              pointerEvents: "auto",
+              zIndex: 6000,
+              pointerEvents: "none",
             }}
           >
             <Box
               ref={keyboardContainerRef}
               onClick={(e) => e.stopPropagation()}
+              onClickCapture={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}   // ✅ ADD THIS LINE
+              onPointerDownCapture={(e) => e.stopPropagation()}
+              onPointerUpCapture={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchEndCapture={(e) => e.stopPropagation()}
 
               sx={{
                 position: "absolute",

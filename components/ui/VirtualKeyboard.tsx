@@ -60,12 +60,19 @@ export default function VirtualKeyboard({
 
   return (
     <Box
+      onClick={(e) => e.stopPropagation()}
+      onClickCapture={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerDownCapture={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchEndCapture={(e) => e.stopPropagation()}
       sx={{
         width: "100%",
         bgcolor: "#d1d5db",
         px: 1,
         py: 2,
         pb: 4,
+        touchAction: "manipulation",
         "& .simple-keyboard": {
           backgroundColor: "transparent",
           borderRadius: 0,
@@ -80,6 +87,7 @@ export default function VirtualKeyboard({
           borderRadius: "8px",
           border: "none",
           boxShadow: "0 1px 2px rgba(0,0,0,0.1)",
+          touchAction: "manipulation",
           "&:active": {
             backgroundColor: "#e5e7eb",
           },
@@ -101,6 +109,11 @@ export default function VirtualKeyboard({
         keyboardRef={(r) => (keyboardRef.current = r)}
         layoutName={layoutName}
         onKeyPress={handleKeyPress}
+        useTouchEvents
+        useMouseEvents={false}
+        disableButtonHold
+        preventMouseDownDefault
+        stopMouseDownPropagation
         layout={{
           default: [
             "q w e r t y u i o p",
