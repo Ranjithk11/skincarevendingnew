@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
 import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
 import { Box } from "@mui/material";
@@ -20,6 +20,21 @@ export default function VirtualKeyboard({
   const lastEditableRef = useRef<HTMLElement | null>(null);
   const lastKeyEventRef = useRef<{ key: string; ts: number } | null>(null);
   const [layoutName, setLayoutName] = useState(layout === "numeric" ? "numeric" : "default");
+
+  const handlePointerKeyFallback = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const t = e.target as HTMLElement | null;
+    if (!t) return;
+
+    const btn = t.closest?.(".hg-button") as HTMLElement | null;
+    if (!btn) return;
+
+    const raw = btn.getAttribute?.("data-skbtn") || btn.textContent || "";
+    const button = raw.trim();
+    if (!button) return;
+
+    e.preventDefault();
+    handleKeyPress(button);
+  };
 
   const setNativeValue = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
     const proto = el instanceof HTMLTextAreaElement
@@ -176,7 +191,10 @@ export default function VirtualKeyboard({
       onClick={(e) => e.stopPropagation()}
       onClickCapture={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      onPointerDownCapture={(e) => e.stopPropagation()}
+      onPointerDownCapture={(e) => {
+        handlePointerKeyFallback(e);
+        e.stopPropagation();
+      }}
       onTouchStart={(e) => e.stopPropagation()}
       onTouchEndCapture={(e) => e.stopPropagation()}
       sx={{
