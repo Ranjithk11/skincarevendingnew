@@ -19,6 +19,89 @@ export default function VirtualKeyboard({
   const keyboardRef = useRef<any>(null);
   const [layoutName, setLayoutName] = useState(layout === "numeric" ? "numeric" : "default");
 
+  const setNativeValue = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
+    const proto = el instanceof HTMLTextAreaElement
+      ? HTMLTextAreaElement.prototype
+      : HTMLInputElement.prototype;
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
+    if (descriptor?.set) {
+      descriptor.set.call(el, value);
+    } else {
+      (el as any).value = value;
+    }
+  };
+
+  const applyToActiveElement = (key: string) => {
+    if (typeof document === "undefined") return;
+    const active = document.activeElement as any;
+    if (!active) return;
+
+    const isInput =
+      active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+    const isEditable =
+      !isInput &&
+      typeof active.isContentEditable === "boolean" &&
+      active.isContentEditable;
+
+    if (!isInput && !isEditable) return;
+
+    if (key === "return") {
+      try {
+        active.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true })
+        );
+      } catch {}
+      return;
+    }
+
+    if (isEditable) {
+      try {
+        document.execCommand(
+          key === "backspace" ? "delete" : "insertText",
+          false,
+          key === "space" ? " " : key
+        );
+      } catch {}
+      return;
+    }
+
+    const el = active as HTMLInputElement | HTMLTextAreaElement;
+    const start = typeof el.selectionStart === "number" ? el.selectionStart : el.value.length;
+    const end = typeof el.selectionEnd === "number" ? el.selectionEnd : el.value.length;
+    const prev = el.value ?? "";
+
+    if (key === "backspace") {
+      if (start !== end) {
+        const next = prev.slice(0, start) + prev.slice(end);
+        setNativeValue(el, next);
+        try {
+          el.setSelectionRange(start, start);
+        } catch {}
+      } else if (start > 0) {
+        const next = prev.slice(0, start - 1) + prev.slice(end);
+        setNativeValue(el, next);
+        try {
+          el.setSelectionRange(start - 1, start - 1);
+        } catch {}
+      }
+    } else {
+      const insert = key === "space" ? " " : key;
+      const next = prev.slice(0, start) + insert + prev.slice(end);
+      const caret = start + insert.length;
+      setNativeValue(el, next);
+      try {
+        el.setSelectionRange(caret, caret);
+      } catch {}
+    }
+
+    try {
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    } catch {}
+    try {
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch {}
+  };
+
   useEffect(() => {
     if (layout === "numeric") {
       setLayoutName("numeric");
@@ -35,10 +118,13 @@ export default function VirtualKeyboard({
       onKeyPress("shift");
     } else if (button === "{bksp}") {
       onKeyPress("backspace");
+      applyToActiveElement("backspace");
     } else if (button === "{space}") {
       onKeyPress("space");
+      applyToActiveElement("space");
     } else if (button === "{enter}") {
       onKeyPress("return");
+      applyToActiveElement("return");
     } else if (button === "{numbers}") {
       setLayoutName("numeric");
       onKeyPress("123");
@@ -53,6 +139,7 @@ export default function VirtualKeyboard({
       onKeyPress("arrowright");
     } else {
       onKeyPress(button);
+      applyToActiveElement(button);
     }
   };
 
