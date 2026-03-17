@@ -18,6 +18,7 @@ export default function VirtualKeyboard({
 }: VirtualKeyboardProps) {
   const keyboardRef = useRef<any>(null);
   const lastEditableRef = useRef<HTMLElement | null>(null);
+  const lastKeyEventRef = useRef<{ key: string; ts: number } | null>(null);
   const [layoutName, setLayoutName] = useState(layout === "numeric" ? "numeric" : "default");
 
   const setNativeValue = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
@@ -133,6 +134,11 @@ export default function VirtualKeyboard({
   }, []);
 
   const handleKeyPress = (button: string) => {
+    const now = Date.now();
+    const last = lastKeyEventRef.current;
+    if (last && last.key === button && now - last.ts < 40) return;
+    lastKeyEventRef.current = { key: button, ts: now };
+
     if (button === "{shift}" || button === "{lock}") {
       setLayoutName(layoutName === "default" ? "shift" : "default");
       onKeyPress("shift");
@@ -217,7 +223,6 @@ export default function VirtualKeyboard({
         layoutName={layoutName}
         onKeyPress={handleKeyPress}
         useTouchEvents
-        useMouseEvents={false}
         disableButtonHold
         preventMouseDownDefault
         stopMouseDownPropagation
