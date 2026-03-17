@@ -4,15 +4,7 @@ import { Box, Button, IconButton, Typography } from "@mui/material";
 import Image from "next/image";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import ProductSlot from "./ProductSlot";
-
-interface VendingSlot {
-  slot_id: number;
-  product_id?: number;
-  quantity: number;
-  product_name?: string;
-  category?: string;
-  retail_price?: number;
-}
+import type { VendingSlot } from "@/redux/api/adminApi";
 
 interface VendingMachineConfigProps {
   slots?: Record<number, VendingSlot>;

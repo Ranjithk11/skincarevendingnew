@@ -7,6 +7,7 @@ import {
   ProductInventoryTable,
 } from "./components";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
+import type { VendingSlot as ApiVendingSlot } from "@/redux/api/adminApi";
 
 interface Product {
   id: string;
@@ -16,18 +17,11 @@ interface Product {
   amount: number;
 }
 
-interface VendingSlot {
-  slot_id: number;
-  product_id?: number;
-  quantity: number;
-  product_name?: string;
-  category?: string;
-  retail_price?: number;
-}
+type SlotsByNumber = Record<number, ApiVendingSlot>;
 
 interface AdminDashboardProps {
   products?: Product[];
-  slots?: Record<number, VendingSlot>;
+  slots?: SlotsByNumber;
   isKiosk?: boolean;
   onCartClick?: () => void;
   onScanAgainClick?: () => void;
