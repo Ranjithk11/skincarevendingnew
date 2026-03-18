@@ -174,7 +174,8 @@ export async function POST(req: Request) {
       const delayBeforeFinalizeMs = getEnvNumber("STM32_DELAY_BEFORE_FINALIZE_MS") ?? 0;
 
 
-      const trayBatchSize = getEnvNumber("STM32_TRAY_BATCH_SIZE") ?? 0;
+      // Default batch size is 2 - dispense 2 products, then TRAY, then next 2
+      const trayBatchSize = getEnvNumber("STM32_TRAY_BATCH_SIZE") ?? 2;
 
       const finalizeModeRaw = (getEnvString("STM32_FINALIZE_MODE") || "row").toLowerCase();
 
