@@ -714,21 +714,27 @@ export const sqliteDb = {
   getSlotsForProduct(productId: string | number, productName?: string): Array<{ slot_id: number; quantity: number }> {
     const searchId = String(productId).replace(/^products\//, '');
     
+    console.log("[getSlotsForProduct] searchId:", searchId, "productName:", productName);
+    
     // First try to match by ID
     let rows = db.prepare(`
-      SELECT slot_id, quantity FROM vending_slots 
+      SELECT slot_id, quantity, product_id, product_name FROM vending_slots 
       WHERE product_id = ? OR product_id = ? OR product_id = ?
       ORDER BY slot_id DESC
     `).all(searchId, `products/${searchId}`, String(productId)) as any[];
 
+    console.log("[getSlotsForProduct] ID match rows:", rows);
+
     // If no ID match and productName provided, try name match
     if (rows.length === 0 && productName) {
       const searchName = productName.toUpperCase().trim();
+      console.log("[getSlotsForProduct] Trying name match with:", searchName.substring(0, 15));
       rows = db.prepare(`
-        SELECT slot_id, quantity FROM vending_slots 
+        SELECT slot_id, quantity, product_id, product_name FROM vending_slots 
         WHERE UPPER(product_name) LIKE ?
         ORDER BY slot_id DESC
       `).all(`%${searchName.substring(0, 15)}%`) as any[];
+      console.log("[getSlotsForProduct] Name match rows:", rows);
     }
 
     return rows.map(row => ({ slot_id: row.slot_id, quantity: row.quantity }));

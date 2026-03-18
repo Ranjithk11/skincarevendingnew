@@ -13,6 +13,8 @@ export async function GET(
     const product = adminDb.getProduct(parseInt(productId));
     const slots = adminDb.getSlotsForProduct(productId, productName || product?.name);
 
+    console.log("[Slots API] productId:", productId, "productName:", productName, "slots found:", slots);
+
     return NextResponse.json({
       product_name: product?.name || productName || "Unknown Product",
       product_id: productId,

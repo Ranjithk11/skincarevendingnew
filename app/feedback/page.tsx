@@ -191,11 +191,9 @@ export default function FeedbackPage() {
         const productCodes: string[] = [];
         for (const item of checkoutItems) {
           const quantity = Number(item?.quantity) > 0 ? Number(item.quantity) : 1;
-          if (item?.slotId) {
-            for (let i = 0; i < quantity; i++) productCodes.push(String(item.slotId));
-            continue;
-          }
-
+          
+          // Always fetch slots from API to properly distribute across multiple slots
+          // This handles the case where user buys 2 of the same product but they're in different slots
           const productIdRaw = typeof item?.id === "string" ? item.id : "";
           const cleanProductId = productIdRaw.replace(/^products\//, "");
           const name = typeof item?.name === "string" ? item.name : "";
@@ -733,7 +731,7 @@ export default function FeedbackPage() {
             <Box sx={{ textAlign: "center" }}>
               <Typography sx={{ fontSize: 24, color: "#374151", pb: 2 }}>WhatsApp us:</Typography>
               <Typography sx={{ fontSize: 24, color: "#111827", fontWeight: 700 }}>
-                +91 9179077990
+                +91 8008675263
               </Typography>
             </Box>
             <Box
