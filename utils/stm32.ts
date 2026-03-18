@@ -248,7 +248,12 @@ export async function stm32DispenseMany(
       prefix.length > 0 && code.toUpperCase().startsWith(prefix.toUpperCase()) ? code : `${prefix}${code}`;
     const command = `${effectiveCode}${commandSuffix}`;
 
-    const ok = patterns?.okPattern ?? okPattern;
+    // For TRAY commands, wait for "200" which indicates door closed and cycle complete
+    // This ensures user has time to pick up products and close door before next dispense
+    const isTrayCommand = code.trim().toUpperCase() === "TRAY";
+    const trayOkPattern = /^200$/i;
+    
+    const ok = isTrayCommand ? trayOkPattern : (patterns?.okPattern ?? okPattern);
     const err = patterns?.errorPattern ?? errorPattern;
 
     await new Promise<void>((resolve, reject) => {
