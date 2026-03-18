@@ -200,8 +200,12 @@ export async function POST(req: Request) {
         // smart mode: use 'each' if same column, otherwise 'once'
         finalizeMode = hasDuplicateColumn ? "each" : "once";
       } else if (finalizeModeRaw === "row") {
-        // row mode: only use row grouping if same-column products, otherwise 'once'
-        finalizeMode = hasDuplicateColumn ? "row" : "once";
+        // row mode: group by row, dispense all from same row together, then TRAY
+        // For 6,7,8,16,26: row 0 (6,7,8) dispense together -> TRAY -> row 1 (16) -> TRAY -> row 2 (26) -> TRAY
+        finalizeMode = "row";
+      } else if (finalizeModeRaw === "each") {
+        // each mode: always dispense one product, then TRAY
+        finalizeMode = "each";
       }
 
       console.log("[STM32 Dispense] normalized:", normalized, "cols:", cols, "hasDuplicateColumn:", hasDuplicateColumn, "finalizeMode:", finalizeMode);
