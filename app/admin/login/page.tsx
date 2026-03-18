@@ -26,44 +26,8 @@ export default function AdminLoginPage() {
     usernameRef.current?.focus();
   }, []);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      const setValue = activeField === "username" ? setUsername : setPassword;
-      const currentValue = activeField === "username" ? username : password;
-
-      if (e.key === "Backspace") {
-        e.preventDefault();
-        setValue(currentValue.slice(0, -1));
-        return;
-      }
-
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (activeField === "username") {
-          setActiveField("password");
-          passwordRef.current?.focus();
-        }
-        return;
-      }
-
-      if (e.key === " ") {
-        e.preventDefault();
-        setValue(currentValue + " ");
-        return;
-      }
-
-      if (e.key.length !== 1) return;
-
-      
-      e.preventDefault();
-      setValue(currentValue + e.key);
-    };
-
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [activeField, username, password]);
+  // Removed the global 'keydown' useEffect. 
+  // Native inputs handle physical keyboards automatically now.
 
   const handleKeyboardKeyPress = (key: string) => {
     const setValue = activeField === "username" ? setUsername : setPassword;
@@ -210,16 +174,23 @@ export default function AdminLoginPage() {
               inputRef={usernameRef}
               fullWidth
               value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  setActiveField("password");
+                  passwordRef.current?.focus();
+                }
+              }}
               onClick={() => {
                 setActiveField("username");
                 setIsKeyboardOpen(true);
-                usernameRef.current?.focus();
               }}
               onFocus={() => {
                 setActiveField("username");
                 setIsKeyboardOpen(true);
               }}
-              InputProps={{ readOnly: true }}
+              inputProps={{ inputMode: "none" }} // <-- Replaced readOnly with inputMode="none"
               sx={{
                 mb: 0,
                 "& .MuiOutlinedInput-root": {
@@ -242,16 +213,23 @@ export default function AdminLoginPage() {
               fullWidth
               type="password"
               value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  setIsKeyboardOpen(false);
+                  handleNext();
+                }
+              }}
               onClick={() => {
                 setActiveField("password");
                 setIsKeyboardOpen(true);
-                passwordRef.current?.focus();
               }}
               onFocus={() => {
                 setActiveField("password");
                 setIsKeyboardOpen(true);
               }}
-              InputProps={{ readOnly: true }}
+              inputProps={{ inputMode: "none" }} // <-- Replaced readOnly with inputMode="none"
               sx={{
                 mb: 0,
                 "& .MuiOutlinedInput-root": {

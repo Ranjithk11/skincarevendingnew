@@ -22,6 +22,7 @@ export default function VirtualKeyboard({
   const [layoutName, setLayoutName] = useState(layout === "numeric" ? "numeric" : "default");
 
   const handlePointerKeyFallback = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.type !== "pointerdown") return;
     const t = e.target as HTMLElement | null;
     if (!t) return;
 
@@ -29,8 +30,19 @@ export default function VirtualKeyboard({
     if (!btn) return;
 
     const raw = btn.getAttribute?.("data-skbtn") || btn.textContent || "";
-    const button = raw.trim();
+    let button = raw.trim();
     if (!button) return;
+
+    if (!button.startsWith("{")) {
+      if (button === "⌫") button = "{bksp}";
+      else if (button.toLowerCase() === "space") button = "{space}";
+      else if (button.toLowerCase() === "return") button = "{enter}";
+      else if (button === "⇧") button = "{shift}";
+      else if (button === "123") button = "{numbers}";
+      else if (button.toLowerCase() === "abc") button = "{abc}";
+      else if (button === "←") button = "{arrowleft}";
+      else if (button === "→") button = "{arrowright}";
+    }
 
     e.preventDefault();
     handleKeyPress(button);
@@ -151,7 +163,7 @@ export default function VirtualKeyboard({
   const handleKeyPress = (button: string) => {
     const now = Date.now();
     const last = lastKeyEventRef.current;
-    if (last && last.key === button && now - last.ts < 40) return;
+    if (last && last.key === button && now - last.ts < 250) return;
     lastKeyEventRef.current = { key: button, ts: now };
 
     if (button === "{shift}" || button === "{lock}") {
@@ -195,6 +207,7 @@ export default function VirtualKeyboard({
         handlePointerKeyFallback(e);
         e.stopPropagation();
       }}
+      onPointerUpCapture={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
       onTouchEndCapture={(e) => e.stopPropagation()}
       sx={{

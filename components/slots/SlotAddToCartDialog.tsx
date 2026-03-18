@@ -159,7 +159,7 @@ export default function SlotAddToCartDialog({ open, onClose, product }: SlotAddT
 
           {typeof product?.quantityAvailable === "number" ? (
             <Typography sx={{ textAlign: "center", mt: 1, color: "#6b7280", fontSize: 14 }}>
-              {product.quantityAvailable} available in machine
+              {product.quantityAvailable} available in Slot
             </Typography>
           ) : null}
         </Box>

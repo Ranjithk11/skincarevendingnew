@@ -773,12 +773,8 @@ export default function SlotAssignmentModal({
             <Box
               ref={keyboardContainerRef}
               onClick={(e) => e.stopPropagation()}
-              onClickCapture={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}   // ✅ ADD THIS LINE
-              onPointerDownCapture={(e) => e.stopPropagation()}
-              onPointerUpCapture={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
-              onTouchEndCapture={(e) => e.stopPropagation()}
 
               sx={{
                 position: "absolute",

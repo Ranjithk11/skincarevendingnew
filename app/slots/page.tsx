@@ -361,7 +361,7 @@ export default function SlotsPage() {
             <SlotsGrid slots={gridSlots} columns={10} onSelect={handleSelect} />
 
             <Typography sx={{ textAlign: "center", mt: 2, fontSize: 16, color: "#111827" }}>
-              {selectedSlotId ? "1 Product selected" : ""}
+              {selectedSlotId ? "1 Slot selected" : ""}
             </Typography>
 
             <Box sx={{ display: "flex", justifyContent: "center", mt: "auto", pt: 2 }}>

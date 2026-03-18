@@ -500,7 +500,13 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                     justifyContent: "center",
                                                 }}
                                             >
-                                                <Typography sx={{ fontSize: "24px", fontWeight: 300 }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: "24px",
+                                                        fontWeight: 300,
+                                                        textTransform: "uppercase",
+                                                    }}
+                                                >
                                                     {card.label}
                                                 </Typography>
                                                 <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>

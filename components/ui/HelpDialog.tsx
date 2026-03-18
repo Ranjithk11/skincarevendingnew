@@ -210,7 +210,7 @@ export default function HelpDialog({ open, onClose }: HelpDialogProps) {
                   9:00 AM – 6:00 PM
                 </Typography>
                 <Typography sx={{ fontSize: 26, textAlign: "center", fontWeight: 600, color: "#166534", pb: 2 }}>
-                  📞 +91 98765 43210
+                  📞 +91 8008675263
                 </Typography>
               </Box>
             </Box>

@@ -78,13 +78,9 @@
 
                     console.log("[Dispense] Processing product:", item.name, "id:", productId, "quantity:", quantity);
 
-                    // If slotId is already in cart item, use it directly
-                    if (item.slotId) {
-                        for (let i = 0; i < quantity; i++) {
-                            productCodes.push(item.slotId.toString());
-                        }
-                        continue;
-                    }
+                    // If slotId is already in cart item, we still need to check if that slot
+                    // has enough quantity. If not, fetch other slots for the same product.
+                    // This handles the case where user buys 2 of the same product but they're in different slots.
 
                     // Try to get slots from Next.js API
                     const cleanProductId = productId || "unknown";

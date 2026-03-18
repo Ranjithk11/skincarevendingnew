@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   IconButton,
@@ -10,6 +10,7 @@ import {
   TextField,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 
 interface EditProductModalProps {
   open: boolean;
@@ -42,6 +43,13 @@ export default function EditProductModal({
   const [cat, setCat] = useState(category);
   const [priceValue, setPriceValue] = useState(price);
   const [qty, setQty] = useState(quantity);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [activeField, setActiveField] = useState<"name" | "category" | "price" | "quantity">("name");
+
+  const nameRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLInputElement>(null);
+  const priceRef = useRef<HTMLInputElement>(null);
+  const quantityRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
@@ -49,8 +57,73 @@ export default function EditProductModal({
       setCat(category);
       setPriceValue(price);
       setQty(quantity);
+      setIsKeyboardOpen(false);
+      setActiveField("name");
+      setTimeout(() => nameRef.current?.focus(), 0);
     }
   }, [open, productName, category, price, quantity]);
+
+  const focusField = (field: typeof activeField) => {
+    setActiveField(field);
+    setIsKeyboardOpen(true);
+    if (field === "name") nameRef.current?.focus();
+    if (field === "category") categoryRef.current?.focus();
+    if (field === "price") priceRef.current?.focus();
+    if (field === "quantity") quantityRef.current?.focus();
+  };
+
+  const handleKeyboardKeyPress = (key: string) => {
+    const isNumberField = activeField === "price" || activeField === "quantity";
+
+    const getString = () => {
+      if (activeField === "name") return name;
+      if (activeField === "category") return cat;
+      if (activeField === "price") return String(priceValue || "");
+      return String(qty || "");
+    };
+
+    const setString = (next: string) => {
+      if (activeField === "name") return setName(next);
+      if (activeField === "category") return setCat(next);
+      if (activeField === "price") {
+        const cleaned = next.replace(/[^0-9.]/g, "");
+        const parsed = cleaned === "" ? 0 : Number.parseFloat(cleaned);
+        if (!Number.isNaN(parsed) && parsed >= 0) setPriceValue(parsed);
+        if (cleaned === "") setPriceValue(0);
+        return;
+      }
+      const cleaned = next.replace(/[^0-9]/g, "");
+      const parsed = cleaned === "" ? 0 : Number.parseInt(cleaned, 10);
+      if (!Number.isNaN(parsed) && parsed >= 0) setQty(parsed);
+      if (cleaned === "") setQty(0);
+    };
+
+    const current = getString();
+
+    if (key === "backspace") {
+      setString(current.slice(0, -1));
+      return;
+    }
+    if (key === "space") {
+      if (!isNumberField) setString(current + " ");
+      return;
+    }
+    if (key === "return") {
+      if (activeField === "name") return focusField("category");
+      if (activeField === "category") return focusField("price");
+      if (activeField === "price") return focusField("quantity");
+      setIsKeyboardOpen(false);
+      return;
+    }
+    if (["shift", "123", "ABC", "arrowleft", "arrowright"].includes(key)) return;
+
+    if (isNumberField) {
+      if (!/^[0-9.]$/.test(key)) return;
+      if (activeField === "quantity" && key === ".") return;
+    }
+
+    setString(current + key);
+  };
 
   const handleSave = () => {
     onSave({
@@ -77,7 +150,7 @@ export default function EditProductModal({
         },
       }}
     >
-      <Box sx={{ p: 3 }}>
+      <Box sx={{ p: 3, pb: isKeyboardOpen ? "360px" : 3 }}>
         {/* Header */}
         <Box
           sx={{
@@ -130,9 +203,13 @@ export default function EditProductModal({
               Product Name
             </Typography>
             <TextField
+              inputRef={nameRef}
               fullWidth
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onClick={() => focusField("name")}
+              onFocus={() => focusField("name")}
+              InputProps={{ readOnly: true }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
@@ -156,9 +233,13 @@ export default function EditProductModal({
               Category
             </Typography>
             <TextField
+              inputRef={categoryRef}
               fullWidth
               value={cat}
               onChange={(e) => setCat(e.target.value)}
+              onClick={() => focusField("category")}
+              onFocus={() => focusField("category")}
+              InputProps={{ readOnly: true }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
@@ -176,6 +257,7 @@ export default function EditProductModal({
               Price (₹)
             </Typography>
             <TextField
+              inputRef={priceRef}
               fullWidth
               type="number"
               value={priceValue === 0 ? "" : priceValue}
@@ -190,6 +272,9 @@ export default function EditProductModal({
                   }
                 }
               }}
+              onClick={() => focusField("price")}
+              onFocus={() => focusField("price")}
+              InputProps={{ readOnly: true }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
@@ -207,6 +292,7 @@ export default function EditProductModal({
               Quantity
             </Typography>
             <TextField
+              inputRef={quantityRef}
               fullWidth
               type="number"
               value={qty === 0 ? "" : qty}
@@ -221,6 +307,9 @@ export default function EditProductModal({
                   }
                 }
               }}
+              onClick={() => focusField("quantity")}
+              onFocus={() => focusField("quantity")}
+              InputProps={{ readOnly: true }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
@@ -252,6 +341,24 @@ export default function EditProductModal({
           </Box>
         </Box>
       </Box>
+
+      {isKeyboardOpen ? (
+        <Box
+          sx={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 2000,
+          }}
+        >
+          <VirtualKeyboard
+            onKeyPress={handleKeyboardKeyPress}
+            layout={activeField === "price" || activeField === "quantity" ? "numeric" : "default"}
+            visible={isKeyboardOpen}
+          />
+        </Box>
+      ) : null}
     </Dialog>
   );
 }
