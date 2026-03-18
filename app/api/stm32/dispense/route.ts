@@ -309,6 +309,7 @@ export async function POST(req: Request) {
         }
 
         sentCommands = expanded;
+        console.log("[STM32 Dispense] Row mode expanded commands:", expanded);
 
         const batch = await stm32DispenseMany(cfg, expanded, {
           commandPrefix: "",

@@ -308,7 +308,10 @@ export async function stm32DispenseMany(
 
     const results: Array<{ productCode: string; result: DispenseResult }> = [];
     for (const code of normalized) {
+      const isTray = code.trim().toUpperCase() === "TRAY";
+      console.log(`[STM32] Sending command: ${code}, isTray: ${isTray}`);
       const res = await runOne(code);
+      console.log(`[STM32] Response for ${code}:`, res.okLine || res.errorLine, "rawLines:", res.rawLines);
       results.push({ productCode: code, result: res });
       if (res.errorLine) break;
       if (delayBetweenCommandsMs > 0) {
