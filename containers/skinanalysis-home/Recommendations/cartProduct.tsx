@@ -76,13 +76,16 @@
                     const quantity = item.quantity || 1;
                     const encodedName = encodeURIComponent(item.name);
 
-                    console.log("[Dispense] Processing product:", item.name, "id:", productId, "quantity:", quantity);
+                    console.log("[Dispense] Processing product:", item.name, "id:", productId, "quantity:", quantity, "slotId:", item.slotId);
 
-                    // If slotId is already in cart item, we still need to check if that slot
-                    // has enough quantity. If not, fetch other slots for the same product.
-                    // This handles the case where user buys 2 of the same product but they're in different slots.
+                    // If slotId is set and quantity is 1, use it directly (user selected specific slot)
+                    // This preserves the original behavior for single-item purchases from /slots page
+                    if (item.slotId && quantity === 1) {
+                        productCodes.push(item.slotId.toString());
+                        continue;
+                    }
 
-                    // Try to get slots from Next.js API
+                    // For quantity > 1 or no slotId, fetch slots from API to distribute across multiple slots
                     const cleanProductId = productId || "unknown";
                     const slotsUrl = `/api/admin/products/${cleanProductId}/slots?name=${encodedName}`;
 
@@ -93,9 +96,18 @@
 
                         if (slotsData.slots && slotsData.slots.length > 0) {
                             // Use slots with quantity > 0, sorted by slot_id descending
-                            const availableSlots = slotsData.slots
+                            let availableSlots = slotsData.slots
                                 .filter((s: any) => s.quantity > 0)
                                 .sort((a: any, b: any) => b.slot_id - a.slot_id);
+
+                            // If item has slotId, prioritize that slot first
+                            if (item.slotId) {
+                                const preferredSlotId = Number(item.slotId);
+                                availableSlots = [
+                                    ...availableSlots.filter((s: any) => Number(s.slot_id) === preferredSlotId),
+                                    ...availableSlots.filter((s: any) => Number(s.slot_id) !== preferredSlotId),
+                                ];
+                            }
 
                             if (availableSlots.length > 0) {
                                 // Distribute quantity across available slots

@@ -192,8 +192,14 @@ export default function FeedbackPage() {
         for (const item of checkoutItems) {
           const quantity = Number(item?.quantity) > 0 ? Number(item.quantity) : 1;
           
-          // Always fetch slots from API to properly distribute across multiple slots
-          // This handles the case where user buys 2 of the same product but they're in different slots
+          // If slotId is set and quantity is 1, use it directly (user selected specific slot)
+          // This preserves the original behavior for single-item purchases from /slots page
+          if (item?.slotId && quantity === 1) {
+            productCodes.push(String(item.slotId));
+            continue;
+          }
+          
+          // For quantity > 1 or no slotId, fetch slots from API to distribute across multiple slots
           const productIdRaw = typeof item?.id === "string" ? item.id : "";
           const cleanProductId = productIdRaw.replace(/^products\//, "");
           const name = typeof item?.name === "string" ? item.name : "";
@@ -203,9 +209,20 @@ export default function FeedbackPage() {
           const slotsResponse = await fetch(slotsUrl);
           const slotsData = await slotsResponse.json();
           const slots = Array.isArray(slotsData?.slots) ? slotsData.slots : [];
-          const availableSlots = slots
+          
+          // If slotId is set, prioritize that slot first, then others
+          let availableSlots = slots
             .filter((s: any) => Number(s?.quantity) > 0)
             .sort((a: any, b: any) => Number(b?.slot_id) - Number(a?.slot_id));
+          
+          // If item has slotId, move that slot to the front
+          if (item?.slotId) {
+            const preferredSlotId = Number(item.slotId);
+            availableSlots = [
+              ...availableSlots.filter((s: any) => Number(s?.slot_id) === preferredSlotId),
+              ...availableSlots.filter((s: any) => Number(s?.slot_id) !== preferredSlotId),
+            ];
+          }
 
           let remaining = quantity;
 

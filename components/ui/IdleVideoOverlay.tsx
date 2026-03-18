@@ -10,7 +10,7 @@ type IdleVideoOverlayProps = {
 
 export default function IdleVideoOverlay({
   idleMs = 120_000,
-  src = "/videos/leafwater2.mp4",
+  src = "/videos/airport.mp4",
 }: IdleVideoOverlayProps) {
   const [open, setOpen] = useState(false);
   const timerRef = useRef<number | null>(null);

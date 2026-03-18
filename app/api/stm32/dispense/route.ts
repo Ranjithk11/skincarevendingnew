@@ -203,6 +203,8 @@ export async function POST(req: Request) {
         finalizeMode = hasDuplicateColumn ? "row" : "once";
       }
 
+      console.log("[STM32 Dispense] normalized:", normalized, "cols:", cols, "hasDuplicateColumn:", hasDuplicateColumn, "finalizeMode:", finalizeMode);
+
       const rqOkPattern = /Turning off motors/i;
       const rqErrorPattern = /^(500|501)$|No detection|Sensor already/i;
       const trayOkPattern = /^200$|Closing door|Waiting 5s for pickup/i;
