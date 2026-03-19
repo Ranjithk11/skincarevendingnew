@@ -265,8 +265,8 @@ function initDb() {
   // Update to new default machine name
   db.prepare(`
     INSERT INTO app_settings (setting_key, setting_value, description) 
-    VALUES ('machine_name', 'leafterwater_vendingmachine01', 'Machine name/location for backend identification')
-    ON CONFLICT(setting_key) DO UPDATE SET setting_value = 'leafterwater_vendingmachine01'
+    VALUES ('machine_name', 'leafterwater_vendingmachine02', 'Machine name/location for backend identification')
+    ON CONFLICT(setting_key) DO UPDATE SET setting_value = 'leafterwater_vendingmachine02'
   `).run();
 
   console.log('SQLite database initialized:', DB_FILE);
