@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AdminDashboard } from "@/containers/admin-dashboard";
-import { SlotAssignmentModal, MachineStatusModal, EditProductModal } from "@/containers/admin-dashboard/components";
+import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal } from "@/containers/admin-dashboard/components";
 import { useRouter } from "next/navigation";
 import {
   useGetVendingSlotsQuery,
@@ -40,6 +40,9 @@ export default function AdminDashboardPage() {
     price: number;
     quantity: number;
   } | null>(null);
+
+  // Machine settings modal state
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
 
   // Redux queries
   const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetVendingSlotsQuery();
@@ -281,6 +284,10 @@ export default function AdminDashboardPage() {
 
   const handleLoadProductsClick = () => {
     refetchProducts();
+  };
+
+  const handleSettingsClick = () => {
+    setSettingsModalOpen(true);
   };
 
   const handleSyncClick = async () => {
@@ -539,6 +546,7 @@ export default function AdminDashboardPage() {
         onTestClick={handleTestClick}
         onHideClick={handleHideClick}
         onLoadProductsClick={handleLoadProductsClick}
+        onSettingsClick={handleSettingsClick}
         onSyncClick={handleSyncClick}
         onSlotClick={handleSlotClick}
         onProductHideClick={handleProductHideClick}
@@ -605,6 +613,12 @@ export default function AdminDashboardPage() {
         price={editingProduct?.price || 0}
         quantity={editingProduct?.quantity || 0}
         onSave={handleSaveProduct}
+      />
+
+      {/* Machine Settings Modal */}
+      <MachineSettingsModal
+        open={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
       />
     </>
   );

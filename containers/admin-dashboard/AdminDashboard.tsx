@@ -33,6 +33,7 @@ interface AdminDashboardProps {
   onTestClick?: () => void;
   onHideClick?: () => void;
   onLoadProductsClick?: () => void;
+  onSettingsClick?: () => void;
   onSyncClick?: () => void;
   onSlotClick?: (slotNumber: number) => void;
   onProductHideClick?: (productId: string) => void;
@@ -65,6 +66,7 @@ export default function AdminDashboard({
   onTestClick,
   onHideClick,
   onLoadProductsClick,
+  onSettingsClick,
   onSyncClick,
   onSlotClick,
   onProductHideClick,
@@ -150,6 +152,7 @@ export default function AdminDashboard({
           onTestClick={onTestClick}
           onHideClick={onHideClick}
           onLoadProductsClick={onLoadProductsClick}
+          onSettingsClick={onSettingsClick}
         />
 
         <VendingMachineConfig

@@ -84,18 +84,36 @@ export default function Questionnaire() {
   const [isNumeric, setIsNumeric] = useState(false);
   const [selectedSkinType, setSelectedSkinType] = useState<string>("");
   const [validationError, setValidationError] = useState<string>("");
-  const [machineLocation, setMachineLocation] = useState<string>("vendingMachine_Default");
+  const [machineLocation, setMachineLocation] = useState<string>("leafterwater_vendingmachine01");
 
   const totalSlides = 2;
 
+  // Fetch machine name: priority is API (env var -> db) -> localStorage -> default
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedLocation = localStorage.getItem("kiosk_machine_location");
-      if (storedLocation) {
-        setMachineLocation(storedLocation);
+    const fetchMachineName = async () => {
+      try {
+        // First try API (which checks env var, then database)
+        const response = await fetch("/api/admin/machine-name");
+        const data = await response.json();
+        if (data.success && data.machineName) {
+          setMachineLocation(data.machineName);
+          return;
+        }
+      } catch (err) {
+        console.warn("[Questionnaire] Failed to fetch machine name from API:", err);
       }
-    }
-  }, [speakMessage]);
+
+      // Fallback to localStorage (set via URL param)
+      if (typeof window !== "undefined") {
+        const storedLocation = localStorage.getItem("kiosk_machine_location");
+        if (storedLocation) {
+          setMachineLocation(storedLocation);
+        }
+      }
+    };
+
+    fetchMachineName();
+  }, []);
 
   useEffect(() => {
     const t = window.setTimeout(() => {

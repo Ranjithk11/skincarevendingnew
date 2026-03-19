@@ -12,6 +12,7 @@ interface DashboardTitleProps {
   onTestClick?: () => void;
   onHideClick?: () => void;
   onLoadProductsClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
 export default function DashboardTitle({
@@ -22,6 +23,7 @@ export default function DashboardTitle({
   onTestClick,
   onHideClick,
   onLoadProductsClick,
+  onSettingsClick,
 }: DashboardTitleProps) {
   return (
     <Box
@@ -173,6 +175,19 @@ export default function DashboardTitle({
           label="Load Products"
           onClick={onLoadProductsClick}
         />
+        {/* <ActionButton
+          icon={
+            <Image
+              src="/wending/settings.svg"
+              alt="Settings"
+              width={40}
+              height={40}
+              style={{ objectFit: "contain" }}
+            />
+          }
+          label="Settings"
+          onClick={onSettingsClick}
+        /> */}
       </Box>
 
     </Box>

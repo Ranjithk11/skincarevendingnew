@@ -255,9 +255,16 @@ function initDb() {
     db.prepare(`INSERT INTO app_settings (setting_key, setting_value, description) VALUES 
       ('razorpay_mode', 'test', 'Razorpay payment mode: test or live'),
       ('machine_id', 'SKINCARE_VM_001', 'Vending machine identifier'),
+      ('machine_name', 'LeafWater_Default', 'Machine name/location for backend identification'),
       ('auto_dispense', 'true', 'Auto dispense after payment')
     `).run();
     console.log('Initialized default app settings');
+  }
+
+  // Ensure machine_name setting exists (for existing databases)
+  const machineNameExists = db.prepare("SELECT 1 FROM app_settings WHERE setting_key = 'machine_name'").get();
+  if (!machineNameExists) {
+    db.prepare(`INSERT INTO app_settings (setting_key, setting_value, description) VALUES ('machine_name', 'LeafWater_Default', 'Machine name/location for backend identification')`).run();
   }
 
   console.log('SQLite database initialized:', DB_FILE);
@@ -1028,6 +1035,14 @@ export const sqliteDb = {
 
   setRazorpayMode(mode: 'test' | 'live'): boolean {
     return this.setSetting('razorpay_mode', mode, 'Razorpay payment mode: test or live');
+  },
+
+  getMachineName(): string {
+    return this.getSetting('machine_name', 'LeafWater_Default') || 'LeafWater_Default';
+  },
+
+  setMachineName(name: string): boolean {
+    return this.setSetting('machine_name', name, 'Machine name/location for backend identification');
   },
 
   // ==================== CART ====================
