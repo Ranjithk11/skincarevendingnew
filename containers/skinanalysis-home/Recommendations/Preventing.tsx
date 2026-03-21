@@ -67,7 +67,7 @@ const PreventingView = ({ useData, data }: PreventingInfoProps) => {
       <Container maxWidth="lg">
         <Grid container spacing={4}>
           <Grid item xs={12}>
-            <Typography variant="h6">
+            <Typography variant="h6" >
               What’s preventing you to <span>get your glow on?</span>
             </Typography>
           </Grid>

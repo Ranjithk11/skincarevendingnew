@@ -131,8 +131,11 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
 
         const toLevelColor = (lvl?: unknown) => {
             const level = typeof lvl === "string" ? lvl.toUpperCase() : "";
-            if (level === "GOOD") return "#2ac78fff";
-            if (level === "MODERATE") return "#f59e0b";
+            if (level === "EXCELLENT" || level.includes("EXCELLENT")) return "#22c55e"; // green
+            if (level === "GOOD" || level.includes("GOOD")) return "#2ac78fff"; // teal
+            if (level === "NEEDS CARE" || level.includes("NEEDS")) return "#f59e0b"; // amber
+            if (level === "IMMEDIATE CARE" || level.includes("IMMEDIATE")) return "#ef4444"; // red
+            if (level === "MODERATE") return "#f59e0b"; // amber (legacy)
             return "#6b7280";
         };
 
@@ -176,9 +179,20 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         }>;
     })();
 
-    const attributeCodeItems = Array.isArray(reportSource?.attributeCode)
-        ? reportSource.attributeCode
+    // Use keyConcerns from API response (ignore attributeCode)
+    const keyConcernsFromApi = Array.isArray(reportSource?.keyConcerns)
+        ? reportSource.keyConcerns
         : [];
+
+    // Map severity to colors
+    const getSeverityColor = (severity?: string) => {
+        const sev = typeof severity === "string" ? severity.toUpperCase() : "";
+        if (sev === "EXCELLENT" || sev.includes("EXCELLENT")) return "#22c55e"; // green
+        if (sev === "GOOD" || sev.includes("GOOD")) return "#2ac78fff"; // teal
+        if (sev === "NEEDS CARE" || sev.includes("NEEDS")) return "#f59e0b"; // amber
+        if (sev === "IMMEDIATE CARE" || sev.includes("IMMEDIATE")) return "#ef4444"; // red
+        return "#6b7280"; // gray default
+    };
 
     const recTabs = [
         {
@@ -198,11 +212,30 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         },
     ];
 
-    const keyConcerns = [
-        { title: "Acne", imageSrc: "/wending/acne.svg" },
-        { title: "Open Pores", imageSrc: "/wending/open.svg" },
-        { title: "Uneven Skin", imageSrc: "/wending/uneven.svg" },
-    ];
+    // Format keyConcerns for display
+    interface KeyConcernCard {
+        key: string;
+        label: string;
+        severity: string;
+        priority: number;
+        severityColor: string;
+    }
+    const keyConcernCards: KeyConcernCard[] = keyConcernsFromApi.map((item: any, idx: number) => {
+        const name = item?.name
+            ? String(item.name)
+                .replace(/_/g, " ")
+                .replace(/([a-z])([A-Z])/g, "$1 $2")
+            : `Concern ${idx + 1}`;
+        const severity = item?.severity || "--";
+        const priority = item?.priority || idx + 1;
+        return {
+            key: `concern-${idx}-${name}`,
+            label: name,
+            severity,
+            priority,
+            severityColor: getSeverityColor(severity),
+        };
+    });
 
     return (
         <Box
@@ -345,6 +378,21 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                     gap: { xs: 2, md: "31px" },
                                 }}
                             >
+                                <Box sx={{ width: "100%", textAlign: "center", mb: 3 }}>
+                                    {/* <Typography sx={{ fontSize: "28px", fontWeight: 700 }}>
+                                        <Box component="span" sx={{ color: "#2ac78fff" }}>
+                                            {typeof overallSkinHealthScore === "number"
+                                                ? overallSkinHealthScore
+                                                : "--"}
+                                        </Box>{" "}
+                                        <Box component="span" sx={{ color: "#000", fontWeight: 500 }}>
+                                            out of 100
+                                        </Box>
+                                    </Typography> */}
+                                    <Typography sx={{ fontSize: "30px", color: "#000", fontWeight: 400, mt: 2 }}>
+                                        Overall Skincare Health 
+                                    </Typography>
+                                </Box>
                                 <Box
                                     sx={{
                                         minWidth: 180,
@@ -360,7 +408,11 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                             'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                                         fontWeight: 510,
                                         fontSize: "24px",
-                                        color: "#111827",
+                                        color: overallSkinHealthRating?.toUpperCase()?.includes("GOOD") 
+                                            ? "#2ac78fff" 
+                                            : overallSkinHealthRating?.toUpperCase()?.includes("NEEDS") 
+                                                ? "#D97706" 
+                                                : "#111827",
                                         boxSizing: "border-box",
                                         whiteSpace: "nowrap",
                                     }}
@@ -368,21 +420,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                     {overallSkinHealthRating || "--"}
                                 </Box>
 
-                                <Box sx={{ width: "100%", textAlign: "center", mt: 3 }}>
-                                    <Typography sx={{ fontSize: "28px", fontWeight: 700 }}>
-                                        <Box component="span" sx={{ color: "#2ac78fff" }}>
-                                            {typeof overallSkinHealthScore === "number"
-                                                ? overallSkinHealthScore
-                                                : "--"}
-                                        </Box>{" "}
-                                        <Box component="span" sx={{ color: "#000", fontWeight: 500 }}>
-                                            out of 100
-                                        </Box>
-                                    </Typography>
-                                    <Typography sx={{ fontSize: "26px", color: "#000", fontWeight: 400, mt: 2 }}>
-                                        Overall skincare health score
-                                    </Typography>
-                                </Box>
+                                
                             </Box>
 
 
@@ -430,106 +468,65 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                 boxSizing: "border-box",
                             }}
                         >
-                            {(() => {
-                                const seenLabels = new Set<string>();
-
-                                const attributeCards = attributeCodeItems
-                                    .filter((item: any) => {
-                                        const label = item?.attribute
-                                            ? String(item.attribute).replace(/_/g, " ").toLowerCase().trim()
-                                            : "";
-                                        if (!label || seenLabels.has(label)) return false;
-                                        seenLabels.add(label);
-                                        return true;
-                                    })
-                                    .map((item: any, idx: number) => ({
-                                        key: `attr-${item?.code ?? idx}-${item?.attribute ?? idx}`,
-                                        label: item?.attribute
-                                            ? String(item.attribute).replace(/_/g, " ")
-                                            : "--",
-                                        value: typeof item?.confidence === "number"
-                                            ? `${item.confidence}%`
-                                            : "--",
-                                        level: typeof item?.confidence === "number"
-                                            ? (item.confidence >= 80 ? "Good" : "Moderate")
-                                            : undefined,
-                                        levelColor: typeof item?.confidence === "number"
-                                            ? (item.confidence >= 80 ? "#2ac78fff" : "#f59e0b")
-                                            : "#6b7280",
-                                    }));
-
-                                const metricCards = skinMetricCards
-                                    .filter((m) => {
-                                        const label = m.label.toLowerCase().trim();
-                                        if (seenLabels.has(label)) return false;
-                                        seenLabels.add(label);
-                                        return true;
-                                    })
-                                    .map((m, idx) => ({
-                                        key: `metric-${m.label}-${idx}`,
-                                        label: m.label,
-                                        value: m.value,
-                                        level: m.level,
-                                        levelColor: m.levelColor,
-                                    }));
-
-                                const allCards = [...attributeCards, ...metricCards];
-
-                                return (
-                                    <Box
-                                        sx={{
-                                            width: "100%",
-                                            display: "grid",
-                                            gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
-                                            gap: 2,
-                                        }}
-                                    >
-                                        {allCards.map((card) => (
-                                            <Box
-                                                key={card.key}
+                            {/* Display skinMetrics from API with score and level */}
+                            <Box
+                                sx={{
+                                    width: "100%",
+                                    display: "grid",
+                                    gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
+                                    gap: 2,
+                                }}
+                            >
+                                {skinMetricCards.length > 0 ? (
+                                    skinMetricCards.map((card, idx) => (
+                                        <Box
+                                            key={`metric-${card.label}-${idx}`}
+                                            sx={{
+                                                border: "2px solid #f0d89a",
+                                                borderRadius: "12px",
+                                                p: 3,
+                                                textAlign: "center",
+                                                bgcolor: "#ffffff",
+                                                minHeight: { xs: 90, sm: 110 },
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                            }}
+                                        >
+                                            <Typography
                                                 sx={{
-                                                    border: "2px solid #f0d89a",
-                                                    borderRadius: "12px",
-                                                    p: 3,
-                                                    textAlign: "center",
-                                                    bgcolor: "#ffffff",
-                                                    minHeight: { xs: 90, sm: 110 },
-                                                    display: "flex",
-                                                    flexDirection: "column",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
+                                                    fontSize: "24px",
+                                                    fontWeight: 300,
+                                                    textTransform: "uppercase",
                                                 }}
                                             >
+                                                {card.label}
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
+                                                {card.value}
+                                            </Typography>
+                                            {card.level && (
                                                 <Typography
                                                     sx={{
-                                                        fontSize: "24px",
-                                                        fontWeight: 300,
+                                                        fontSize: "20px",
+                                                        fontWeight: 600,
+                                                        mt: 1,
+                                                        color: card.levelColor,
                                                         textTransform: "uppercase",
                                                     }}
                                                 >
-                                                    {card.label}
+                                                    {card.level}
                                                 </Typography>
-                                                <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
-                                                    {card.value}
-                                                </Typography>
-                                                {card.level && (
-                                                    <Typography
-                                                        sx={{
-                                                            fontSize: "20px",
-                                                            fontWeight: 600,
-                                                            mt: 1,
-                                                            color: card.levelColor,
-                                                            textTransform: "capitalize",
-                                                        }}
-                                                    >
-                                                        {String(card.level).replace(/_/g, " ").toLowerCase()}
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        ))}
-                                    </Box>
-                                );
-                            })()}
+                                            )}
+                                        </Box>
+                                    ))
+                                ) : (
+                                    <Typography sx={{ fontSize: "18px", color: "#6b7280", textAlign: "center", py: 2 }}>
+                                        No skin metrics detected
+                                    </Typography>
+                                )}
+                            </Box>
                         </Box>
 
                         {/* <Grid container spacing={{ xs: 2, md: 3 }}>

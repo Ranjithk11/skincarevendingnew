@@ -1,6 +1,7 @@
 "use client";
 import {
   useGetUploadImageInfoMutation,
+  useLazyFetchAdminRecommendationsByIdQuery,
   useLazyFetchRecommnedSkinAttributesByIdQuery,
 } from "@/redux/api/analysisApi";
 import { useSearchParams } from "next/navigation";
@@ -9,25 +10,37 @@ import {
   Container,
   styled,
   Typography,
+  Grid,
   Button,
   Paper,
+  useMediaQuery,
 } from "@mui/material";
-import React, { Fragment, useEffect, useMemo } from "react";
+import React, { Fragment, useEffect, useState } from "react";
 import LoadingComponent from "@/components/loaders/Loading";
+import SalonServices from "./Recommendations/SalonServices";
 import DietChart from "./Recommendations/DietChart";
+import MeetTeam from "./Recommendations/MeetTeam";
+import Routine from "./Recommendations/Routines";
+import CoverPage from "./Recommendations/Cover";
+import ProductsView from "./Recommendations/Products";
+import PreventingView from "./Recommendations/Preventing";
 import _ from "lodash";
+import CosmeticRecommdations from "./Recommendations/CosmeticRecommdations";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
-import { updateVisitCount } from "@/redux/reducers/analysisSlice";
 import { Icon } from "@iconify/react";
-import NewUiPage from "./Recommendations/newUi";
+import Payment from "./Recommendations/Payment";
+import LipsProductsView from "./Recommendations/LipProducts";
+import TopLogo from "./Recommendations/TopLogo";
+import { APP_ROUTES } from "@/utils/routes";
+import { useTheme } from "@mui/material/styles";
 
-const StyledUserSkinAnalysisRecommendation = styled(Container)(({ theme }) => ({
+const StyledViewAdminSkincareReport = styled(Container)(({ theme }) => ({
   minHeight: "100vh",
   position: "relative",
   overflowX: "hidden",
   backgroundColor: theme.palette.grey[100],
   overflowY: "auto",
+  paddingTop: 0,
   "& .whatsapp-button": {
     position: "fixed",
     right: 30,
@@ -99,14 +112,18 @@ const StyledUserSkinAnalysisRecommendation = styled(Container)(({ theme }) => ({
   },
 }));
 
-const UserSkinAnalysisRecommendation = () => {
+const ViewAdminSkincareReport = () => {
   const searchParams = useSearchParams();
-  const dispatch = useDispatch();
   const router = useRouter();
+  const theme = useTheme();
+  const isKiosk = useMediaQuery(theme.breakpoints.up("md"));
+  const [openCart, setOpenCart] = useState(false);
+  const cartCount = 0;
   const whatsappNumber = "918977016605";
   const whatsappMessage = "Hello, I need help with my skin analysis!";
-  const [fetchRecommnedSkinAttributesById, { isLoading, isError, data }] =
-    useLazyFetchRecommnedSkinAttributesByIdQuery();
+  const [fetchAdminRecommendationsById, { isLoading, isError, data }] =
+    useLazyFetchAdminRecommendationsByIdQuery();
+
   const [
     getUploadImageInfo,
     { data: dataImageInfo, isLoading: isLoadingImageInfo },
@@ -123,20 +140,16 @@ const UserSkinAnalysisRecommendation = () => {
     window.scrollTo({ top: 64, behavior: "smooth" });
   };
 
-  const userId = searchParams?.get("userId") || "";
-  const productRecommendationId = searchParams?.get("productRecommendationId") || "";
-
   useEffect(() => {
-    if (!userId || !productRecommendationId) return;
-    fetchRecommnedSkinAttributesById({
-      userId,
-      productRecommendationId,
-    });
-  }, [fetchRecommnedSkinAttributesById, userId, productRecommendationId]);
+    if (searchParams) {
+      fetchAdminRecommendationsById({
+        userId: searchParams.get("userId") as string,
+      });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!_.isEmpty(data)) {
-      dispatch(updateVisitCount(data?.data?.countTimeseries));
       getUploadImageInfo({
         userId: data?.data?.user?._id,
         fileName:
@@ -145,29 +158,104 @@ const UserSkinAnalysisRecommendation = () => {
     }
   }, [data]);
 
-  const dataFUQR = useMemo(() => {
-    const age = data?.data?.user?.onBoardingQuestions?.[0]?.responses?.[0]?.value;
-    const gender = data?.data?.user?.onBoardingQuestions?.[1]?.responses?.[0]?.value;
-    return { age, gender };
-  }, [data]);
-
   return (
-    <StyledUserSkinAnalysisRecommendation disableGutters maxWidth="xl">
+    <StyledViewAdminSkincareReport disableGutters maxWidth={false}>
       {!isLoading && !isError && !isLoadingImageInfo && data && (
         <Fragment>
-          <NewUiPage
-            useData={dataImageInfo}
-            dataFUQR={dataFUQR}
-            publicUserProfile={data?.data?.user}
-            analysisData={data?.data?.productRecommendation}
+          <TopLogo
+            isKiosk={isKiosk}
+            cartCount={cartCount}
+            onCartClick={() => setOpenCart(true)}
+            onScanAgainClick={() => router.push(APP_ROUTES.SELFIE)}
           />
-{/* 
+
+          {/* Spacer for fixed TopLogo header */}
+          <Box sx={{ pt: { xs: 4, sm: 4 } }} />
+
+          {/* <CoverPage
+            publicUserProfile={data?.data?.user}
+            useData={dataImageInfo}
+            dataFUQR={{
+              age: data?.data?.user?.onBoardingQuestions?.[0]?.responses?.[0]
+                ?.value,
+              gender:
+                data?.data?.user?.onBoardingQuestions?.[1]?.responses?.[0]
+                  ?.value,
+            }}
+          /> */}
+          <PreventingView
+            useData={dataImageInfo}
+            data={{
+              data: [
+                {
+                  lipAnalysisSummary:
+                    data?.data?.productRecommendation?.lipAnalysisSummary,
+                  analysedImages:
+                    data?.data?.productRecommendation?.analysedImages,
+                  userId: data?.data?.user?._id,
+                  attributeCode:
+                    data?.data?.productRecommendation?.attributeCode,
+                  skinSummary: data?.data?.productRecommendation?.skinSummary,
+                  analysisAiSummary:
+                    data?.data?.productRecommendation?.analysisAiSummary,
+                  detectedLipAttributes:
+                    data?.data?.productRecommendation?.detectedLipAttributes,
+                  lipColor: data?.data?.productRecommendation?.lipColor,
+                  lipShape: data?.data?.productRecommendation?.lipShape,
+                  recommendedLipProducts:
+                    data?.data?.productRecommendation?.recommendedLipProducts,
+                },
+              ],
+            }}
+          />
+          <ProductsView
+            isAdminView={true}
+            data={{
+              data: [
+                {
+                  recommendedProducts: {
+                    lowRecommendation:
+                      data?.data?.productRecommendation?.recommendedProducts
+                        ?.lowRecommendation,
+                    highRecommendation:
+                      data?.data?.productRecommendation?.recommendedProducts
+                        ?.highRecommendation,
+                  },
+                },
+              ],
+            }}
+          />
+          {/* {data?.data?.productRecommendation?.recommendedLipProducts?.length >
+            0 && (
+            <LipsProductsView
+              dataFUQR={{
+                age: data?.data?.user?.onBoardingQuestions?.[0]?.responses?.[0]
+                  ?.value,
+                gender:
+                  data?.data?.user?.onBoardingQuestions?.[1]?.responses?.[0]
+                    ?.value,
+              }}
+              data={data?.data?.productRecommendation?.recommendedLipProducts}
+            />
+          )} */}
+          <Routine userData={dataImageInfo} />
+          <SalonServices
+            data={
+              data?.data?.productRecommendation?.recommendedSalonServices || []
+            }
+          />
+          <CosmeticRecommdations
+            data={
+              data?.data?.productRecommendation?.recommendedCosmeticServices ||
+              []
+            }
+          />
+          {/* <Payment /> */}
           {data?.data?.productRecommendation?.dietPlan && (
             <DietChart dietPlan={data?.data?.productRecommendation?.dietPlan} />
-          )} */}
+          )}
         </Fragment>
       )}
-
       {(isLoading || isLoadingImageInfo) &&
         !isError &&
         !data &&
@@ -211,8 +299,8 @@ const UserSkinAnalysisRecommendation = () => {
       >
         <Icon icon="solar:round-arrow-up-outline" />
       </Paper>
-    </StyledUserSkinAnalysisRecommendation>
+    </StyledViewAdminSkincareReport>
   );
 };
 
-export default UserSkinAnalysisRecommendation;
+export default ViewAdminSkincareReport;

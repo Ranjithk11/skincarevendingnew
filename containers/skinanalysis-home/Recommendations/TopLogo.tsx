@@ -59,18 +59,18 @@ const TopLogo: React.FC<TopLogoProps> = ({
       >
         {mode === "centered" ? (
           <>
-            <Box sx={{ width: 40, height: 40 }} />
+            <Box sx={{ width: { xs: 32, sm: 40 }, height: { xs: 32, sm: 40 } }} />
 
             <Box
               onClick={handleLogoClick}
               sx={{
                 border: "2px solid #1976d2",
                 bgcolor: "#ffffff",
-                px: 2.5,
-                py: 1,
+                px: { xs: 1.5, sm: 2.5 },
+                py: { xs: 0.5, sm: 1 },
                 borderRadius: 0,
-                width: "min(520px, 100%)",
-                height: 64,
+                width: { xs: "min(200px, 100%)", sm: "min(520px, 100%)" },
+                height: { xs: 40, sm: 64 },
                 position: "relative",
                 cursor: "pointer",
               }}
@@ -87,9 +87,9 @@ const TopLogo: React.FC<TopLogoProps> = ({
 
             <IconButton
               sx={{
-                minWidth: 40,
-                width: 40,
-                height: 40,
+                minWidth: { xs: 32, sm: 40 },
+                width: { xs: 32, sm: 40 },
+                height: { xs: 32, sm: 40 },
                 p: 0,
                 borderRadius: "50%",
                 border: "1px solid #d1d5db",
@@ -107,12 +107,18 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 alignItems: "center",
                 justifyContent: "flex-start",
                 gap: 1,
-                minWidth: 310,
+                minWidth: { xs: "auto", sm: 310 },
+                flex: { xs: 1, sm: "none" },
               }}
             >
               <Box
                 onClick={handleLogoClick}
-                sx={{ position: "relative", width: 270, height: 69, cursor: "pointer" }}
+                sx={{ 
+                  position: "relative", 
+                  width: { xs: 140, sm: 270 }, 
+                  height: { xs: 36, sm: 69 }, 
+                  cursor: "pointer" 
+                }}
               >
                 <Image
                   src="/wending/goldlog.svg"
@@ -129,8 +135,8 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "flex-end",
-                width: 340,
-                gap: "10px",
+                width: { xs: "auto", sm: 340 },
+                gap: { xs: "6px", sm: "10px" },
                 flexWrap: "nowrap",
               }}
             >
@@ -138,11 +144,11 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 variant="outlined"
                 size="small"
                 sx={{
-                  width: 220,
-                  height: "60px",
-                  px: "10px",
-                  py: "19px",
-                  fontSize: "24px",
+                  width: { xs: 90, sm: 220 },
+                  height: { xs: "36px", sm: "60px" },
+                  px: { xs: "6px", sm: "10px" },
+                  py: { xs: "8px", sm: "19px" },
+                  fontSize: { xs: "12px", sm: "24px" },
                   borderRadius: "64px",
                   textTransform: "none",
                   minWidth: 0,
@@ -161,22 +167,35 @@ const TopLogo: React.FC<TopLogoProps> = ({
                   invisible={!cartCount}
                   sx={{
                     "& .MuiBadge-badge": {
-                      fontSize: 24,
+                      fontSize: { xs: 12, sm: 24 },
                       fontWeight: 500,
                     },
                   }}
                 >
-                  <Image src={firstButtonIcon} width={24} height={24} alt="" />
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      "& img": {
+                        width: { xs: 16, sm: 24 },
+                        height: { xs: 16, sm: 24 },
+                      },
+                    }}
+                  >
+                    <Image src={firstButtonIcon} width={24} height={24} alt="" />
+                  </Box>
                 </Badge>
                 <Box
                   component="span"
                   sx={{
-                    ml: 1,
-                    fontSize: "24px",
+                    ml: { xs: 0.5, sm: 1 },
+                    fontSize: { xs: "12px", sm: "24px" },
                     fontWeight: 500,
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
+                    display: { xs: "none", sm: "inline" },
                   }}
                 >
                   {firstButtonLabel}
@@ -187,11 +206,11 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 variant="outlined"
                 size="small"
                 sx={{
-                  width: 250,
-                  height: "60px",
-                  px: "10px",
-                  py: "19px",
-                  fontSize: "24px",
+                  width: { xs: 100, sm: 250 },
+                  height: { xs: "36px", sm: "60px" },
+                  px: { xs: "6px", sm: "10px" },
+                  py: { xs: "8px", sm: "19px" },
+                  fontSize: { xs: "12px", sm: "24px" },
                   borderRadius: "64px",
                   textTransform: "none",
                   minWidth: 0,
@@ -204,9 +223,21 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 }}
                 onClick={onScanAgainClick}
               >
-                <Box sx={{ display: "inline-flex", alignItems: "center", gap: 1 }}>
+                <Box 
+                  sx={{ 
+                    display: "inline-flex", 
+                    alignItems: "center", 
+                    gap: { xs: 0.5, sm: 1 },
+                    "& img": {
+                      width: { xs: 16, sm: 24 },
+                      height: { xs: 16, sm: 24 },
+                    },
+                  }}
+                >
                   <Image src={secondButtonIcon} width={24} height={24} alt="" />
-                  <span>{secondButtonLabel}</span>
+                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                    {secondButtonLabel}
+                  </Box>
                 </Box>
               </Button>
             </Box>
