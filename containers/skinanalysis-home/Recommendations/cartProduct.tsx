@@ -603,7 +603,7 @@
                                         </Box>
                                     </Box>
 
-                                    <Box sx={{ mt: 2, bgcolor: "#fff", borderRadius: 2, p: 2, border: "1px solid #e5e7eb" }}>
+                                    {/* <Box sx={{ mt: 2, bgcolor: "#fff", borderRadius: 2, p: 2, border: "1px solid #e5e7eb" }}>
                                         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                             <Box>
                                                 <Typography sx={{ fontWeight: 700, fontSize: 28, pb: 2 }}>Apply Coupons</Typography>
@@ -633,7 +633,7 @@
                                                 {couponApplied ? "APPLIED" : "APPLY"}
                                             </Button>
                                         </Box>
-                                    </Box>
+                                    </Box> */}
                                 </>
                             ) : items.length === 0 ? (
                                 <Box sx={{ py: 2, textAlign: "center" }}>
