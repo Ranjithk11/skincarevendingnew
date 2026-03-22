@@ -175,7 +175,7 @@ export default function DashboardTitle({
           label="Load Products"
           onClick={onLoadProductsClick}
         />
-        {/* <ActionButton
+        <ActionButton
           icon={
             <Image
               src="/wending/settings.svg"
@@ -187,7 +187,7 @@ export default function DashboardTitle({
           }
           label="Settings"
           onClick={onSettingsClick}
-        /> */}
+        />
       </Box>
 
     </Box>

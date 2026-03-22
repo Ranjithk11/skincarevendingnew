@@ -38,21 +38,26 @@ const PageBackground = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const SectionCard = styled(Card)(() => ({
+const SectionCard = styled(Card)(({ theme }) => ({
   width: "80%",
   padding: 16,
   borderRadius: 24,
   border: "1px solid #e5e7eb",
   boxShadow: "none",
   marginBottom: 16,
+  [theme.breakpoints.down("sm")]: {
+    width: "100%",
+    padding: 12,
+    borderRadius: 16,
+  },
 }));
 
 const Tile = ({ image, label }: { image: string; label: string }) => (
   <Box
     sx={{
       position: "relative",
-      width: 180,
-      height: 220,
+      width: { xs: "100%", sm: 180 },
+      height: { xs: 140, sm: 220 },
       borderRadius: "8px",
       overflow: "hidden",
       border: "1px solid #e5e7eb",
@@ -76,17 +81,27 @@ const Tile = ({ image, label }: { image: string; label: string }) => (
         left: 0,
         right: 0,
         bottom: 0,
-        height: 70,
+        height: { xs: 50, sm: 70 },
         display: "flex",
         alignItems: "flex-end",
-        px: 2,
-        pb: 2,
+        px: { xs: 1, sm: 2 },
+        pb: { xs: 1, sm: 2 },
         backgroundColor: "rgba(0,0,0,0.25)",
         backdropFilter: "blur(5px)",
         WebkitBackdropFilter: "blur(5px)",
       }}
     >
-      <Typography fontSize={20} fontWeight={800} color="#fff" sx={{ lineHeight: 1 }}>
+      <Typography 
+        sx={{ 
+          fontSize: { xs: 14, sm: 20 }, 
+          fontWeight: 800, 
+          color: "#fff", 
+          lineHeight: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {label}
       </Typography>
     </Box>
@@ -179,7 +194,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
           mb: 0.75,
           fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
           fontWeight: 700,
-          fontSize: "32px",
+          fontSize: { xs: "24px", sm: "32px" },
           lineHeight: "100%",
           letterSpacing: "0%",
         }}>
@@ -190,7 +205,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
             sx={{
               mt: 2,
               mb: 0.75,
-              fontSize: "24px",
+              fontSize: { xs: "16px", sm: "24px" },
               fontWeight: 400,
               color: "#000",
               letterSpacing: 1.2,
@@ -203,7 +218,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
           sx={{
             mt: 2,
             mb: 2.5,
-            fontSize: "24px",
+            fontSize: { xs: "16px", sm: "24px" },
             fontWeight: 400,
             color: "#000",
             letterSpacing: 1.2,
@@ -214,17 +229,17 @@ export default function DietChart({ dietPlan }: DietChartProps) {
 
         {/* BREAKFAST */}
         <SectionCard sx={{ width: { xs: "100%", md: 977 }, height: { xs: "auto", md: 475 } }}>
-          <Box display="flex" alignItems="center" mb={0.5}>
+          <Box display="flex" alignItems="center" mb={0.5} flexWrap="wrap" gap={1}>
             <Typography sx={{
               mb: 0.75,
               fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
               fontWeight: 700,
-              fontSize: "28px",
+              fontSize: { xs: "20px", sm: "28px" },
               lineHeight: "100%",
               letterSpacing: "0%",
             }}>{breakfastPlan?.title || "Breakfast"}</Typography>
             <Box sx={{ flex: 1 }} />
-            <Typography fontSize="24px" fontWeight={700} color="#f97316">
+            <Typography sx={{ fontSize: { xs: "16px", sm: "24px" }, fontWeight: 700, color: "#f97316" }}>
               {breakfastOption1?.heading || "Option 1"}
             </Typography>
           </Box>
@@ -233,7 +248,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
             {breakfastOption1?.description || "--"}
           </Typography> */}
 
-          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
+          <Grid container spacing={{ xs: 1, sm: 1.25 }} sx={{ pr: { xs: 0, sm: "28px" } }}>
             <Grid item xs={4}>
               <Tile image="/diet/smoothies.jpg" label={breakfastLabels1[0] || "Smoothie"} />
             </Grid>
@@ -271,17 +286,17 @@ export default function DietChart({ dietPlan }: DietChartProps) {
 
         {/* LUNCH OPTION 1 */}
         <SectionCard sx={{ width: { xs: "100%", md: 977 }, height: { xs: "auto", md: 475 } }}>
-          <Box display="flex" alignItems="center" mb={0.5}>
+          <Box display="flex" alignItems="center" mb={0.5} flexWrap="wrap" gap={1}>
             <Typography sx={{
               mb: 0.75,
               fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
               fontWeight: 700,
-              fontSize: "28px",
+              fontSize: { xs: "20px", sm: "28px" },
               lineHeight: "100%",
               letterSpacing: "0%",
             }} >{lunchPlan?.title || "Lunch"}</Typography>
             <Box flex={1} />
-            <Typography fontSize="24px" fontWeight={700} color="#f97316">
+            <Typography sx={{ fontSize: { xs: "16px", sm: "24px" }, fontWeight: 700, color: "#f97316" }}>
               {lunchOption1?.heading || "Option 1"}
             </Typography>
           </Box>
@@ -290,7 +305,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
             {lunchOption1?.description || "--"}
           </Typography> */}
 
-          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
+          <Grid container spacing={{ xs: 1, sm: 1.25 }} sx={{ pr: { xs: 0, sm: "28px" } }}>
             <Grid item xs={4}>
               <Tile image="/diet/bakedSalmon.jpg" label={lunchLabels1[0] || "Baked salmon"} />
             </Grid>
@@ -304,17 +319,17 @@ export default function DietChart({ dietPlan }: DietChartProps) {
 
           <Divider sx={{ my: 2, borderColor: "#e5e7eb" }} />
 
-          <Box display="flex" alignItems="center" mb={0.5}>
+          <Box display="flex" alignItems="center" mb={0.5} flexWrap="wrap" gap={1}>
             <Typography sx={{
               mb: 0.75,
               fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
               fontWeight: 700,
-              fontSize: "28px",
+              fontSize: { xs: "20px", sm: "28px" },
               lineHeight: "100%",
               letterSpacing: "0%",
             }}>{lunchPlan?.title || "Lunch"}</Typography>
             <Box flex={1} />
-            <Typography fontSize="24px" fontWeight={700} color="#22c55e">
+            <Typography sx={{ fontSize: { xs: "16px", sm: "24px" }, fontWeight: 700, color: "#22c55e" }}>
               {lunchOption2?.heading || "Option 2 (vegetarian)"}
             </Typography>
           </Box>
@@ -323,7 +338,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
             {lunchOption2?.description || "--"}
           </Typography> */}
 
-          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
+          <Grid container spacing={{ xs: 1, sm: 1.25 }} sx={{ pr: { xs: 0, sm: "28px" } }}>
             <Grid item xs={4}>
               <Tile image="/diet/grain.jpg" label={lunchLabels2[0] || "Whole grain"} />
             </Grid>
@@ -341,10 +356,10 @@ export default function DietChart({ dietPlan }: DietChartProps) {
 
         {/* DINNER OPTION 1 */}
         <SectionCard sx={{ mt: 3, width: { xs: "100%", md: 977 }, height: { xs: "auto", md: 475 } }}>
-          <Box display="flex" alignItems="center" mb={0.5}>
-            <Typography fontSize="28px" fontWeight={700}>{dinnerPlan?.title || "Dinner"}</Typography>
+          <Box display="flex" alignItems="center" mb={0.5} flexWrap="wrap" gap={1}>
+            <Typography sx={{ fontSize: { xs: "20px", sm: "28px" }, fontWeight: 700 }}>{dinnerPlan?.title || "Dinner"}</Typography>
             <Box flex={1} />
-            <Typography fontSize="24px" fontWeight={700} color="#f97316">
+            <Typography sx={{ fontSize: { xs: "16px", sm: "24px" }, fontWeight: 700, color: "#f97316" }}>
               {dinnerOption1?.heading || "Option 1"}
             </Typography>
           </Box>
@@ -353,7 +368,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
             {dinnerOption1?.description || "--"}
           </Typography> */}
 
-          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
+          <Grid container spacing={{ xs: 1, sm: 1.25 }} sx={{ pr: { xs: 0, sm: "28px" } }}>
             <Grid item xs={4}>
               <Tile image="/diet/bakedSalmon.jpg" label={dinnerLabels1[0] || "Baked salmon"} />
             </Grid>
@@ -367,10 +382,10 @@ export default function DietChart({ dietPlan }: DietChartProps) {
 
           <Divider sx={{ my: 2, borderColor: "#e5e7eb" }} />
 
-          <Box display="flex" alignItems="center" mb={0.5}>
-            <Typography fontSize="28px" fontWeight={700}>{dinnerPlan?.title || "Dinner"}</Typography>
+          <Box display="flex" alignItems="center" mb={0.5} flexWrap="wrap" gap={1}>
+            <Typography sx={{ fontSize: { xs: "20px", sm: "28px" }, fontWeight: 700 }}>{dinnerPlan?.title || "Dinner"}</Typography>
             <Box flex={1} />
-            <Typography fontSize="24px" fontWeight={700} color="#22c55e">
+            <Typography sx={{ fontSize: { xs: "16px", sm: "24px" }, fontWeight: 700, color: "#22c55e" }}>
               {dinnerOption2?.heading || "Option 2 (vegetarian)"}
             </Typography>
           </Box>
@@ -379,7 +394,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
             {dinnerOption2?.description || "--"}
           </Typography> */}
 
-          <Grid container spacing={1.25} sx={{ pr: "28px" }}>
+          <Grid container spacing={{ xs: 1, sm: 1.25 }} sx={{ pr: { xs: 0, sm: "28px" } }}>
             <Grid item xs={4}>
               <Tile image="/diet/grain.jpg" label={dinnerLabels2[0] || "Whole grain"} />
             </Grid>
@@ -399,7 +414,7 @@ export default function DietChart({ dietPlan }: DietChartProps) {
                 mb: 0.75,
                 fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                 fontWeight: 700,
-                fontSize: "28px",
+                fontSize: { xs: "20px", sm: "28px" },
                 lineHeight: "100%",
                 letterSpacing: "0%",
               }}
@@ -409,10 +424,10 @@ export default function DietChart({ dietPlan }: DietChartProps) {
 
             {(supplementsPlan.options ?? []).map((opt, idx) => (
               <Box key={`${opt.heading ?? "option"}-${idx}`} sx={{ mt: idx === 0 ? 1 : 2 }}>
-                <Typography fontSize="24px" fontWeight={700} color="#111827">
+                <Typography sx={{ fontSize: { xs: "16px", sm: "24px" }, fontWeight: 700, color: "#111827" }}>
                   {opt.heading || `Option ${idx + 1}`}
                 </Typography>
-                <Typography fontSize="24px" fontWeight={400} color="#000" sx={{ mt: 0.5 }}>
+                <Typography sx={{ fontSize: { xs: "14px", sm: "24px" }, fontWeight: 400, color: "#000", mt: 0.5 }}>
                   {opt.description || "--"}
                 </Typography>
               </Box>
