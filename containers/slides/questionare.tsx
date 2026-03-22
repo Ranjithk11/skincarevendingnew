@@ -84,7 +84,7 @@ export default function Questionnaire() {
   const [isNumeric, setIsNumeric] = useState(false);
   const [selectedSkinType, setSelectedSkinType] = useState<string>("");
   const [validationError, setValidationError] = useState<string>("");
-  const [machineLocation, setMachineLocation] = useState<string>("leafterwater_vendingmachine01");
+  const [machineLocation, setMachineLocation] = useState<string>("leafterwater_vendingmachine02");
 
   const totalSlides = 2;
 
