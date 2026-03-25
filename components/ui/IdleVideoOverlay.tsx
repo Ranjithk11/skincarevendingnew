@@ -2,6 +2,9 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Typography } from "@mui/material";
+import { useRouter } from "next/navigation";
+import { APP_ROUTES } from "@/utils/routes";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 type IdleVideoOverlayProps = {
   idleMs?: number;
@@ -9,10 +12,11 @@ type IdleVideoOverlayProps = {
 };
 
 export default function IdleVideoOverlay({
-  idleMs = 120_000,
+  idleMs = 120_000, 
   src = "/videos/airport.mp4",
 }: IdleVideoOverlayProps) {
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [open, setOpen] = useState(true);
   const timerRef = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -30,8 +34,7 @@ export default function IdleVideoOverlay({
       try {
         v.pause();
         v.currentTime = 0;
-      } catch {
-      }
+      } catch {}
     }
   }, []);
 
@@ -42,10 +45,13 @@ export default function IdleVideoOverlay({
     }, idleMs);
   }, [clearTimer, idleMs]);
 
-  const onActivity = useCallback(() => {
-    if (open) hide();
-    arm();
-  }, [arm, hide, open]);
+  // 2. Only use the global listener to reset the timer when the overlay is CLOSED.
+  // When OPEN, the overlay will handle its own click events.
+  const onGlobalActivity = useCallback(() => {
+    if (!open) {
+      arm();
+    }
+  }, [arm, open]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -62,13 +68,13 @@ export default function IdleVideoOverlay({
       "wheel",
     ];
 
-    for (const e of events) window.addEventListener(e, onActivity, opts);
+    for (const e of events) window.addEventListener(e, onGlobalActivity, opts);
 
     return () => {
       clearTimer();
-      for (const e of events) window.removeEventListener(e, onActivity);
+      for (const e of events) window.removeEventListener(e, onGlobalActivity);
     };
-  }, [arm, clearTimer, onActivity]);
+  }, [arm, clearTimer, onGlobalActivity]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -78,16 +84,34 @@ export default function IdleVideoOverlay({
       try {
         const p = v.play();
         if (p && typeof (p as any).catch === "function") (p as any).catch(() => {});
-      } catch {
-      }
+      } catch {}
     }
   }, [open]);
+
+  // --- Interaction Handlers ---
+  const handleBackgroundClick = () => {
+    hide();
+    arm();
+  };
+
+  const handleScanClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 3. Prevents background click from firing
+    hide();
+    arm();
+    router.push(APP_ROUTES.HOME);
+  };
+
+  const handleBuyClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 3. Prevents background click from firing
+    hide();
+    arm();
+    router.push("/products");
+  };
 
   if (!open) return null;
 
   return (
     <Box
-      onClick={hide}
       sx={{
         position: "fixed",
         inset: 0,
@@ -110,32 +134,162 @@ export default function IdleVideoOverlay({
         }}
       />
 
+      {/* The background container now acts as the global dismiss layer */}
       <Box
+        onClick={handleBackgroundClick} 
         sx={{
           position: "absolute",
           inset: 0,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          pointerEvents: "none",
+          px: 3,
         }}
       >
-        <Box
+        <Typography
           sx={{
-            bgcolor: "rgba(0,0,0,0.55)",
-            px: 4,
-            py: 3,
-            borderRadius: 3,
-            textAlign: "center",
+            fontSize: { xs: 48, md: 52 },
+            fontWeight: 700,
             color: "white",
+            textAlign: "center",
+            mb: 2,
+            textShadow: "0 2px 8px rgba(0,0,0,0.5)",
           }}
         >
-          <Typography sx={{ fontSize: 32, fontWeight: 700, mb: 1.5 }}>
-            Touch Screen to Begin
-          </Typography>
-          <Typography sx={{ fontSize: 20 }}>
-            Experience the Leafwater difference
-          </Typography>
+          Leafwater AI Beauty Pod
+        </Typography>
+        <Typography
+          sx={{
+            fontSize: { xs: 24, md: 24 },
+            color: "rgba(255,255,255,0.9)",
+            textAlign: "center",
+            mb: 5,
+            textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+          }}
+        >
+          Your personalized skincare journey starts here
+        </Typography>
+
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "row",
+            gap: 3,
+            width: "100%",
+            maxWidth: 900,
+            px: 2,
+          }}
+        >
+          <Box
+            onClick={handleScanClick}
+            sx={{
+              flex: 1,
+              bgcolor: "rgba(105, 159, 126, 0.75)",
+              backdropFilter: "blur(16px)",
+              border: "1.5px solid rgba(255,255,255,0.25)",
+              borderRadius: 4,
+              p: 4,
+              cursor: "pointer",
+              textAlign: "center",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                bgcolor: "rgba(105, 159, 126, 0.85)",
+                transform: "translateY(-4px)",
+                boxShadow: "0 12px 40px rgba(0,0,0,0.3)",
+              },
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: { xs: 28, md: 28 },
+                fontWeight: 700,
+                color: "white",
+                mb: 1.5,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                lineHeight: 1.2,
+              }}
+            >
+              Get Your Free AI Skin Analysis
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: { xs: 24, md: 24 },
+                color: "rgba(255,255,255,0.9)",
+                mb: 2.5,
+              }}
+            >
+              Tap to start your scan and get custom recommendations
+            </Typography>
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 1,
+                color: "white",
+                fontWeight: 600,
+                fontSize: 24,
+              }}
+            >
+              Start Scan <ArrowForwardIcon sx={{ fontSize: 20 }} />
+            </Box>
+          </Box>
+
+          <Box
+            onClick={handleBuyClick}
+            sx={{
+              flex: 1,
+              bgcolor: "rgba(105, 159, 126, 0.75)",
+              backdropFilter: "blur(16px)",
+              border: "1.5px solid rgba(255,255,255,0.25)",
+              borderRadius: 4,
+              p: 4,
+              cursor: "pointer",
+              textAlign: "center",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                bgcolor: "rgba(105, 159, 126, 0.85)",
+                transform: "translateY(-4px)",
+                boxShadow: "0 12px 40px rgba(0,0,0,0.3)",
+              },
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: { xs: 28, md: 28 },
+                fontWeight: 700,
+                color: "white",
+                mb: 1.5,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                lineHeight: 1.2,
+              }}
+            >
+              Buy Now Without Scan
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: { xs: 24, md: 24 },
+                color: "rgba(255,255,255,0.9)",
+                mb: 2.5,
+              }}
+            >
+              Browse products and add to cart directly
+            </Typography>
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 1,
+                color: "white",
+                fontWeight: 600,
+                fontSize: 24,
+              }}
+            >
+              Shop Products <ArrowForwardIcon sx={{ fontSize: 20 }} />
+            </Box>
+          </Box>
         </Box>
       </Box>
     </Box>

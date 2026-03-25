@@ -3,16 +3,42 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Box, Grid, Typography, useMediaQuery, useTheme } from "@mui/material";
 import ProductCard from "./ProductCard";
-
-interface Brand {
-  _id: string;
-  _key: string;
-  name: string;
-  label: string;
-}
+import {
+  useGetProductCategoriesQuery,
+  useGetAllBrandsQuery,
+} from "@/redux/api/products";
 
 type Props = {
   data: any;
+};
+
+const mapProductToCardProps = (product: any) => {
+  const imageUrl =
+    product?.images?.[0]?.url ||
+    product?.image_url ||
+    product?.images?.[0] ||
+    "";
+
+  const retailPrice =
+    product?.retailPrice ??
+    product?.retail_price ??
+    0;
+
+  const productId = product?._id || product?.id;
+
+  return {
+    _id: productId,
+    name: product?.name,
+    productBenefits: product?.productBenefits || product?.description || "",
+    productUse: product?.productUse || "",
+    retailPrice,
+    matches: product?.matches || [],
+    images: imageUrl ? [{ url: imageUrl }] : [],
+    shopifyUrl: product?.shopifyUrl || product?.shopify_url || "#buy",
+    isShopifyAvailable: product?.isShopifyAvailable ?? product?.in_stock ?? true,
+    discount: product?.discount || null,
+    category: product?.productCategory?.title || product?.category || "",
+  };
 };
 
 const PageBackground = ({ children }: { children: React.ReactNode }) => {
@@ -55,202 +81,294 @@ export default function VendingProducts({ data }: Props) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
-  const normalizeBrandKey = (name: unknown) =>
-    String(name ?? "").trim().toLowerCase();
+  // Fetch categories and brands from cloud API (same as /products page)
+  const { data: categoriesData } = useGetProductCategoriesQuery({});
+  const { data: brandsData } = useGetAllBrandsQuery({});
+  
+  const cloudCategories = categoriesData?.data || [];
+  const cloudBrands = brandsData?.data || [];
+
+  // State for filters
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedBrand, setSelectedBrand] = useState("all");
+  
+  // State for products and slots
+  const [products, setProducts] = useState<any[]>([]);
+  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumbers: number[]; quantity: number }>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // State for category/brand images
+  const [categoryImages, setCategoryImages] = useState<Record<string, string | undefined>>({});
+  const [brandImages, setBrandImages] = useState<Record<string, string | undefined>>({});
+  
+  // State for categories that have available products in vending machine
+  const [availableCategoryIds, setAvailableCategoryIds] = useState<Set<string>>(new Set());
 
   const normalizeProductId = (id: unknown) => {
     const raw = String(id ?? "").trim();
     if (!raw) return "";
-
-    // Common formats:
-    // - "products/33945035"
-    // - "gid://shopify/Product/33945035"
-    // - "33945035"
     const numericMatch = raw.match(/(\d{5,})\/?$/);
     if (numericMatch?.[1]) return numericMatch[1];
-
     return raw.replace(/^products\//, "");
   };
 
-  const normalizeProductName = (name: unknown) =>
-    String(name ?? "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-  const categories = useMemo(() => {
-    const high = data?.recommendedProducts?.highRecommendation;
-    if (!Array.isArray(high)) return [];
-    return high.filter(Boolean);
-  }, [data]);
-
-  const [categoryIndex, setCategoryIndex] = useState(0);
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
-  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumbers: number[]; quantity: number }>>({});
-  const [slotsNameMap, setSlotsNameMap] = useState<Record<string, { slotNumbers: number[]; quantity: number }>>({});
-
+  // Fetch slots on mount
   useEffect(() => {
-    setBrands([]);
-    setSelectedBrand(null);
-  }, [categories]);
-
-  useEffect(() => {
-    let cancelled = false;
-
     const fetchSlots = async () => {
       try {
         const res = await fetch("/api/admin/slots");
         if (res.ok) {
           const slotsData = await res.json();
-          if (cancelled) return;
           const map: Record<string, { slotNumbers: number[]; quantity: number }> = {};
-          const nameMap: Record<string, { slotNumbers: number[]; quantity: number }> = {};
-          // Handle both array and object formats
-          const slotsArray = Array.isArray(slotsData)
-            ? slotsData
-            : Object.values(slotsData);
+          const slotsArray = Array.isArray(slotsData) ? slotsData : Object.values(slotsData);
+          
           slotsArray.forEach((slot: any) => {
-            const quantity = Number(slot?.quantity || 0);
-
-            const update = (
-              target: Record<string, { slotNumbers: number[]; quantity: number }>,
-              key: string
-            ) => {
-              if (!key) return;
-              const slotId = Number(slot.slot_id);
-              if (!Number.isFinite(slotId)) return;
-
-              const existing = target[key];
-              if (!existing) {
-                target[key] = { slotNumbers: [slotId], quantity };
-                return;
-              }
-
-              if (!existing.slotNumbers.includes(slotId)) {
-                existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
-              }
-              existing.quantity = Number(existing.quantity || 0) + quantity;
-            };
-
-            if (slot?.product_id) {
+            if (slot.product_id) {
               const rawId = String(slot.product_id);
               const cleanId = normalizeProductId(rawId);
-              update(map, rawId);
-              if (cleanId && cleanId !== rawId) update(map, cleanId);
-            }
+              const quantity = Number(slot.quantity || 0);
 
-            const slotNameKey = normalizeProductName(slot?.product_name);
-            if (slotNameKey) update(nameMap, slotNameKey);
+              const update = (key: string) => {
+                if (!key) return;
+                const slotId = Number(slot.slot_id);
+                if (!Number.isFinite(slotId)) return;
+                const existing = map[key];
+                if (!existing) {
+                  map[key] = { slotNumbers: [slotId], quantity };
+                  return;
+                }
+                if (!existing.slotNumbers.includes(slotId)) {
+                  existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
+                }
+                existing.quantity = Number(existing.quantity || 0) + quantity;
+              };
+
+              update(rawId);
+              if (cleanId && cleanId !== rawId) update(cleanId);
+            }
           });
           setSlotsMap(map);
-          setSlotsNameMap(nameMap);
         }
       } catch (err) {
         console.warn("Failed to fetch slots:", err);
       }
     };
-
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") fetchSlots();
-    };
-
     fetchSlots();
-    const interval = window.setInterval(fetchSlots, 5000);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
   }, []);
 
-  // const brandImageMap = useMemo(() => {
-  //   const map = new Map<string, string>();
-  //   if (!categories || categories.length === 0) return map;
+  // Check which categories have available products in vending machine
+  useEffect(() => {
+    if (cloudCategories.length === 0 || Object.keys(slotsMap).length === 0) return;
+    
+    let cancelled = false;
+    
+    const checkAvailableCategories = async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
+      if (!apiUrl) return;
+      
+      const availableIds = new Set<string>();
+      availableIds.add("all"); // Always show "All" category
+      
+      // Check each category for available products
+      for (const cat of cloudCategories) {
+        if (cat._id === "all") continue;
+        
+        try {
+          const res = await fetch(
+            `${apiUrl}/product/fetch-by-filter?catId=${cat._id}&limit=100&isShopifyAvailable=true&hasBrand=true`,
+            { headers: { "x-db-token": dbToken } }
+          );
+          const data = await res.json();
+          const catProducts = data?.data?.[0]?.products || [];
+          
+          // Check if any product in this category is available in vending machine
+          const hasAvailable = catProducts.some((p: any) => {
+            const productId = p?._id || p?.id;
+            const slotInfo = slotsMap[String(productId)] || slotsMap[normalizeProductId(productId)];
+            return slotInfo && slotInfo.quantity > 0;
+          });
+          
+          if (hasAvailable) {
+            availableIds.add(cat._id);
+          }
+        } catch (err) {
+          // Skip this category on error
+        }
+      }
+      
+      if (!cancelled) {
+        setAvailableCategoryIds(availableIds);
+      }
+    };
+    
+    checkAvailableCategories();
+    return () => { cancelled = true; };
+  }, [cloudCategories, slotsMap]);
 
-  //   categories.forEach((cat: any) => {
-  //     const prods = cat?.products || [];
-  //     prods.forEach((p: any) => {
-  //       const brandNameRaw =
-  //         p?.brand?.name ??
-  //         p?.brand?.label ??
-  //         p?.brandName ??
-  //         p?.brand_label ??
-  //         (typeof p?.brand === "string" ? p.brand : undefined);
+  // Fetch products for selected category/brand (same as /products page)
+  useEffect(() => {
+    let cancelled = false;
 
-  //       const brandKey = normalizeBrandKey(brandNameRaw);
-  //       if (!brandKey) return;
+    const fetchProducts = async () => {
+      try {
+        setIsLoading(true);
+        const params = new URLSearchParams();
+        params.set("page", "1");
+        params.set("limit", "100");
+        params.set("hasBrand", "true");
+        params.set("isShopifyAvailable", "true");
+        if (selectedCategory !== "all") params.set("catId", selectedCategory);
+        if (selectedBrand !== "all") params.set("brandId", selectedBrand);
 
-  //       const img =
-  //         p?.images?.[0]?.url ||
-  //         p?.image_url ||
-  //         p?.images?.[0] ||
-  //         p?.imageUrl ||
-  //         "";
+        const res = await fetch(`/api/admin/products?${params.toString()}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
 
-  //       if (img && !map.has(brandKey)) {
-  //         map.set(brandKey, img);
-  //       }
-  //     });
-  //   });
+        if (!res.ok) throw new Error(`Failed to load products: ${res.status}`);
+        const json = await res.json();
+        if (cancelled) return;
 
-  //   return map;
-  // }, [categories]);
-
-  // const isAllBrandName = (name: unknown) => {
-  //   const n = String(name ?? "").trim().toLowerCase();
-  //   return n === "all" || n === "all brands";
-  // };
-
-  const activeCategory = categories?.[categoryIndex];
-  const products = Array.isArray(activeCategory?.products)
-    ? activeCategory.products
-    : [];
-
-  const visibleProducts = useMemo(() => {
-    let filtered = products.filter(Boolean);
-    // Filter by brand if selected
-    if (selectedBrand) {
-      const selectedKey = normalizeBrandKey(selectedBrand);
-      filtered = filtered.filter((p: any) => {
-        const brandNameRaw =
-          p?.brand?.name ??
-          p?.brand?.label ??
-          p?.brandName ??
-          p?.brand_label ??
-          (typeof p?.brand === "string" ? p.brand : undefined);
-        return normalizeBrandKey(brandNameRaw) === selectedKey;
-      });
-    }
-    return filtered;
-  }, [products, selectedBrand]);
-
-  const sortedProducts = useMemo(() => {
-    const getSlotInfo = (product: any) => {
-      const productId = product?.id ?? product?._id;
-      return (
-        slotsMap[String(productId)] ||
-        slotsMap[normalizeProductId(productId)] ||
-        slotsNameMap[normalizeProductName(product?.name)]
-      );
+        setProducts(Array.isArray(json) ? json : json?.data?.[0]?.products || []);
+      } catch (e) {
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
     };
 
-    const decorated = visibleProducts.map((product: any) => {
+    fetchProducts();
+    return () => { cancelled = true; };
+  }, [selectedCategory, selectedBrand]);
+
+  // Fetch category images
+  useEffect(() => {
+    if (cloudCategories.length === 0) return;
+
+    const fetchCategoryImages = async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
+
+      const fetchPromises = cloudCategories
+        .filter((cat: any) => cat._id !== "all")
+        .map(async (cat: any) => {
+          try {
+            const res = await fetch(
+              `${apiUrl}/product/fetch-by-filter?catId=${cat._id}&limit=1&isShopifyAvailable=true&hasBrand=true`,
+              { headers: { "x-db-token": dbToken } }
+            );
+            const data = await res.json();
+            return { catId: cat._id, imgUrl: data?.data?.[0]?.products?.[0]?.images?.[0]?.url };
+          } catch {
+            return { catId: cat._id, imgUrl: undefined };
+          }
+        });
+
+      const results = await Promise.all(fetchPromises);
+      const images: Record<string, string | undefined> = {};
+      results.forEach(({ catId, imgUrl }) => {
+        if (imgUrl) images[catId] = imgUrl;
+      });
+      setCategoryImages(images);
+    };
+
+    fetchCategoryImages();
+  }, [cloudCategories]);
+
+  // Fetch brand images
+  useEffect(() => {
+    if (cloudBrands.length === 0) return;
+
+    const fetchBrandImages = async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
+      if (!apiUrl) return;
+
+      const fetchPromises = cloudBrands
+        .filter((b: any) => b?._id && b._id !== "all")
+        .map(async (b: any) => {
+          try {
+            const res = await fetch(
+              `${apiUrl}/product/fetch-by-filter?brandId=${b._id}&limit=1&isShopifyAvailable=true&hasBrand=true`,
+              { headers: { "x-db-token": dbToken } }
+            );
+            const data = await res.json();
+            return { brandId: b._id, imgUrl: data?.data?.[0]?.products?.[0]?.images?.[0]?.url };
+          } catch {
+            return { brandId: b._id, imgUrl: undefined };
+          }
+        });
+
+      const results = await Promise.all(fetchPromises);
+      const images: Record<string, string | undefined> = {};
+      results.forEach(({ brandId, imgUrl }) => {
+        if (imgUrl) images[brandId] = imgUrl;
+      });
+      setBrandImages(images);
+    };
+
+    fetchBrandImages();
+  }, [cloudBrands]);
+
+  // Sort products - available first, then by quantity
+  const sortedProducts = useMemo(() => {
+    const getSlotInfo = (p: any) => {
+      const productId = p?.id ?? p?._id;
+      return slotsMap[String(productId)] || slotsMap[normalizeProductId(productId)];
+    };
+
+    const decorated = products.map((product: any) => {
       const slotInfo = getSlotInfo(product);
       const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
       const quantity = slotInfo?.quantity ?? 0;
       return { product, slotInfo, isAvailable, quantity };
     });
 
-    decorated.sort((a: any, b: any) => {
-      if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+    // Filter to show only available products
+    const availableOnly = decorated.filter((item) => item.isAvailable);
+
+    availableOnly.sort((a, b) => {
       if (a.quantity !== b.quantity) return b.quantity - a.quantity;
       return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""));
     });
 
-    return decorated;
-  }, [visibleProducts, slotsMap, slotsNameMap]);
+    return availableOnly;
+  }, [products, slotsMap]);
+
+  // Process personalized recommendations from cloud API (data prop)
+  const personalizedProducts = useMemo(() => {
+    const high = data?.recommendedProducts?.highRecommendation;
+    if (!Array.isArray(high)) return [];
+    
+    const allProducts: any[] = [];
+    const seenIds = new Set<string>();
+    
+    high.forEach((cat: any) => {
+      if (Array.isArray(cat?.products)) {
+        cat.products.forEach((p: any) => {
+          const id = p?._id || p?.id || p?._key;
+          if (id && !seenIds.has(id)) {
+            seenIds.add(id);
+            // Check if available in vending machine
+            const slotInfo = slotsMap[String(id)] || slotsMap[normalizeProductId(id)];
+            if (slotInfo && slotInfo.quantity > 0) {
+              allProducts.push({
+                product: p,
+                slotInfo,
+                isAvailable: true,
+                quantity: slotInfo.quantity,
+                category: cat?.productCategory?.title || "",
+              });
+            }
+          }
+        });
+      }
+    });
+    
+    return allProducts;
+  }, [data, slotsMap]);
 
   return (
     <PageBackground>
@@ -258,42 +376,74 @@ export default function VendingProducts({ data }: Props) {
         sx={{
           width: "100%",
           mb: 2,
-          fontFamily:
-            'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+          fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
         }}
       >
         <Typography sx={{ fontWeight: 800, fontSize: 30, mt: 3, mb: 3 }}>
           My Skincare Products
         </Typography>
-        <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#000", mb: 1 }}>
-          WHAT WE RECOMMEND
-        </Typography>
 
+        {/* Personalized Recommendations Section */}
+        {personalizedProducts.length > 0 && (
+          <>
+            <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#9A9A9A", mb: 2 }}>
+              PERSONALIZED FOR YOU
+            </Typography>
+            {/* <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mb: 4 }}>
+              {personalizedProducts.map((row: any, idx: number) => {
+                const product = row?.product;
+                const slotInfo = row?.slotInfo;
+                const mappedProduct = mapProductToCardProps(product);
+                const productQty = slotInfo?.quantity ?? 0;
+                return (
+                  <Grid item xs={6} md={4} key={`personalized-${String(mappedProduct._id)}-${idx}`} sx={{ display: "flex", justifyContent: "center" }}>
+                    <ProductCard
+                      {...mappedProduct}
+                      enabledMask={false}
+                      compact={false}
+                      horizontalLayout={true}
+                      slotNumbers={slotInfo?.slotNumbers ?? null}
+                      isAvailable={true}
+                      quantity={productQty}
+                      cardSx={{ width: "100%", ...(isDesktop ? { maxWidth: 700, minHeight: 380 } : { maxWidth: 700, height: 300 }) }}
+                    />
+                  </Grid>
+                );
+              })}
+            </Grid> */}
+          </>
+        )}
+{/* 
+        <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#9A9A9A", mb: 1 }}>
+          AVAILABLE IN MACHINE
+        </Typography> */}
+
+        {/* Category Filter */}
         <Box
           sx={{
-            mt: 5,
-            mb: 5,
+            mt: 2,
+            mb: 4,
             display: "flex",
-            gap: { xs: 0, md: 0 },
-            overflowX: { xs: "auto", md: "hidden" },
-            flexWrap: { xs: "nowrap", md: "wrap" },
-            justifyContent: { md: "space-between" },
+            gap: 1,
+            overflowX: "auto",
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+            pb: 2,
             width: "100%",
-            pb: 1,
           }}
         >
-          {categories.slice(0, 8).map((c: any, idx: number) => {
-            const isAllCategory = idx === 0;
+          {cloudCategories
+            .filter((category: any) => availableCategoryIds.has(category._id))
+            .map((category: any) => {
+            const active = selectedCategory === category._id;
+            const isAllCategory = category?._id === "all";
+            const catImage = categoryImages[category._id];
             return (
               <Box
-                key={c?.productCategory?._id || idx}
-                onClick={() => setCategoryIndex(idx)}
-                sx={{
-                  flex: "0 0 auto",
-                  width: { xs: 100, md: "calc((100% - 21px) / 8)" },
-                  cursor: "pointer",
-                  textAlign: "center",
-                }}
+                key={category._id}
+                onClick={() => setSelectedCategory(category._id)}
+                sx={{ flex: "0 0 auto", cursor: "pointer", textAlign: "center", minWidth: 100 }}
               >
                 <Box
                   sx={{
@@ -301,10 +451,7 @@ export default function VendingProducts({ data }: Props) {
                     height: { xs: 58, md: 86 },
                     borderRadius: "50%",
                     mx: "auto",
-                    border:
-                      idx === categoryIndex
-                        ? "2px solid #0f766e"
-                        : "2px solid #e5e7eb",
+                    border: active ? "2px solid #0f766e" : "2px solid #e5e7eb",
                     bgcolor: "#ffffff",
                     overflow: "hidden",
                     display: "flex",
@@ -313,186 +460,70 @@ export default function VendingProducts({ data }: Props) {
                   }}
                 >
                   {isAllCategory ? (
-                    <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#0f766e" }}>
-                      All
-                    </Typography>
-                  ) : c?.products?.[0]?.images?.[0]?.url ? (
-                    <Box
-                      component="img"
-                      src={c?.products?.[0]?.images?.[0]?.url}
-                      alt={c?.productCategory?.title || "category"}
-                      sx={{ width: "122px", height: "122px", objectFit: "contain" }}
-                    />
+                    <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#0f766e" }}>All</Typography>
+                  ) : catImage ? (
+                    <Box component="img" src={catImage} alt={category.title || "category"} sx={{ width: "122px", height: "122px", objectFit: "contain" }} />
                   ) : null}
                 </Box>
-                <Typography
-                  sx={{
-                    mt: 0.75,
-                    fontSize: "24px",
-                    color: "#000",
-                    fontWeight: 400,
-                    whiteSpace: "normal",
-                    wordBreak: "break-word",
-                    lineHeight: 1.15,
-                    fontFamily: "Roboto, system-ui, -apple-system",
-                  }}
-                >
-                  {(() => {
-                    const title = c?.productCategory?.title || "Category";
-                    const parts = String(title).trim().split(/\s+/);
-                    const first = parts[0] || "";
-                    const rest = parts.slice(1).join(" ");
-
-                    return rest ? (
-                      <>
-                        {first}
-                        <br />
-                        {rest}
-                      </>
-                    ) : (
-                      first
-                    );
-                  })()}
+                <Typography sx={{ mt: 0.75, fontSize: 18, color: "#000", fontWeight: active ? 600 : 400, whiteSpace: "nowrap" }}>
+                  {category.title}
                 </Typography>
               </Box>
             );
           })}
-
-          {/* Vertical divider between category and brand filters */}
-          {/* <Box
-            aria-hidden
-            sx={{
-              flex: "0 0 auto",
-              width: 4,
-              height: 100,
-              bgcolor: "#79797aff",
-              alignSelf: "center",
-              mx: 2,
-              borderRadius: 999,
-            }}
-          /> */}
-
-          {/* Brand filters (same style as categories) */}
-          {/* {brands
-            .filter((b) => !isAllBrandName(b?.name))
-            .slice(0, 8)
-            .map((b) => {
-              const brandKey = normalizeBrandKey(b.name);
-              const img = brandImageMap.get(brandKey);
-              const active = normalizeBrandKey(selectedBrand) === brandKey;
-
-              return (
-                <Box
-                  key={b._key || b._id || b.name}
-                  onClick={() => setSelectedBrand(active ? null : b.name)}
-                  sx={{
-                    flex: "0 0 auto",
-                    width: { xs: 100, md: "calc((100% - 21px) / 8)" },
-                    cursor: "pointer",
-                    textAlign: "center",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: { xs: 58, md: 86 },
-                      height: { xs: 58, md: 86 },
-                      borderRadius: "50%",
-                      mx: "auto",
-                      border: active ? "2px solid #0f766e" : "2px solid #e5e7eb",
-                      bgcolor: "#ffffff",
-                      overflow: "hidden",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {img ? (
-                      <Box
-                        component="img"
-                        src={img}
-                        alt={b?.name || "brand"}
-                        sx={{ width: "122px", height: "122px", objectFit: "contain" }}
-                      />
-                    ) : null}
-                  </Box>
-                  <Typography
-                    sx={{
-                      mt: 0.75,
-                      fontSize: "24px",
-                      color: "#000",
-                      fontWeight: 400,
-                      whiteSpace: "normal",
-                      wordBreak: "break-word",
-                      lineHeight: 1.15,
-                      fontFamily: "Roboto, system-ui, -apple-system",
-                    }}
-                  >
-                    {(() => {
-                      const title = b?.name || "Brand";
-                      const parts = String(title).trim().split(/\s+/);
-                      const first = parts[0] || "";
-                      const rest = parts.slice(1).join(" ");
-
-                      return rest ? (
-                        <>
-                          {first}
-                          <br />
-                          {rest}
-                        </>
-                      ) : (
-                        first
-                      );
-                    })()}
-                  </Typography>
-                </Box>
-              );
-            })} */}
         </Box>
 
-        <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 1 }}>
-          {visibleProducts.length === 0 ? (
+        {/* Brand Filter */}
+        {/* <Typography sx={{ fontSize: 24, color: "#9A9A9A", fontWeight: 400, letterSpacing: 1, textTransform: "uppercase" }}>
+          BRAND FILTER
+        </Typography>
+        <Box sx={{ display: "flex", gap: 2, overflowX: "auto", py: 2, "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}>
+          <Box onClick={() => setSelectedBrand("all")} sx={{ flex: "0 0 auto", cursor: "pointer", textAlign: "center", minWidth: 80 }}>
+            <Box sx={{ width: { xs: 58, md: 86 }, height: { xs: 58, md: 86 }, borderRadius: "50%", mx: "auto", border: selectedBrand === "all" ? "2px solid #0f766e" : "2px solid #e5e7eb", bgcolor: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#0f766e" }}>All</Typography>
+            </Box>
+            <Typography sx={{ mt: 0.75, fontSize: 18, color: "#000", fontWeight: selectedBrand === "all" ? 600 : 400, whiteSpace: "nowrap" }}>All Brands</Typography>
+          </Box>
+          {cloudBrands.filter((b: any) => b?._id && b._id !== "all").map((brand: any) => {
+            const active = selectedBrand === brand._id;
+            const brandImg = brandImages[brand._id];
+            return (
+              <Box key={brand._id} onClick={() => setSelectedBrand(brand._id)} sx={{ flex: "0 0 auto", cursor: "pointer", textAlign: "center", minWidth: 80 }}>
+                <Box sx={{ width: { xs: 58, md: 86 }, height: { xs: 58, md: 86 }, borderRadius: "50%", mx: "auto", border: active ? "2px solid #0f766e" : "2px solid #e5e7eb", bgcolor: "#ffffff", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {brandImg ? <Box component="img" src={brandImg} alt={brand.name || "brand"} sx={{ width: "122px", height: "122px", objectFit: "contain" }} /> : null}
+                </Box>
+                <Typography sx={{ mt: 0.75, fontSize: 18, color: "#000", fontWeight: active ? 600 : 400, whiteSpace: "nowrap" }}>{brand.name}</Typography>
+              </Box>
+            );
+          })}
+        </Box> */}
+
+        {/* Products Grid */}
+        <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 2 }}>
+          {sortedProducts.length === 0 ? (
             <Grid item xs={12}>
               <Typography sx={{ mt: 1.5, color: "#6b7280" }}>
-                No products available for this category.
+                {isLoading ? "Loading products..." : "No products available in vending machine for this selection."}
               </Typography>
             </Grid>
           ) : (
             sortedProducts.map((row: any, idx: number) => {
               const product = row?.product;
               const slotInfo = row?.slotInfo;
-              const productId = product?.id ?? product?._id;
-              // Product must be assigned to a slot to be available from vending machine
+              const mappedProduct = mapProductToCardProps(product);
               const productQty = slotInfo?.quantity ?? 0;
               const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
               return (
-                <Grid
-                  item
-                  xs={6}
-                  md={4}
-                  key={`${String(productId)}-${(slotInfo?.slotNumbers || []).join("-") || "na"}-${idx}`}
-                  sx={{ display: "flex", justifyContent: "center" }}
-                >
+                <Grid item xs={6} md={4} key={`product-${String(mappedProduct._id)}-${idx}`} sx={{ display: "flex", justifyContent: "center" }}>
                   <ProductCard
-                    {...product}
-                    category={activeCategory?.productCategory?.title}
+                    {...mappedProduct}
                     enabledMask={false}
                     compact={false}
                     horizontalLayout={true}
                     slotNumbers={slotInfo?.slotNumbers ?? null}
                     isAvailable={isAvailable}
                     quantity={productQty}
-                    cardSx={{
-                      width: "100%",
-                      ...(isDesktop
-                        ? {
-                          maxWidth: 700,
-                          minHeight: 380,
-                        }
-                        : {
-                          maxWidth: 700,
-                          height: 300,
-                        }),
-                    }}
+                    cardSx={{ width: "100%", ...(isDesktop ? { maxWidth: 700, minHeight: 380 } : { maxWidth: 700, height: 300 }) }}
                   />
                 </Grid>
               );
