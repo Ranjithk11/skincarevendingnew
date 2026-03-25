@@ -270,22 +270,43 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
       }))
     : [];
 
+  // Helper to check if product is available in vending machine
+  const isProductAvailable = (p: any) => {
+    const productId = p?.id ?? p?._id;
+    const slotInfo =
+      slotsMap[String(productId)] ||
+      slotsMap[normalizeProductId(productId)] ||
+      slotsNameMap[normalizeProductName(p?.name)];
+    return slotInfo && slotInfo.quantity > 0;
+  };
+
   const pickProducts = (keywords: string[], limit: number) => {
     const kw = keywords.map(normalize);
+    let candidates: any[] = [];
+    
+    // First try to find products from matching category
     for (const b of productBuckets) {
       const title = b.categoryTitle;
       if (kw.some((k) => title.includes(k))) {
-        return b.products.slice(0, limit);
+        candidates = b.products;
+        break;
       }
     }
 
-    const flat = productBuckets.flatMap((b) => b.products);
-    const matches = flat.filter((p: any) => {
-      const use = normalize(p?.productUse);
-      const name = normalize(p?.name);
-      return kw.some((k) => use.includes(k) || name.includes(k));
-    });
-    return matches.slice(0, limit);
+    // If no category match, search in all products
+    if (candidates.length === 0) {
+      const flat = productBuckets.flatMap((b) => b.products);
+      candidates = flat.filter((p: any) => {
+        const use = normalize(p?.productUse);
+        const name = normalize(p?.name);
+        return kw.some((k) => use.includes(k) || name.includes(k));
+      });
+    }
+    
+    // Filter to only show available products and sort available first
+    const availableProducts = candidates.filter(isProductAvailable);
+    
+    return availableProducts.slice(0, limit);
   };
 
   const cleanserProducts = pickProducts(["face wash", "cleanser"], 2);
