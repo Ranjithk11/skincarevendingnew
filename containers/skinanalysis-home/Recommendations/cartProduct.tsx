@@ -152,16 +152,17 @@
 
                 if (dispenseResult.success) {
                     toast.success("Products dispensed successfully!");
+                    return { success: true, dispenseFailed: false };
                 } else {
                     console.error("[Dispense] Dispense failed:", dispenseResult.error?.message);
-                    // Still return true to show feedback
+                    // Product didn't fall into tray - show refund message
+                    return { success: true, dispenseFailed: true };
                 }
 
-                return true;
             } catch (error) {
                 console.error("[Dispense] Error:", error);
-                // Still return true to allow feedback to show
-                return true;
+                // Return with dispenseFailed flag for error cases
+                return { success: true, dispenseFailed: true };
             } finally {
                 setIsDispensing(false);
             }

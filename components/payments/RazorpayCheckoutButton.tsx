@@ -199,16 +199,15 @@ export default function RazorpayCheckoutButton({
         currency: order.currency,
         order_id: order.id,
         name: "Leafwater",
-        description: "Skincare Products",
-        image: "/logo.png",
+        description: "Product Purchase",
+        image: "/wending/goldlog.svg",
         prefill: {
           name: customer?.name,
           email: customer?.email,
           contact: customer?.contact,
         },
         theme: {
-          color: "#316D52",
-          backdrop_color: "rgba(0, 0, 0, 0.7)",
+          color: "#2E7D32",
         },
         handler: async (response: RazorpayPaymentSuccessResponse) => {
           try {

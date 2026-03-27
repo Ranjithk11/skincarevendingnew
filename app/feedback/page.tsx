@@ -538,9 +538,36 @@ export default function FeedbackPage() {
                     )}
                   </>
                 ) : (
-                  <Typography sx={{ fontSize: 20, color: "#b91c1c" }}>
-                    {dispenseState.message}
-                  </Typography>
+                  <Box sx={{ 
+                    mt: 1, 
+                    p: 2, 
+                    bgcolor: "#fef2f2", 
+                    borderRadius: 2,
+                    border: "2px solid #ef4444"
+                  }}>
+                    <Typography sx={{ fontSize: 30, fontWeight: 700, color: "#b91c1c", mb: 1 }}>
+                      ⚠️ Product Dispensing Issue
+                    </Typography>
+                    <Typography sx={{ fontSize: 24, color: "#7f1d1d", mb: 1.5 }}>
+                      {dispenseState.message}
+                    </Typography>
+                    <Box sx={{ 
+                      bgcolor: "#ffffff", 
+                      p: 2, 
+                      borderRadius: 2,
+                      border: "1px solid #fecaca"
+                    }}>
+                      <Typography sx={{ fontSize: 28, fontWeight: 600, color: "#166534", mb: 1 }}>
+                        Don't worry! 🙏
+                      </Typography>
+                      <Typography sx={{ fontSize: 24, color: "#374151", lineHeight: 1.6 }}>
+                        Your amount will be refunded to your original payment method. Our team members will get back to you on this issue shortly.
+                      </Typography>
+                      <Typography sx={{ fontSize: 24, color: "#6b7280", mt: 1.5, fontStyle: "italic" }}>
+                        For immediate assistance, please contact our support team. (+91 8008675263)
+                      </Typography>
+                    </Box>
+                  </Box>
                 )}
               </Box>
             </Box>
