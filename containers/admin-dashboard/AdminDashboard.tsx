@@ -8,12 +8,14 @@ import {
 } from "./components";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import type { VendingSlot as ApiVendingSlot } from "@/redux/api/adminApi";
+import { useState, useEffect } from "react";
 
 interface Product {
   id: string;
   name: string;
   category: string;
-  price: string;
+  retail_price?: number;
+  discount?: { value: number };
   amount: number;
 }
 
@@ -42,18 +44,8 @@ interface AdminDashboardProps {
   isSyncing?: boolean;
 }
 
-const defaultProducts: Product[] = [
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-];
-
 export default function AdminDashboard({
-  products = defaultProducts,
+  products: propProducts,
   slots,
   isKiosk = false,
   onCartClick,
@@ -74,6 +66,25 @@ export default function AdminDashboard({
   selectedSlot,
   isSyncing = false,
 }: AdminDashboardProps) {
+  const [products, setProducts] = useState<Product[]>([]);
+
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch('/api/admin/products');
+        const data = await response.json();
+        if (data && Array.isArray(data)) {
+          setProducts(data);
+        }
+      } catch (error) {
+        console.error('Error fetching products:', error);
+      }
+    };
+    
+    fetchProducts();
+  }, []);
+
   const handleSlotClick = (slotNumber: number) => {
     onSlotClick?.(slotNumber);
   };

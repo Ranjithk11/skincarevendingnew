@@ -2,21 +2,26 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Typography } from "@mui/material";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { APP_ROUTES } from "@/utils/routes";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 type IdleVideoOverlayProps = {
   idleMs?: number;
   src?: string;
+  excludePaths?: string[];
 };
 
 export default function IdleVideoOverlay({
   idleMs = 120_000, 
   src = "/videos/airport.mp4",
+  excludePaths = [],
 }: IdleVideoOverlayProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(true);
+  const pathname = usePathname();
+  // Check if current path is excluded on initial render
+  const isExcluded = excludePaths.some(path => pathname.startsWith(path));
+  const [open, setOpen] = useState(!isExcluded);
   const timerRef = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -55,6 +60,14 @@ export default function IdleVideoOverlay({
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    
+    // Check if current path is in exclude list
+    const isExcluded = excludePaths.some(path => pathname.startsWith(path));
+    if (isExcluded) {
+      clearTimer();
+      setOpen(false);
+      return;
+    }
 
     arm();
 
@@ -74,7 +87,7 @@ export default function IdleVideoOverlay({
       clearTimer();
       for (const e of events) window.removeEventListener(e, onGlobalActivity);
     };
-  }, [arm, clearTimer, onGlobalActivity]);
+  }, [arm, clearTimer, onGlobalActivity, pathname, excludePaths]);
 
   useEffect(() => {
     const v = videoRef.current;

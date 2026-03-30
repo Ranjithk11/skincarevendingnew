@@ -19,6 +19,7 @@
     import { useRouter } from "next/navigation";
     import { APP_ROUTES } from "@/utils/routes";
     import { useVoiceMessages } from "@/contexts/VoiceContext";
+    import ProductPrice from "./components/ProductPrice";
 
     type CartProductProps = {
         open: boolean;
@@ -46,10 +47,72 @@
         const [couponApplied, setCouponApplied] = useState(false);
         const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
         const [isDispensing, setIsDispensing] = useState(false);
+        const [productsData, setProductsData] = useState<any[]>([]);
+        const [isProductsLoaded, setIsProductsLoaded] = useState(false);
 
         useEffect(() => {
             router.prefetch(APP_ROUTES.FEEDBACK);
         }, [router]);
+
+        // Fetch products data to get discount information
+        useEffect(() => {
+            const fetchProductsData = async () => {
+                try {
+                    const response = await fetch('/api/admin/products');
+                    const data = await response.json();
+                    if (data && Array.isArray(data)) {
+                        setProductsData(data);
+                        setIsProductsLoaded(true);
+                        console.log('Cart products data loaded:', data.length);
+                    }
+                } catch (error) {
+                    console.error('Error fetching products data:', error);
+                }
+            };
+            
+            fetchProductsData();
+        }, []);
+
+        // Get product discount by ID or name (enhanced matching)
+        const getProductDiscount = (productId?: string, productName?: string) => {
+            if (!productId && !productName) return 0;
+            
+            // First try to match by ID
+            let product = productsData.find(p => p._id === productId || p.id === productId);
+            
+            // If not found by ID, try to match by name (same logic as ProductPrice)
+            if (!product && productName) {
+                product = productsData.find(p => {
+                    const apiName = (p.name || '').toLowerCase().trim();
+                    const slotName = productName.toLowerCase().trim();
+                    
+                    // Extract key words for better matching
+                    const slotWords = slotName.split(/\s+/).filter((w: string) => w.length > 2);
+                    const apiWords = apiName.split(/\s+/).filter((w: string) => w.length > 2);
+                    
+                    // Check if any key words match
+                    const hasKeyWordMatch = slotWords.some((slotWord: string) => 
+                        apiWords.some((apiWord: string) => 
+                            slotWord.includes(apiWord) || apiWord.includes(slotWord)
+                        )
+                    );
+                    
+                    // Also try original partial matching
+                    const hasPartialMatch = apiName.includes(slotName) || slotName.includes(apiName);
+                    
+                    return hasKeyWordMatch || hasPartialMatch;
+                });
+            }
+            
+            console.log('Cart getProductDiscount:', {
+                productId,
+                productName,
+                foundProduct: product?.name,
+                discount: product?.discount?.value || 0
+            });
+            
+            return product?.discount?.value || 0;
+        };
 
         useEffect(() => {
             if (!open) return;
@@ -168,21 +231,40 @@
             }
         }, []);
 
-        const total = useMemo(() => {
-            const sum = items.reduce((acc, it) => acc + parsePrice(it.priceText) * (it.quantity || 0), 0);
-            return Number.isFinite(sum) ? sum : 0;
-        }, [items]);
+        // Calculate total using discounted prices directly (no memoization for now)
+        const calculateTotal = () => {
+            const sum = items.reduce((acc, item) => {
+                const originalPrice = item.originalPrice || parsePrice(item.priceText || "0");
+                const discountValue = getProductDiscount(item.id, item.name);
+                const discountedPrice = originalPrice - (originalPrice * (discountValue / 100));
+                console.log('Cart total calculation:', {
+                    itemName: item.name,
+                    originalPrice,
+                    discountValue,
+                    discountedPrice,
+                    quantity: item.quantity || 1,
+                    lineTotal: discountedPrice * (item.quantity || 1)
+                });
+                return acc + discountedPrice * (item.quantity || 1);
+            }, 0);
+            const finalTotal = Number.isFinite(sum) ? sum : 0;
+            console.log('Final cart total:', finalTotal);
+            return finalTotal;
+        };
+        
+        const total = calculateTotal();
 
         const discount = useMemo(() => {
-            if (!couponApplied) return 0;
-            if (!Number.isFinite(total) || total <= 0) return 0;
-            return Math.min(120, Math.round(total));
-        }, [couponApplied, total]);
+            // Calculate total discount amount for display
+            const originalTotal = items.reduce((acc, item) => {
+                const originalPrice = item.originalPrice || parsePrice(item.priceText || "0");
+                return acc + originalPrice * (item.quantity || 1);
+            }, 0);
+            const totalDiscount = originalTotal - total;
+            return Number.isFinite(totalDiscount) ? totalDiscount : 0;
+        }, [items, productsData, total]);
 
-        const payableTotal = useMemo(() => {
-            const next = total - discount;
-            return Number.isFinite(next) ? Math.max(0, next) : 0;
-        }, [total, discount]);
+        const payableTotal = total; // Now total is already the discounted amount
 
         const amountPaise = useMemo(() => {
             const amount = step === "checkout" ? payableTotal : total;
@@ -503,6 +585,23 @@
                                                                     status: "completed",
                                                                 }),
                                                             }).catch(err => console.warn("[Payment] Failed to record transaction:", err));
+
+                                                            // Push sale to POSIFLY (async, non-blocking)
+                                                            fetch("/api/posifly/push-sale", {
+                                                                method: "POST",
+                                                                headers: { "Content-Type": "application/json" },
+                                                                body: JSON.stringify({
+                                                                    orderId: orderData?.orderId || payload?.paymentId || `order_${Date.now()}`,
+                                                                    items: orderItems,
+                                                                    totalAmount: payableTotal,
+                                                                    discountAmount: discount,
+                                                                    paymentId: payload?.paymentId,
+                                                                    razorpayOrderId: payload?.orderId,
+                                                                    paymentMode,
+                                                                }),
+                                                            }).then(res => res.json())
+                                                              .then(data => console.log("[POSIFLY] Sale pushed:", data))
+                                                              .catch(err => console.warn("[POSIFLY] Failed to push sale:", err));
                                                         } catch (err) {
                                                             console.error("[Payment] Failed to record order:", err);
                                                         }
@@ -544,7 +643,10 @@
 
                                         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
                                             {items.map((it, idx) => {
-                                                const lineTotal = parsePrice(it.priceText) * (it.quantity || 0);
+                                                const originalPrice = it.originalPrice || parsePrice(it.priceText || "0");
+                                                const discountValue = getProductDiscount(it.id);
+                                                const discountedPrice = originalPrice - (originalPrice * (discountValue / 100));
+                                                const lineTotal = discountedPrice * (it.quantity || 0);
                                                 return (
                                                     <Box key={`${it.id || it.name}-${idx}-checkout`} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                                         <Box
@@ -730,9 +832,14 @@
                                                     >
                                                         {capitalizeWords(item.name)}
                                                     </Typography>
-                                                    <Typography sx={{ mt: 0.5, fontWeight: 800, fontSize: 24, color: "#b91c1c" }}>
-                                                        {item.priceText || ""}
-                                                    </Typography>
+                                                    <Box mt={1}>
+                                                        <ProductPrice
+                                                            retailPrice={item.originalPrice || parsePrice(item.priceText || "0")}
+                                                            priceText={item.priceText}
+                                                            productId={item.id}
+                                                            productName={item.name}
+                                                        />
+                                                    </Box>
 
                                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1, flexWrap: "wrap" }}>
                                                         <Box
@@ -761,23 +868,20 @@
                                                                 <Icon icon="mdi:minus" />
                                                             </IconButton>
                                                             <Box
-                                                                component="input"
-                                                                value={item.quantity}
-                                                                onChange={(e) => {
-                                                                    const next = Number(e.target.value);
-                                                                    if (Number.isFinite(next)) setQuantity(key, next);
-                                                                }}
-                                                                inputMode="numeric"
-                                                                style={{
-                                                                    width: 40,
+                                                                sx={{
+                                                                    minWidth: 30,
                                                                     height: 30,
-                                                                    border: 0,
-                                                                    outline: "none",
-                                                                    textAlign: "center",
-                                                                    fontSize: 24,
-                                                                    fontWeight: 700,
+                                                                    display: "flex",
+                                                                    alignItems: "center",
+                                                                    justifyContent: "center",
+                                                                    fontSize: 14,
+                                                                    fontWeight: 500,
+                                                                    borderLeft: "1px solid rgba(0,0,0,0.15)",
+                                                                    borderRight: "1px solid rgba(0,0,0,0.15)",
                                                                 }}
-                                                            />
+                                                            >
+                                                                {item.quantity || 1}
+                                                            </Box>
                                                             <IconButton
                                                                 size="small"
                                                                 onClick={() => {
@@ -834,21 +938,34 @@
                                     </Typography>
                                 </Box>
                                 <Box sx={{ textAlign: "right" }}>
-                                    {step === "checkout" && couponApplied && discount > 0 ? (
-                                        <Typography sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}>
-                                            Rs.{Math.round(total)}/-
-                                        </Typography>
-                                    ) : null}
+                                    {/* <Typography sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}>
+                                        Rs.{Math.round(total)}/-
+                                    </Typography> */}
                                     <Typography sx={{ fontWeight: 900, fontSize: 24 }}>
-                                        Rs. {Math.round(step === "checkout" ? payableTotal : (Number.isFinite(total) ? total : 0))}/-
+                                        {(() => {
+                                            const displayAmount = Math.round(step === "checkout" ? payableTotal : (Number.isFinite(total) ? total : 0));
+                                            console.log('Cart display debug:', {
+                                                step,
+                                                total,
+                                                payableTotal,
+                                                displayAmount
+                                            });
+                                            return `Rs. ${displayAmount}/-`;
+                                        })()}
                                     </Typography>
+                                    {/* <Typography sx={{ fontSize: 14, color: "#872121", fontWeight: 600, mt: 0.5 }}>
+                                        Discount: Rs.{discount}
+                                    </Typography> */}
                                 </Box>
                             </Box>
 
                             <Collapse in={showPriceDetails} timeout="auto" unmountOnExit>
                                 <Box sx={{ mt: 2, pt: 1.5, borderTop: "1px solid #e5e7eb" }}>
                                     {items.map((it, idx) => {
-                                        const lineTotal = parsePrice(it.priceText) * (it.quantity || 0);
+                                        const originalPrice = it.originalPrice || parsePrice(it.priceText || "0");
+                                        const discountValue = getProductDiscount(it.id);
+                                        const discountedPrice = originalPrice - (originalPrice * (discountValue / 100));
+                                        const lineTotal = discountedPrice * (it.quantity || 0);
                                         return (
                                             <Box
                                                 key={`${it.id || it.name}-${idx}-line`}

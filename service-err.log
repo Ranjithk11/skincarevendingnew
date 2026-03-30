@@ -2374,3 +2374,552 @@ Import trace for requested module:
 ./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
 ./node_modules/face-api.js/build/es6/index.js
 ./containers/skinanalysis-home/TakeSelfie.tsx
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+redux-persist failed to create sync storage. falling back to noop storage.
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+redux-persist failed to create sync storage. falling back to noop storage.
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ ⨯ Failed to generate static paths for /api/auth/[...nextauth]:
+Error: Cannot find module './vendor-chunks/lodash.js'
+Require stack:
+- C:\leafwater\skincarevendingnew\.next\server\webpack-runtime.js
+- C:\leafwater\skincarevendingnew\.next\server\app\api\auth\[...nextauth]\route.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\server\require.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\server\load-components.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\build\utils.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\server\dev\static-paths-worker.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\compiled\jest-worker\processChild.js
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1448:15)
+    at C:\leafwater\skincarevendingnew\node_modules\next\dist\server\require-hook.js:55:36
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1234:25)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1548:12)
+    at mod.require (C:\leafwater\skincarevendingnew\node_modules\next\dist\server\require-hook.js:65:28)
+    at require (node:internal/modules/helpers:152:16) {
+  type: 'Error',
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\leafwater\\skincarevendingnew\\.next\\server\\webpack-runtime.js',
+    'C:\\leafwater\\skincarevendingnew\\.next\\server\\app\\api\\auth\\[...nextauth]\\route.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\server\\require.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\server\\load-components.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\build\\utils.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\server\\dev\\static-paths-worker.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\compiled\\jest-worker\\processChild.js'
+  ]
+}
+redux-persist failed to create sync storage. falling back to noop storage.
+redux-persist failed to create sync storage. falling back to noop storage.
+redux-persist failed to create sync storage. falling back to noop storage.
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+redux-persist failed to create sync storage. falling back to noop storage.
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+ ⨯ Failed to generate static paths for /api/auth/[...nextauth]:
+Error: Cannot find module './vendor-chunks/lodash.js'
+Require stack:
+- C:\leafwater\skincarevendingnew\.next\server\webpack-runtime.js
+- C:\leafwater\skincarevendingnew\.next\server\app\api\auth\[...nextauth]\route.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\server\require.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\server\load-components.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\build\utils.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\server\dev\static-paths-worker.js
+- C:\leafwater\skincarevendingnew\node_modules\next\dist\compiled\jest-worker\processChild.js
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1448:15)
+    at C:\leafwater\skincarevendingnew\node_modules\next\dist\server\require-hook.js:55:36
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1234:25)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.<anonymous> (node:internal/modules/cjs/loader:1548:12)
+    at mod.require (C:\leafwater\skincarevendingnew\node_modules\next\dist\server\require-hook.js:65:28)
+    at require (node:internal/modules/helpers:152:16) {
+  type: 'Error',
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\leafwater\\skincarevendingnew\\.next\\server\\webpack-runtime.js',
+    'C:\\leafwater\\skincarevendingnew\\.next\\server\\app\\api\\auth\\[...nextauth]\\route.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\server\\require.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\server\\load-components.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\build\\utils.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\server\\dev\\static-paths-worker.js',
+    'C:\\leafwater\\skincarevendingnew\\node_modules\\next\\dist\\compiled\\jest-worker\\processChild.js'
+  ]
+}
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+redux-persist failed to create sync storage. falling back to noop storage.
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+redux-persist failed to create sync storage. falling back to noop storage.
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+redux-persist failed to create sync storage. falling back to noop storage.
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+redux-persist failed to create sync storage. falling back to noop storage.
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\DumpStack.log.tmp'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\hiberfil.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\pagefile.sys'
+Watchpack Error (initial scan): Error: EINVAL: invalid argument, lstat 'C:\swapfile.sys'
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
+redux-persist failed to create sync storage. falling back to noop storage.
+[next-auth][warn][NEXTAUTH_URL] 
+https://next-auth.js.org/warnings#nextauth_url
