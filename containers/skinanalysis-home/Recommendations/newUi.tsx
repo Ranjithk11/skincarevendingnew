@@ -514,8 +514,8 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                         mt: 1,
                                                         color: (() => {
                                                             const reversedValue = card.value ? (100 - parseInt(card.value)) : 0;
-                                                            if (reversedValue <= 30) return "#D97706"; // orange for NEEDS CARE
-                                                            if (reversedValue <= 60) return "#F59E0B"; // amber for MODERATE
+                                                            if (reversedValue <= 30) return "#f08710ff"; // orange for NEEDS CARE
+                                                            if (reversedValue <= 60) return "#f2f209ff"; // amber for MODERATE
                                                             return "#2ac78fff"; // green for GOOD
                                                         })(),
                                                         textTransform: "uppercase",
