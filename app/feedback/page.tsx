@@ -558,7 +558,7 @@ export default function FeedbackPage() {
                       border: "1px solid #fecaca"
                     }}>
                       <Typography sx={{ fontSize: 28, fontWeight: 600, color: "#166534", mb: 1 }}>
-                        Don't worry! 🙏
+                        Don&apos;t worry! 🙏
                       </Typography>
                       <Typography sx={{ fontSize: 24, color: "#374151", lineHeight: 1.6 }}>
                         Your amount will be refunded to your original payment method. Our team members will get back to you on this issue shortly.

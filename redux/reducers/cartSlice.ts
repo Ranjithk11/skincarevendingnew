@@ -6,6 +6,8 @@ export type CartItem = {
   name: string;
   imageUrl?: string;
   priceText?: string;
+  originalPrice?: number;
+  discountValue?: number;
   quantity: number;
   slotId?: number;
 };

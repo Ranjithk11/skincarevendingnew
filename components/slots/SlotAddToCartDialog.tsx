@@ -56,6 +56,8 @@ export default function SlotAddToCartDialog({ open, onClose, product }: SlotAddT
       name: product.name,
       imageUrl: product.imageUrl,
       priceText: product.priceText,
+      originalPrice: product.retailPrice,
+      discountValue: product.discountValue,
       quantity,
       slotId: product.slotId,
     });
@@ -146,6 +148,8 @@ export default function SlotAddToCartDialog({ open, onClose, product }: SlotAddT
               retailPrice={product?.retailPrice}
               discountValue={product?.discountValue}
               priceText={product?.priceText || ""}
+              productId={product?.id}
+              productName={product?.name}
             />
           </Box>
 

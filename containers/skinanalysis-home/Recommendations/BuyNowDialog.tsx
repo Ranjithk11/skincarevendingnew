@@ -55,6 +55,8 @@ const BuyNowDialog = ({
       name,
       imageUrl,
       priceText,
+      originalPrice: retailPrice,
+      discountValue: discountValue,
       quantity,
     });
 

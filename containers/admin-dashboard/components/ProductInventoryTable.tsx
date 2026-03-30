@@ -5,12 +5,14 @@ import { Box, IconButton, Typography, Link } from "@mui/material";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ViewSlotsModal from "./ViewSlotsModal";
+import ProductPrice from "@/containers/skinanalysis-home/Recommendations/components/ProductPrice";
 
 interface Product {
   id: string;
   name: string;
   category: string;
-  price: string;
+  retail_price?: number;
+  discount?: { value: number };
   amount: number;
   image?: string;
 }
@@ -21,15 +23,7 @@ interface ProductInventoryTableProps {
   onEditClick?: (productId: string) => void;
 }
 
-const defaultProducts: Product[] = [
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-  { id: "111", name: "pilgrim red vine night gel creme", category: "Night Cream", price: "Rs.650", amount: 0 },
-];
+const defaultProducts: Product[] = [];
 
 export default function ProductInventoryTable({
   products = defaultProducts,
@@ -212,16 +206,13 @@ export default function ProductInventoryTable({
           >
             {product.name}
           </Typography>
-          <Typography
-            sx={{
-              fontSize: 24,
-              fontWeight: 400,
-              color: "#000",
-              fontFamily: "Roboto, sans-serif",
-            }}
-          >
-            {product.price}
-          </Typography>
+          <ProductPrice
+            retailPrice={product.retail_price}
+            discountValue={product.discount?.value}
+            priceText={`INR.${product.retail_price}/-`}
+            productId={product.id}
+            productName={product.name}
+          />
           <Link
             component="button"
             onClick={() => handleViewSlots(product)}

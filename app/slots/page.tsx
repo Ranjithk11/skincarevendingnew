@@ -8,6 +8,7 @@ import { useCart } from "@/containers/skinanalysis-home/Recommendations/CartCont
 import CartProduct from "@/containers/skinanalysis-home/Recommendations/cartProduct";
 import SlotsGrid, { SlotsGridSlot } from "@/components/slots/SlotsGrid";
 import SlotAddToCartDialog, { SlotProduct } from "@/components/slots/SlotAddToCartDialog";
+import ProductPrice from "@/containers/skinanalysis-home/Recommendations/components/ProductPrice";
 import ActionButton from "@/components/ui/ActionButton";
 import PageBackground from "@/components/ui/PageBackground";
 
@@ -239,6 +240,26 @@ export default function SlotsPage() {
     });
   }, [selectedSlotId, slotsData]);
 
+  const { items } = useCart();
+
+  const totalValue = useMemo(() => {
+    return items.reduce((sum, item) => {
+      // Extract price from priceText if available
+      const priceMatch = item.priceText?.match(/INR\.?(\d+)/);
+      const price = priceMatch ? Number(priceMatch[1]) : 0;
+      return sum + (price * item.quantity);
+    }, 0);
+  }, [items]);
+
+  const calculateDiscount = (total: number) => {
+    if (!Number.isFinite(total) || total <= 0) return 0;
+    return Math.min(120, Math.round(total)); // Max Rs.120 discount
+  };
+
+  const discount = useMemo(() => {
+    return calculateDiscount(totalValue);
+  }, [totalValue]);
+
   const selectedProduct: SlotProduct | null = useMemo(() => {
     if (!selectedSlotId) return null;
     const slot = slotsData[selectedSlotId];
@@ -279,8 +300,10 @@ export default function SlotsPage() {
       "";
     const imageUrl = typeof imageUrlRaw === "string" ? imageUrlRaw : "";
     const retailPrice = product?.retail_price ?? slot.retail_price;
-    const discountValue = product?.discount?.value;
-
+    
+    // Get discount from product data
+    const productDiscount = product?.discount?.value || 0;
+    
     const priceText = `INR.${Number(retailPrice ?? 0)}/-`;
 
     return {
@@ -288,12 +311,12 @@ export default function SlotsPage() {
       name,
       imageUrl,
       retailPrice: Number(retailPrice ?? 0),
-      discountValue: Number.isFinite(Number(discountValue)) ? Number(discountValue) : undefined,
+      discountValue: productDiscount,
       priceText,
       slotId: selectedSlotId,
       quantityAvailable: slot.quantity,
     };
-  }, [productsMap, selectedSlotId, slotsData]);
+  }, [selectedSlotId, slotsData, productsMap, discount]);
 
   const handleSelect = (slotId: number) => {
     const slot = slotsData[slotId];
@@ -359,10 +382,22 @@ export default function SlotsPage() {
             }}
           >
             <SlotsGrid slots={gridSlots} columns={10} onSelect={handleSelect} />
-
+{/* 
             <Typography sx={{ textAlign: "center", mt: 2, fontSize: 16, color: "#111827" }}>
               {selectedSlotId ? "1 Slot selected" : ""}
             </Typography>
+
+            {selectedProduct && (
+              <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+                <ProductPrice
+                  retailPrice={selectedProduct.retailPrice}
+                  discountValue={selectedProduct.discountValue}
+                  priceText={selectedProduct.priceText}
+                  productId={selectedProduct.id}
+                  productName={selectedProduct.name}
+                />
+              </Box>
+            )} */}
 
             <Box sx={{ display: "flex", justifyContent: "center", mt: "auto", pt: 2 }}>
               <ActionButton
