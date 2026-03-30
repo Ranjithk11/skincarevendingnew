@@ -504,7 +504,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                 {card.label}
                                             </Typography>
                                             <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
-                                                {card.value}
+                                                {card.value ? (100 - parseInt(card.value)) : 0}%
                                             </Typography>
                                             {card.level && (
                                                 <Typography
@@ -512,11 +512,21 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                         fontSize: "20px",
                                                         fontWeight: 600,
                                                         mt: 1,
-                                                        color: card.levelColor,
+                                                        color: (() => {
+                                                            const reversedValue = card.value ? (100 - parseInt(card.value)) : 0;
+                                                            if (reversedValue <= 30) return "#D97706"; // orange for NEEDS CARE
+                                                            if (reversedValue <= 60) return "#F59E0B"; // amber for MODERATE
+                                                            return "#2ac78fff"; // green for GOOD
+                                                        })(),
                                                         textTransform: "uppercase",
                                                     }}
                                                 >
-                                                    {card.level}
+                                                    {(() => {
+                                                        const reversedValue = card.value ? (100 - parseInt(card.value)) : 0;
+                                                        if (reversedValue <= 30) return "NEEDS CARE";
+                                                        if (reversedValue <= 60) return "MODERATE";
+                                                        return "GOOD";
+                                                    })()}
                                                 </Typography>
                                             )}
                                         </Box>

@@ -33,6 +33,22 @@ export const VoiceProvider: React.FC<VoiceProviderProps> = ({ children }) => {
 export const useVoice = () => {
   const context = useContext(VoiceContext);
   if (context === undefined) {
+    // Check if we're on the report page and return dummy context if so
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      if (pathname?.includes("/user/view-skincare-recommnedations")) {
+        return {
+          isSupported: false,
+          isSpeaking: false,
+          voiceEnabled: false,
+          voices: [],
+          speak: () => {},
+          speakQueued: () => {},
+          cancel: () => {},
+          toggleVoice: () => false,
+        };
+      }
+    }
     throw new Error('useVoice must be used within a VoiceProvider');
   }
   return context;
