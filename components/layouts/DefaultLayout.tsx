@@ -235,8 +235,8 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
       >
         <SideMenuComponent />
       </Drawer> */}
-      <IdleVideoOverlay idleMs={180_000} src="/videos/airport.mp4" />
-      <IdleRedirect idleMs={180_000} excludePaths={["/", "/admin", "/feedback"]} />
+      <IdleVideoOverlay idleMs={180_000} src="/videos/airport.mp4" excludePaths={["/", "/admin", "/feedback", "/user/view-skincare-recommnedations"]} />
+      <IdleRedirect idleMs={180_000} excludePaths={["/", "/admin", "/feedback", "/user/view-skincare-recommnedations"]} />
     </Fragment>
   );
 };

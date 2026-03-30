@@ -401,7 +401,7 @@ export default function VendingProducts({ data }: Props) {
             <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#9A9A9A", mb: 2 }}>
               PERSONALIZED FOR YOU
             </Typography>
-            {personalizedByCategory.map((catGroup: any, catIdx: number) => (
+            {/* {personalizedByCategory.map((catGroup: any, catIdx: number) => (
               <Box key={`cat-${catIdx}`} sx={{ mb: 3 }}>
                 <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#333", mb: 1.5 }}>
                   {catGroup.categoryTitle}
@@ -429,7 +429,7 @@ export default function VendingProducts({ data }: Props) {
                   })}
                 </Grid>
               </Box>
-            ))}
+            ))} */}
           </>
         )}
 

@@ -503,6 +503,23 @@
                                                                     status: "completed",
                                                                 }),
                                                             }).catch(err => console.warn("[Payment] Failed to record transaction:", err));
+
+                                                            // Push sale to POSIFLY (async, non-blocking)
+                                                            fetch("/api/posifly/push-sale", {
+                                                                method: "POST",
+                                                                headers: { "Content-Type": "application/json" },
+                                                                body: JSON.stringify({
+                                                                    orderId: orderData?.orderId || payload?.paymentId || `order_${Date.now()}`,
+                                                                    items: orderItems,
+                                                                    totalAmount: payableTotal,
+                                                                    discountAmount: discount,
+                                                                    paymentId: payload?.paymentId,
+                                                                    razorpayOrderId: payload?.orderId,
+                                                                    paymentMode,
+                                                                }),
+                                                            }).then(res => res.json())
+                                                              .then(data => console.log("[POSIFLY] Sale pushed:", data))
+                                                              .catch(err => console.warn("[POSIFLY] Failed to push sale:", err));
                                                         } catch (err) {
                                                             console.error("[Payment] Failed to record order:", err);
                                                         }
