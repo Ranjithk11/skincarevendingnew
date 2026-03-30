@@ -105,7 +105,7 @@ export default function IdleVideoOverlay({
     e.stopPropagation(); // 3. Prevents background click from firing
     hide();
     arm();
-    router.push("/products");
+    router.push("/slots");
   };
 
   if (!open) return null;

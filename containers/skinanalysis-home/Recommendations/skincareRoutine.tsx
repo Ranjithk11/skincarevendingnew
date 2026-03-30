@@ -209,6 +209,9 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
     Record<string, { slotNumber: number; quantity: number }>
   >({});
 
+  // Store vending machine products with their full details
+  const [vendingProducts, setVendingProducts] = useState<any[]>([]);
+
   useEffect(() => {
     const fetchSlots = async () => {
       try {
@@ -219,6 +222,7 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         const map: Record<string, { slotNumber: number; quantity: number }> = {};
         const nameMap: Record<string, { slotNumber: number; quantity: number }> = {};
         const slotsArray = Array.isArray(slotsData) ? slotsData : Object.values(slotsData);
+        const productIds: string[] = [];
 
         slotsArray.forEach((slot: any) => {
           const quantity = Number(slot?.quantity || 0);
@@ -242,6 +246,9 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
             const cleanId = normalizeProductId(rawId);
             update(map, rawId);
             if (cleanId && cleanId !== rawId) update(map, cleanId);
+            if (quantity > 0) {
+              productIds.push(cleanId || rawId);
+            }
           }
 
           const slotNameKey = normalizeProductName(slot?.product_name);
@@ -250,6 +257,31 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
 
         setSlotsMap(map);
         setSlotsNameMap(nameMap);
+
+        // Fetch product details from cloud API for vending machine products
+        if (productIds.length > 0) {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+          const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
+          if (apiUrl) {
+            try {
+              const productsRes = await fetch(
+                `${apiUrl}/product/fetch-by-filter?limit=100&isShopifyAvailable=true&hasBrand=true`,
+                { headers: { "x-db-token": dbToken } }
+              );
+              const productsData = await productsRes.json();
+              const allCloudProducts = productsData?.data?.[0]?.products || [];
+              
+              // Filter to only products in vending machine
+              const vendingProds = allCloudProducts.filter((p: any) => {
+                const id = p?._id || p?.id;
+                return productIds.includes(String(id)) || productIds.includes(normalizeProductId(id));
+              });
+              setVendingProducts(vendingProds);
+            } catch (err) {
+              console.warn("Failed to fetch vending products:", err);
+            }
+          }
+        }
       } catch (err) {
         console.warn("Failed to fetch slots:", err);
       }
@@ -284,27 +316,44 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
     const kw = keywords.map(normalize);
     let candidates: any[] = [];
     
-    // First try to find products from matching category
+    // First try to find products from matching category in recommendations
     for (const b of productBuckets) {
       const title = b.categoryTitle;
       if (kw.some((k) => title.includes(k))) {
-        candidates = b.products;
-        break;
+        candidates = [...candidates, ...b.products];
       }
     }
 
-    // If no category match, search in all products
-    if (candidates.length === 0) {
-      const flat = productBuckets.flatMap((b) => b.products);
-      candidates = flat.filter((p: any) => {
-        const use = normalize(p?.productUse);
-        const name = normalize(p?.name);
-        return kw.some((k) => use.includes(k) || name.includes(k));
-      });
-    }
+    // Also search in all recommendation products by name/use
+    const flat = productBuckets.flatMap((b) => b.products);
+    const nameMatches = flat.filter((p: any) => {
+      const use = normalize(p?.productUse);
+      const name = normalize(p?.name);
+      const category = normalize(p?.productCategory?.title);
+      return kw.some((k) => use.includes(k) || name.includes(k) || category.includes(k));
+    });
     
-    // Filter to only show available products and sort available first
-    const availableProducts = candidates.filter(isProductAvailable);
+    // FALLBACK: Also search in vending machine products directly
+    const vendingMatches = vendingProducts.filter((p: any) => {
+      const use = normalize(p?.productUse);
+      const name = normalize(p?.name);
+      const category = normalize(p?.productCategory?.title);
+      return kw.some((k) => use.includes(k) || name.includes(k) || category.includes(k));
+    });
+    
+    // Combine and deduplicate (recommendations first, then vending fallback)
+    const seenIds = new Set<string>();
+    const allCandidates: any[] = [];
+    [...candidates, ...nameMatches, ...vendingMatches].forEach((p) => {
+      const id = p?._id || p?.id;
+      if (id && !seenIds.has(id)) {
+        seenIds.add(id);
+        allCandidates.push(p);
+      }
+    });
+    
+    // Filter to only show available products
+    const availableProducts = allCandidates.filter(isProductAvailable);
     
     return availableProducts.slice(0, limit);
   };

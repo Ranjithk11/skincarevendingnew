@@ -1,0 +1,21 @@
+@echo off
+
+cd /d C:\leafwater\skincarevendingnew
+
+REM Start backend if not running
+tasklist | find "node.exe" > nul
+if errorlevel 1 (
+    start "" cmd /c "npm start"
+)
+
+REM Start RustDesk in background (NO WINDOW)
+start "" "C:\Program Files\RustDesk\RustDesk.exe" --tray
+
+REM Wait for server
+timeout /t 10 /nobreak > nul
+
+:loop
+start "" /wait "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk http://localhost:3000 --no-first-run --disable-infobars
+
+timeout /t 2 > nul
+goto loop
