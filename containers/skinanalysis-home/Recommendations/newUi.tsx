@@ -514,9 +514,9 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                         mt: 1,
                                                         color: (() => {
                                                             const reversedValue = card.value ? (100 - parseInt(card.value)) : 0;
-                                                            if (reversedValue <= 30) return "#f08710ff"; // orange for NEEDS CARE
-                                                            if (reversedValue <= 60) return "#f2f209ff"; // amber for MODERATE
-                                                            return "#2ac78fff"; // green for GOOD
+                                                            if (reversedValue <= 30) return "#FFA239"; // orange for NEEDS CARE
+                                                            if (reversedValue <= 60) return "#FF5656"; // amber for MODERATE
+                                                            return "#16A34A"; // green for GOOD
                                                         })(),
                                                         textTransform: "uppercase",
                                                     }}
@@ -536,6 +536,68 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                         No skin metrics detected
                                     </Typography>
                                 )}
+                            </Box>
+                            <Box>
+                                <Box sx={{ mt: 4, width: "100%", textAlign: "center" }}>
+                                <Typography sx={{ fontSize: "28px", fontWeight: 700, letterSpacing: 1, color: "#111827" }}>
+                                    SCORING METHOD
+                                </Typography>
+                                <Box sx={{ mt: 2, width: "100%", maxWidth: 720, mx: "auto" }}>
+                                    <Box
+                                        sx={{
+                                            width: "100%",
+                                            height: 26,
+                                            borderRadius: 1,
+                                            overflow: "hidden",
+                                            border: "2px solid #111827",
+                                            display: "flex",
+                                        }}
+                                    >
+                                        <Box sx={{ width: "20%", bgcolor: "#16A34A" }} />
+                                        <Box sx={{ width: "40%", bgcolor: "#FFA239" }} />
+                                        <Box sx={{ width: "40%", bgcolor: "#FF5656" }} />
+                                    </Box>
+ 
+                                    <Box
+                                        sx={{
+                                            mt: 2,
+                                            width: "100%",
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "flex-start",
+                                            gap: 2,
+                                            flexWrap: "wrap",
+                                        }}
+                                    >
+                                        <Box sx={{ minWidth: 160, textAlign: "left" }}>
+                                            <Typography sx={{ fontSize: "24px", fontWeight: 700, color: "#111827" }}>
+                                                100-80%
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "24px", color: "#111827" }}>
+                                                 (Optimal Condition)
+                                            </Typography>
+                                        </Box>
+ 
+                                        <Box sx={{ minWidth: 140, textAlign: "center" }}>
+                                            <Typography sx={{ fontSize: "24px", fontWeight: 700, color: "#111827" }}>
+                                                79 - 40%
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "24px", color: "#111827" }}>
+                                                (Moderate)
+                                            </Typography>
+                                        </Box>
+ 
+                                        <Box sx={{ minWidth: 220, textAlign: "right" }}>
+                                            <Typography sx={{ fontSize: "24px", fontWeight: 700, color: "#111827" }}>
+                                                39 - 0%
+                                            </Typography>
+                                            <Typography sx={{ fontSize: "24px", color: "#111827" }}>
+                                                (Severe - Needs Care)
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            </Box>
                             </Box>
                         </Box>
 
