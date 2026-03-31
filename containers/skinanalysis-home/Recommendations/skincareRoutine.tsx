@@ -360,7 +360,14 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
 
   const cleanserProducts = pickProducts(["face wash", "cleanser"], 2);
   const serumProducts = pickProducts(["face serum", "serum"], 1);
-  const daycreamProducts = pickProducts(["day cream", "daycream"], 1);
+  const daycreamProducts = pickProducts([
+    "day cream",
+    "daycream",
+    "moisturizer",
+    "moisturiser",
+    "moisturizing cream",
+    "moisturising cream",
+  ], 1);
   const sunscreenProducts = pickProducts(["sunscreen", "sun screen", "sunblock", "spf"], 1);
   const underEyeProducts = pickProducts(["under-eye", "under eye", "eye cream"], 1);
   const nightcreamProducts = pickProducts(["night cream", "nightcream", "night"], 1);
@@ -383,6 +390,14 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         howImg: "/products/dummyproduct2.jpeg",
         products: serumProducts,
       },
+      // {
+      //   title: "Under Eye Cream",
+      //   subtitle: "Under eye cream helps hydrate and nourish the delicate under-eye area, reducing the appearance of dark circles, puffiness, and fine lines.",
+      //   howTitle: "How to Use Under Eye Cream",
+      //   howBody: "Take a small amount of under eye cream on your fingertip. Gently dab it around the under eye area without rubbing. Use it every night to help reduce dark circles and keep the skin hydrated.",
+      //   howImg: "/products/dummyproduct2.jpeg",
+      //   products: underEyeProducts,
+      // },
            {
         title: "Night Cream",
         subtitle: "Night cream provides essential hydration and protection, shielding your skin from environmental damage. It keeps your complexion smooth, radiant, and ready to face the day.",
@@ -409,6 +424,14 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         howImg: "/products/dummyProduct.jpeg",
         products: daycreamProducts,
       },
+      // {
+      //   title: "Under Eye Cream",
+      //   subtitle: "Under eye cream helps hydrate and nourish the delicate under-eye area, reducing the appearance of dark circles, puffiness, and fine lines.",
+      //   howTitle: "How to Use Under Eye Cream",
+      //   howBody: "Take a small amount of under eye cream on your fingertip. Gently dab it around the under eye area without rubbing. Use it every day to keep the under-eye area hydrated.",
+      //   howImg: "/products/dummyProduct.jpeg",
+      //   products: underEyeProducts,
+      // },
       {
         title: "Sunscreen",
         subtitle: "Sunscreen protects your skin from harmful UV rays, preventing sunburn and premature aging. It's an essential daily step for healthy, radiant, and safeguarded skin.",
