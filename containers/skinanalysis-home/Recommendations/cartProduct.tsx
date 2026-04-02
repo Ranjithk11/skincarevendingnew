@@ -410,6 +410,21 @@
                                                             status: "completed",
                                                         }),
                                                     }).catch(err => console.warn("[Payment] Failed to record transaction:", err));
+
+                                                    // Save POSIFLY bill data
+                                                    await fetch("/api/posifly/bills", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            orderId: orderData?.order?.id || `order_${Date.now()}`,
+                                                            items: orderItems,
+                                                            totalAmount: payableTotal,
+                                                            discountAmount: discount,
+                                                            paymentId: payload?.paymentId,
+                                                            razorpayOrderId: payload?.orderId,
+                                                            paymentMode,
+                                                        }),
+                                                    }).catch(err => console.warn("[Payment] Failed to save POSIFLY bill:", err));
                                                 } catch (err) {
                                                     console.error("[Payment] Failed to record order:", err);
                                                 }
