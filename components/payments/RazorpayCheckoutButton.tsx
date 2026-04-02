@@ -31,6 +31,21 @@ type RazorpayPaymentSuccessResponse = {
   razorpay_signature: string;
 };
 
+const upiOnlyCheckoutConfig = {
+  display: {
+    blocks: {
+      upi: {
+        name: "Pay via UPI",
+        instruments: [{ method: "upi" }],
+      },
+    },
+    sequence: ["block.upi"],
+    preferences: {
+      show_default_blocks: false,
+    },
+  },
+};
+
 const loadRazorpayScript = (retries = 3): Promise<boolean> => {
   return new Promise<boolean>((resolve) => {
     if (typeof window === "undefined") return resolve(false);
@@ -205,6 +220,15 @@ export default function RazorpayCheckoutButton({
           name: customer?.name,
           email: customer?.email,
           contact: customer?.contact,
+          method: "upi",
+        },
+        method: {
+          upi: true,
+          card: false,
+          netbanking: false,
+          wallet: false,
+          paylater: false,
+          emi: false,
         },
         theme: {
           color: "#2E7D32",
@@ -267,7 +291,7 @@ export default function RazorpayCheckoutButton({
     } catch {
       reportError("Something went wrong. Please try again.");
     }
-  }, [amountPaise, currency, receipt, productId, mode, customer, onVerified, reportError]);
+  }, [amountPaise, currency, receipt, productId, mode, customer, onVerified, onProcessingStart, reportError]);
 
   return (
     <ActionButton onClick={handlePay} disabled={isLoading} {...buttonProps}>
