@@ -75,7 +75,12 @@ export default function AdminDashboard({
         const response = await fetch('/api/admin/products');
         const data = await response.json();
         if (data && Array.isArray(data)) {
-          setProducts(data);
+          const mapped = data.map((p: any) => ({
+            ...p,
+            amount: p.quantity ?? p.amount ?? 0,
+            image: p.image_url ?? p.image ?? "",
+          }));
+          setProducts(mapped);
         }
       } catch (error) {
         console.error('Error fetching products:', error);
