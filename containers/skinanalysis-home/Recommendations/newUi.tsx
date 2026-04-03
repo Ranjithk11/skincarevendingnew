@@ -117,9 +117,30 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         : undefined;
 
     const overallSkinHealthScore = reportSource?.skinHealthScore?.overall;
-    const overallSkinHealthRating = reportSource?.skinHealthScore?.rating;
+    const overallSkinHealthRatingRaw = reportSource?.skinHealthScore?.rating;
 
     const skinMetrics = reportSource?.skinMetrics;
+    // Computed overall rating based on reversed metric scores (same logic as individual cards)
+    // Scoring: 80-100% = Optimal, 40-79% = Moderate, 0-39% = Needs Care
+    const computedOverall = (() => {
+        if (!skinMetrics) return { rating: overallSkinHealthRatingRaw || '--', color: '#111827' };
+
+        const entries = Array.isArray(skinMetrics)
+            ? skinMetrics.map((m: any) => m?.score).filter((s: any) => typeof s === 'number')
+            : Object.values(skinMetrics).map((v: any) => v?.score ?? v).filter((s: any) => typeof s === 'number');
+
+        if (entries.length === 0) return { rating: overallSkinHealthRatingRaw || '--', color: '#111827' };
+
+        const avgReversed = entries.reduce((sum: number, s: number) => sum + (100 - s), 0) / entries.length;
+
+        if (avgReversed >= 80) return { rating: 'GOOD', color: '#16A34A' };
+        if (avgReversed >= 40) return { rating: 'MODERATE', color: '#FFA239' };
+        return { rating: 'NEEDS CARE', color: '#FF5656' };
+    })();
+
+    const overallSkinHealthRating = computedOverall.rating;
+    const overallSkinHealthColor = computedOverall.color;
+
     const skinMetricCards: Array<{ label: string; value: string; level?: string; levelColor: string }> = (() => {
         const toLabel = (raw: string) =>
             raw
@@ -408,11 +429,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                             'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                                         fontWeight: 510,
                                         fontSize: "24px",
-                                        color: overallSkinHealthRating?.toUpperCase()?.includes("GOOD") 
-                                            ? "#2ac78fff" 
-                                            : overallSkinHealthRating?.toUpperCase()?.includes("NEEDS") 
-                                                ? "#D97706" 
-                                                : "#111827",
+                                        color: overallSkinHealthColor,
                                         boxSizing: "border-box",
                                         whiteSpace: "nowrap",
                                     }}
@@ -514,8 +531,8 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                         mt: 1,
                                                         color: (() => {
                                                             const reversedValue = card.value ? (100 - parseInt(card.value)) : 0;
-                                                            if (reversedValue <= 30) return "#FFA239"; // orange for NEEDS CARE
-                                                            if (reversedValue <= 60) return "#FF5656"; // amber for MODERATE
+                                                            if (reversedValue <= 30) return "#FF5656"; // orange for NEEDS CARE
+                                                            if (reversedValue <= 60) return "#FFA239"; // amber for MODERATE
                                                             return "#16A34A"; // green for GOOD
                                                         })(),
                                                         textTransform: "uppercase",
@@ -539,9 +556,9 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                             </Box>
                             <Box>
                                 <Box sx={{ mt: 4, width: "100%", textAlign: "center" }}>
-                                <Typography sx={{ fontSize: "28px", fontWeight: 700, letterSpacing: 1, color: "#111827" }}>
+                                {/* <Typography sx={{ fontSize: "28px", fontWeight: 700, letterSpacing: 1, color: "#111827" }}>
                                     SCORING METHOD
-                                </Typography>
+                                </Typography> */}
                                 <Box sx={{ mt: 2, width: "100%", maxWidth: 720, mx: "auto" }}>
                                     <Box
                                         sx={{
@@ -554,7 +571,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                         }}
                                     >
                                         <Box sx={{ width: "20%", bgcolor: "#16A34A" }} />
-                                        <Box sx={{ width: "40%", bgcolor: "#FFA239" }} />
+                                        <Box sx={{ width: "40%", bgcolor: "#FFA239 " }} />
                                         <Box sx={{ width: "40%", bgcolor: "#FF5656" }} />
                                     </Box>
  
