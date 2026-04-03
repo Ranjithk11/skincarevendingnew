@@ -32,7 +32,14 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         _key: userId.replace("users/", ""),
-        phoneNumber: `+${countryCode}${phoneNumber.replace(/^\+?\d{1,3}/, "").replace(/\D/g, "")}`,
+        phoneNumber: (() => {
+          const digits = phoneNumber.replace(/\D/g, "");
+          // If already has country code prefix, strip it
+          if (digits.startsWith(countryCode)) {
+            return `+${countryCode}${digits.slice(countryCode.length)}`;
+          }
+          return `+${countryCode}${digits}`;
+        })(),
         countryCode,
         isValidated: true,
       }),

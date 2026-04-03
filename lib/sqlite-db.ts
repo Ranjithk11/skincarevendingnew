@@ -321,6 +321,10 @@ function initDb() {
   db.exec(`DROP VIEW IF EXISTS item_details_view`);
   db.exec(`DROP VIEW IF EXISTS payment_details_view`);
   db.exec(`DROP VIEW IF EXISTS charges_details_view`);
+  db.exec(`DROP VIEW IF EXISTS bill_details`);
+  db.exec(`DROP VIEW IF EXISTS item_details`);
+  db.exec(`DROP VIEW IF EXISTS payment_details`);
+  db.exec(`DROP VIEW IF EXISTS charges_details`);
   db.exec(`DROP TABLE IF EXISTS charges_details`);
   db.exec(`DROP TABLE IF EXISTS payment_details`);
   db.exec(`DROP TABLE IF EXISTS item_details`);
