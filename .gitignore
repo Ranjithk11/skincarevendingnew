@@ -94,3 +94,6 @@ next-env.d.ts
 # SQLite database files (WAL mode)
 *.db-shm
 *.db-wal
+
+# Log files
+logs/
