@@ -61,6 +61,11 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         { data: dataImageInfo },
     ] = useGetUploadImageInfoMutation();
 
+    const [
+        getAnalysedImageInfo,
+        { data: analysedImageInfo },
+    ] = useGetUploadImageInfoMutation();
+
     useEffect(() => {
         const userId =
             publicUserProfile?._id ||
@@ -87,9 +92,24 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
             userId,
             fileName,
         });
-    }, [analysisData, getUploadImageInfo]);
+
+        // Fetch annotated/analysed image separately
+        const analysedFileName =
+            analysisData?.data?.[0]?.analysedImages?.[0]?.fileName ||
+            analysisData?.data?.analysedImages?.[0]?.fileName ||
+            analysisData?.analysedImages?.[0]?.fileName ||
+            analysisData?.productRecommendation?.analysedImages?.[0]?.fileName;
+
+        if (analysedFileName && analysedFileName !== fileName) {
+            getAnalysedImageInfo({
+                userId,
+                fileName: analysedFileName,
+            });
+        }
+    }, [analysisData, getUploadImageInfo, getAnalysedImageInfo]);
 
     const userImageUrl = useData?.data?.url || dataImageInfo?.data?.url;
+    const analysedImageUrl = analysedImageInfo?.data?.url;
 
     const reportSource =
         analysisData?.data?.[0] ||
@@ -201,9 +221,19 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         }>;
     })();
 
-    // Use keyConcerns from API response (ignore attributeCode)
+    // Use keyConcerns from API response
     const keyConcernsFromApi = Array.isArray(reportSource?.keyConcerns)
         ? reportSource.keyConcerns
+        : [];
+
+    // Detected skin attributes (shown with annotated image)
+    const attributeCodes = Array.isArray(reportSource?.attributeCode)
+        ? reportSource.attributeCode
+        : [];
+
+    // AI analysis summary
+    const analysisAiSummary = Array.isArray(reportSource?.analysisAiSummary)
+        ? reportSource.analysisAiSummary
         : [];
 
     // Map severity to colors
@@ -358,11 +388,11 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                 flexShrink: 0,
                             }}
                         >
-                            {userImageUrl ? (
+                            {(analysedImageUrl || userImageUrl) ? (
                                 <Box
                                     component="img"
-                                    src={userImageUrl}
-                                    alt="User"
+                                    src={analysedImageUrl || userImageUrl}
+                                    alt="Analysed"
                                     sx={{
                                         width: "100%",
                                         height: "100%",
@@ -559,6 +589,113 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                 <ScoringMethodBar />
                             </Box>
                         </Box>
+
+                        {/* Skin Analysis Attributes - annotated image + detected attributes */}
+                        {/* {(attributeCodes.length > 0 || analysisAiSummary.length > 0) && (
+                            <Box sx={{ mt: 5 }}>
+                                <Typography
+                                    sx={{
+                                        mb: 3,
+                                        fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                        fontWeight: 510,
+                                        fontSize: { xs: "28px", md: "32px" },
+                                        color: "#111827",
+                                    }}
+                                >
+                                    Skin Analysis Attributes
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: isWide ? "row" : "column",
+                                        gap: 3,
+                                        alignItems: isWide ? "flex-start" : "stretch",
+                                    }}
+                                >
+                                    {analysedImageUrl && (
+                                        <Box
+                                            sx={{
+                                                width: isWide ? 250 : "100%",
+                                                minWidth: isWide ? 250 : undefined,
+                                                height: isWide ? 300 : 280,
+                                                borderRadius: "16px",
+                                                overflow: "hidden",
+                                                bgcolor: "#e5e7eb",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <Box
+                                                component="img"
+                                                src={analysedImageUrl}
+                                                alt="Analysed"
+                                                sx={{
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    objectFit: "cover",
+                                                    display: "block",
+                                                }}
+                                            />
+                                        </Box>
+                                    )}
+                                    <Box sx={{ flex: 1 }}>
+                                        {attributeCodes.length > 0 && (
+                                            <Box>
+                                                {attributeCodes.map((item: any, index: number) => (
+                                                    <Typography
+                                                        key={index}
+                                                        sx={{
+                                                            fontSize: "24px",
+                                                            fontWeight: 600,
+                                                            color: "#1f2937",
+                                                            mb: 1.5,
+                                                            textTransform: "uppercase",
+                                                        }}
+                                                    >
+                                                        ({item.code})-{item?.attribute?.replace(/_/g, " ")}
+                                                    </Typography>
+                                                ))}
+                                            </Box>
+                                        )}
+                                        {analysisAiSummary.length > 0 && (
+                                            <Box sx={{ mt: attributeCodes.length > 0 ? 3 : 0 }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: "24px",
+                                                        fontWeight: 700,
+                                                        color: "#16a34a",
+                                                        mb: 2,
+                                                    }}
+                                                >
+                                                    Smart Skin Analysis Report
+                                                </Typography>
+                                                {analysisAiSummary.map((item: any, index: number) => (
+                                                    <Box key={index} sx={{ mb: 2 }}>
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: "22px",
+                                                                fontWeight: 700,
+                                                                color: "#111827",
+                                                            }}
+                                                        >
+                                                            {item.heading}
+                                                        </Typography>
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: "20px",
+                                                                color: "#374151",
+                                                                mt: 0.5,
+                                                            }}
+                                                        >
+                                                            {item.data?.replace(/>|-/g, " ")}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        )}
+                                    </Box>
+                                </Box>
+                            </Box>
+                        )} */}
 
                         {/* <Grid container spacing={{ xs: 2, md: 3 }}>
                             {keyConcerns.map((c) => (
