@@ -7,6 +7,7 @@ import {
   getPosiflyConfig,
 } from "@/lib/posifly";
 import { adminDb } from "@/lib/admin-db";
+import { localBillToAnalyticsSyncPayload, pushPosSyncToAnalytics } from "@/lib/analytics-sync";
 
 /**
  * POST /api/posifly/push-sale
@@ -108,6 +109,19 @@ export async function POST(request: NextRequest) {
         chargesDetails: posiflyPayload.charges_details,
       });
       console.log("[POSIFLY API] Saved bill to local DB:", posiflyPayload.bill_details.billNumber);
+
+      // Also push to LW Analytics backend (fire-and-forget)
+      try {
+        const fullBill = adminDb.getPosiflyFullBill(posiflyPayload.bill_details.billNumber);
+        if (fullBill) {
+          const analyticsPayload = localBillToAnalyticsSyncPayload(fullBill);
+          pushPosSyncToAnalytics(analyticsPayload)
+            .then((res) => console.log("[Analytics] POS synced:", res.bill_number))
+            .catch((err) => console.warn("[Analytics] POS sync failed (non-blocking):", err?.message));
+        }
+      } catch (analyticsErr: any) {
+        console.warn("[Analytics] POS sync prep failed (non-blocking):", analyticsErr?.message);
+      }
     } catch (dbErr) {
       console.warn("[POSIFLY API] Failed to save to local DB:", dbErr);
     }

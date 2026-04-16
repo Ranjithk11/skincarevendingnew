@@ -7,23 +7,26 @@ import { APP_ROUTES } from "@/utils/routes";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 type IdleVideoOverlayProps = {
-  idleMs?: number;
+  /** How long (ms) after user dismisses video before it re-appears on the home page. */
+  reIdleMs?: number;
   src?: string;
-  excludePaths?: string[];
 };
 
 export default function IdleVideoOverlay({
-  idleMs = 120_000, 
+  reIdleMs = 120_000,
   src = "/videos/airport.mp4",
-  excludePaths = [],
 }: IdleVideoOverlayProps) {
   const router = useRouter();
   const pathname = usePathname();
-  // Check if current path is excluded on initial render
-  const isExcluded = excludePaths.some(path => pathname.startsWith(path));
-  const [open, setOpen] = useState(!isExcluded);
+  const isHome = pathname === "/";
+
+  // On the home page, show video immediately on load/refresh.
+  const [open, setOpen] = useState(isHome);
   const timerRef = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const dismissedRef = useRef(false);
+  // Track whether this is the initial page load (true) vs client-side navigation (false)
+  const initialLoadRef = useRef(true);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -33,6 +36,7 @@ export default function IdleVideoOverlay({
   }, []);
 
   const hide = useCallback(() => {
+    dismissedRef.current = true;
     setOpen(false);
     const v = videoRef.current;
     if (v) {
@@ -43,33 +47,42 @@ export default function IdleVideoOverlay({
     }
   }, []);
 
+  // Re-arm: after user dismisses the video on home page,
+  // show it again after reIdleMs of inactivity.
   const arm = useCallback(() => {
     clearTimer();
     timerRef.current = window.setTimeout(() => {
       setOpen(true);
-    }, idleMs);
-  }, [clearTimer, idleMs]);
+    }, reIdleMs);
+  }, [clearTimer, reIdleMs]);
 
-  // 2. Only use the global listener to reset the timer when the overlay is CLOSED.
-  // When OPEN, the overlay will handle its own click events.
   const onGlobalActivity = useCallback(() => {
-    if (!open) {
+    // Only reset idle timer when overlay is hidden
+    if (!open && isHome) {
       arm();
     }
-  }, [arm, open]);
+  }, [arm, open, isHome]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
-    // Check if current path is in exclude list
-    const isExcluded = excludePaths.some(path => pathname.startsWith(path));
-    if (isExcluded) {
+
+    // Only active on home page
+    if (!isHome) {
       clearTimer();
       setOpen(false);
+      dismissedRef.current = false; // reset when leaving home
       return;
     }
 
-    arm();
+    // Show video immediately ONLY on fresh page load/refresh (initialLoadRef is true).
+    // On client-side navigation (e.g. logo click), just arm the idle timer.
+    if (initialLoadRef.current && !dismissedRef.current) {
+      setOpen(true);
+    } else {
+      // Client-side nav or user dismissed — arm idle timer so video comes back after reIdleMs
+      arm();
+    }
+    initialLoadRef.current = false;
 
     const opts: AddEventListenerOptions = { passive: true };
     const events: Array<keyof WindowEventMap> = [
@@ -87,7 +100,7 @@ export default function IdleVideoOverlay({
       clearTimer();
       for (const e of events) window.removeEventListener(e, onGlobalActivity);
     };
-  }, [arm, clearTimer, onGlobalActivity, pathname, excludePaths]);
+  }, [isHome, arm, clearTimer, onGlobalActivity, pathname]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -108,16 +121,16 @@ export default function IdleVideoOverlay({
   };
 
   const handleScanClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // 3. Prevents background click from firing
+    e.stopPropagation();
     hide();
-    arm();
+    clearTimer();
     router.push(APP_ROUTES.HOME);
   };
 
   const handleBuyClick = (e: React.MouseEvent) => {
-    e.stopPropagation(); // 3. Prevents background click from firing
+    e.stopPropagation();
     hide();
-    arm();
+    clearTimer();
     router.push("/slots");
   };
 

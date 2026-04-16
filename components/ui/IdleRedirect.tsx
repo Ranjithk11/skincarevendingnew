@@ -5,13 +5,18 @@ import { useRouter, usePathname } from "next/navigation";
 import { APP_ROUTES } from "@/utils/routes";
 
 interface IdleRedirectProps {
-  idleMs?: number;
+  /** Default idle timeout for most pages (ms). */
+  defaultIdleMs?: number;
+  /** Idle timeout for the feedback page (ms). */
+  feedbackIdleMs?: number;
+  /** Paths completely excluded from idle redirect (exact for "/", startsWith for others). */
   excludePaths?: string[];
 }
 
 export default function IdleRedirect({
-  idleMs = 60_000,
-  excludePaths = ["/", "/admin", "/feedback"],
+  defaultIdleMs = 120_000,   // 2 minutes for most pages
+  feedbackIdleMs = 180_000,  // 3 minutes for feedback page
+  excludePaths = ["/", "/admin"],
 }: IdleRedirectProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -24,12 +29,21 @@ export default function IdleRedirect({
     }
   }, []);
 
+  // Determine the idle timeout for the current page
+  const getIdleMs = useCallback(() => {
+    if (pathname === "/feedback" || pathname.startsWith("/feedback")) {
+      return feedbackIdleMs;
+    }
+    return defaultIdleMs;
+  }, [pathname, feedbackIdleMs, defaultIdleMs]);
+
   const startTimer = useCallback(() => {
     clearTimer();
+    const ms = getIdleMs();
     timerRef.current = window.setTimeout(() => {
       router.push(APP_ROUTES.HOME);
-    }, idleMs);
-  }, [clearTimer, idleMs, router]);
+    }, ms);
+  }, [clearTimer, getIdleMs, router]);
 
   const handleActivity = useCallback(() => {
     startTimer();
