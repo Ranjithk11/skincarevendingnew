@@ -1234,6 +1234,22 @@ export const sqliteDb = {
     return this.setSetting('machine_name', name, 'Machine name/location for backend identification');
   },
 
+  getMachineId(): string | null {
+    return this.getSetting('machine_id');
+  },
+
+  setMachineId(id: string): boolean {
+    return this.setSetting('machine_id', id, 'Machine ID for analytics backend');
+  },
+
+  getMachineLocation(): string | null {
+    return this.getSetting('machine_location');
+  },
+
+  setMachineLocation(location: string): boolean {
+    return this.setSetting('machine_location', location, 'Machine physical location');
+  },
+
   // ==================== CART ====================
 
   getCart(userId: string): { items: any[]; total: number } {

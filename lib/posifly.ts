@@ -147,21 +147,31 @@ export function getPosiflyConfig() {
 // ============================================================================
 
 /**
- * Format date as dd/mm/yyyy
+ * Convert a Date to IST (UTC+5:30) to avoid relying on system timezone
+ */
+function toIST(date: Date): Date {
+  const utcMs = date.getTime() + date.getTimezoneOffset() * 60000;
+  return new Date(utcMs + 5.5 * 60 * 60000);
+}
+
+/**
+ * Format date as dd/mm/yyyy (IST)
  */
 function formatDate(date: Date): string {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
+  const ist = toIST(date);
+  const day = String(ist.getDate()).padStart(2, "0");
+  const month = String(ist.getMonth() + 1).padStart(2, "0");
+  const year = ist.getFullYear();
   return `${day}/${month}/${year}`;
 }
 
 /**
- * Format time as hh:mm (24-hour)
+ * Format time as hh:mm (24-hour, IST)
  */
 function formatTime(date: Date): string {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const ist = toIST(date);
+  const hours = String(ist.getHours()).padStart(2, "0");
+  const minutes = String(ist.getMinutes()).padStart(2, "0");
   return `${hours}:${minutes}`;
 }
 

@@ -168,7 +168,46 @@ function isConfigured(): boolean {
 }
 
 /**
+ * Recursively sort object keys (to match Python json.dumps sort_keys=True).
+ */
+function sortKeysDeep(obj: any): any {
+  if (Array.isArray(obj)) return obj.map(sortKeysDeep);
+  if (obj && typeof obj === "object") {
+    return Object.fromEntries(
+      Object.entries(obj)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, v]) => [k, sortKeysDeep(v)])
+    );
+  }
+  return obj;
+}
+
+/**
+ * Mimic Python's json.dumps() default separators (', ' and ': ')
+ * by walking the compact JSON string and inserting spaces only at
+ * structural positions (not inside quoted strings).
+ */
+function pyStyleSerialize(obj: any): string {
+  const compact = JSON.stringify(obj);
+  let result = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < compact.length; i++) {
+    const ch = compact[i];
+    if (escaped) { result += ch; escaped = false; continue; }
+    if (ch === "\\" && inString) { result += ch; escaped = true; continue; }
+    if (ch === '"') { inString = !inString; result += ch; continue; }
+    if (!inString && ch === ":") { result += ": "; continue; }
+    if (!inString && ch === ",") { result += ", "; continue; }
+    result += ch;
+  }
+  return result;
+}
+
+/**
  * Build SHA-256 payload hash for /sync as per spec (Section 11).
+ * Backend uses Python json.dumps(data, sort_keys=True) with default
+ * separators (', ' / ': ') to compute the hash.
  */
 export function buildPayloadHash(payload: Partial<VendingSyncPayload>): string {
   const allRecords = [
@@ -180,7 +219,7 @@ export function buildPayloadHash(payload: Partial<VendingSyncPayload>): string {
     ...(payload.machine_status || []),
     ...(payload.products || []),
   ];
-  const serialised = JSON.stringify(allRecords);
+  const serialised = pyStyleSerialize(sortKeysDeep(allRecords));
   return crypto.createHash("sha256").update(serialised).digest("hex");
 }
 
@@ -192,7 +231,8 @@ export function buildPayloadHash(payload: Partial<VendingSyncPayload>): string {
  * Push a combined POS bill to the analytics backend via POST /posifly/sync
  */
 export async function pushPosSyncToAnalytics(
-  payload: PosSyncPayload
+  payload: PosSyncPayload,
+  options?: { signal?: AbortSignal }
 ): Promise<{ status: string; machine_id: string; bill_number: string; records_ingested: number }> {
   if (!isConfigured()) {
     console.warn("[Analytics Sync] Not configured, skipping POS sync");
@@ -206,6 +246,7 @@ export async function pushPosSyncToAnalytics(
     method: "POST",
     headers: machineHeaders(),
     body: JSON.stringify(payload),
+    signal: options?.signal,
   });
 
   if (!res.ok) {
@@ -348,7 +389,8 @@ export async function pushChargesDetails(
  * Full vending machine sync - POST /sync
  */
 export async function pushVendingSync(
-  payload: Omit<VendingSyncPayload, "payload_hash" | "synced_at" | "sync_id">
+  payload: Omit<VendingSyncPayload, "payload_hash" | "synced_at" | "sync_id">,
+  options?: { signal?: AbortSignal }
 ): Promise<{ status: string; records_ingested: number; sync_id: string }> {
   if (!isConfigured()) {
     console.warn("[Analytics Sync] Not configured, skipping vending sync");
@@ -372,6 +414,7 @@ export async function pushVendingSync(
     method: "POST",
     headers: machineHeaders(),
     body: JSON.stringify(fullPayload),
+    signal: options?.signal,
   });
 
   if (!res.ok) {
@@ -417,6 +460,64 @@ export async function sendHeartbeat(): Promise<{ status: string; machine_id: str
   }
 
   return res.json();
+}
+// Convenience: Push single sale to /sync (for Dashboard + Transactions pages)
+// ============================================================================
+
+/**
+ * Push a single sale as a vending sync so it appears on the Dashboard
+ * and Transactions pages (not just POS Sync).
+ */
+export async function pushSaleToVendingSync(
+  localBill: any,
+  options?: { signal?: AbortSignal }
+): Promise<any> {
+  if (!isConfigured()) return null;
+
+  const config = getAnalyticsConfig();
+  const bd = localBill.bill_details || localBill;
+  const items = localBill.item_details || [];
+  const payments = localBill.payment_details?.paymentModes || [];
+
+  const billNumber = bd.billNumber || "";
+  const timestamp = bd.created_at || new Date().toISOString();
+
+  // Build transaction record (one per bill)
+  const transactions = [{
+    source_id: `txn-${billNumber}`,
+    timestamp,
+    product_id: items[0]?.itemRefId || "",
+    product_name: items[0]?.name || "Unknown",
+    category: items[0]?.category || "",
+    amount: Number(bd.billValue || 0),
+    payment_method: payments[0]?.mode || "UPI",
+    status: (bd.billStatus || "COMPLETED").toLowerCase(),
+    user_id: bd.customerMobile || "",
+  }];
+
+  // Build products_sold records (one per item)
+  const products_sold = items.map((item: any) => ({
+    source_id: `sale-${billNumber}-${item.itemRefId || ""}`,
+    timestamp,
+    product_name: item.name || "Unknown",
+    category: item.category || "",
+    price: Number(item.sp || 0),
+    qty_vended: Number(item.quantity || 0),
+  }));
+
+  return pushVendingSync({
+    machine_id: config.machineId,
+    source_version: "v2",
+    machine_name: config.machineName || config.machineId,
+    location: config.machineLocation || "",
+    transactions,
+    products_sold,
+    user_scans: [],
+    slots: [],
+    restock_events: [],
+    machine_status: [],
+    products: [],
+  }, options);
 }
 
 // ============================================================================

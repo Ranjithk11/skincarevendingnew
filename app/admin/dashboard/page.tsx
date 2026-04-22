@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AdminDashboard } from "@/containers/admin-dashboard";
 import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal } from "@/containers/admin-dashboard/components";
+import { Snackbar, Alert } from "@mui/material";
 import { useRouter } from "next/navigation";
 import {
   useGetVendingSlotsQuery,
@@ -40,6 +41,9 @@ export default function AdminDashboardPage() {
     price: number;
     quantity: number;
   } | null>(null);
+
+  // Success snackbar state
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
 
   // Machine settings modal state
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -176,6 +180,8 @@ export default function AdminDashboardPage() {
     id: product.id.toString(),
     name: product.name,
     category: product.category || "Uncategorized",
+    retail_price: product.retail_price,
+    discount: product.discount || null,
     price: `Rs.${product.retail_price}`,
     amount: product.quantity || getProductQuantityFromSlots(product.id.toString(), product.name),
     image: product.image_url,
@@ -196,6 +202,8 @@ export default function AdminDashboardPage() {
       id: productId,
       name: adminMatch?.name ?? productName,
       category: adminMatch?.category ?? (p.productCategory?.title || p.category || "Uncategorized"),
+      retail_price: adminMatch?.retail_price ?? (p.retailPrice || p.retail_price || 0),
+      discount: adminMatch?.discount ?? (p.discount || null),
       price: adminMatch?.price ?? `Rs.${p.retailPrice || p.retail_price || 0}`,
       amount: adminMatch?.amount ?? getProductQuantityFromSlots(productId, productName),
       image: adminMatch?.image ?? (p.images?.[0]?.url || p.image_url || ""),
@@ -515,9 +523,11 @@ export default function AdminDashboardPage() {
       });
       
       // Refetch products to show updated data
-      refetchProducts();
+      await refetchProducts();
+      setSnackbar({ open: true, message: "Product updated successfully!", severity: "success" });
     } catch (error) {
       console.error("Error saving product:", error);
+      setSnackbar({ open: true, message: "Failed to update product.", severity: "error" });
     }
   };
 
@@ -620,6 +630,23 @@ export default function AdminDashboardPage() {
         open={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
       />
+
+      {/* Success/Error Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%", fontSize: 18 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

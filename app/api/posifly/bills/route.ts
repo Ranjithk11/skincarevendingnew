@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/admin-db";
 import { transformOrderToPosifly, LeafwaterOrder, getPosiflyConfig } from "@/lib/posifly";
+import { localBillToAnalyticsSyncPayload, pushPosSyncToAnalytics, pushSaleToVendingSync } from "@/lib/analytics-sync";
 
 /**
  * GET /api/posifly/bills - Read-only access to POSIFLY bill data
@@ -144,6 +145,99 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("[POSIFLY Bills] Saved bill:", billNumber);
+
+    const withTimeout = async <T,>(
+      label: string,
+      promiseFactory: (signal: AbortSignal) => Promise<T>,
+      timeoutMs: number
+    ): Promise<T> => {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await promiseFactory(controller.signal);
+      } catch (err: any) {
+        if (controller.signal.aborted) {
+          throw new Error(`${label} timed out after ${timeoutMs}ms`);
+        }
+        throw err;
+      } finally {
+        clearTimeout(t);
+      }
+    };
+
+    const retryOnce = async <T,>(fn: () => Promise<T>): Promise<T> => {
+      try {
+        return await fn();
+      } catch (err) {
+        return await fn();
+      }
+    };
+
+    // Also push to LW Analytics backend (best-effort, but reliable)
+    try {
+      const unprefixBillNumber = (bn: string): string => {
+        if (!bn) return bn;
+        const m = bn.match(/^LW-\d{8}-(.+)$/);
+        return m?.[1] || bn;
+      };
+
+      const candidates = Array.from(
+        new Set([
+          billNumber,
+          posiflyPayload.bill_details.billNumber,
+          body.orderId,
+          unprefixBillNumber(billNumber),
+          unprefixBillNumber(posiflyPayload.bill_details.billNumber),
+        ].filter(Boolean))
+      );
+
+      let fullBill: any = null;
+      for (const bn of candidates) {
+        fullBill = adminDb.getPosiflyFullBill(bn);
+        if (fullBill) break;
+      }
+
+      if (fullBill) {
+        const posSyncPromise = withTimeout(
+          "POS sync",
+          async (signal) => {
+            const payload = localBillToAnalyticsSyncPayload(fullBill);
+            return pushPosSyncToAnalytics(payload, { signal });
+          },
+          8000
+        );
+
+        const vendingSyncPromise = retryOnce(() =>
+          withTimeout(
+            "Vending sync",
+            async (signal) => pushSaleToVendingSync(fullBill, { signal }),
+            12000
+          )
+        );
+
+        const [posRes, vendingRes] = await Promise.allSettled([
+          posSyncPromise,
+          vendingSyncPromise,
+        ]);
+
+        if (posRes.status === "fulfilled") {
+          console.log("[Analytics] POS synced:", (posRes.value as any)?.bill_number || billNumber);
+        } else {
+          console.warn("[Analytics] POS sync failed (non-blocking):", posRes.reason?.message || posRes.reason);
+        }
+
+        if (vendingRes.status === "fulfilled") {
+          console.log("[Analytics] Vending synced:", (vendingRes.value as any)?.sync_id || billNumber);
+        } else {
+          console.warn(
+            "[Analytics] Vending sync failed (non-blocking):",
+            vendingRes.reason?.message || vendingRes.reason
+          );
+        }
+      }
+    } catch (analyticsErr: any) {
+      console.warn("[Analytics] POS sync prep failed (non-blocking):", analyticsErr?.message);
+    }
 
     return NextResponse.json({
       success: true,

@@ -23,44 +23,52 @@ export default function MachineSettingsModal({
   open,
   onClose,
 }: MachineSettingsModalProps) {
+  const [machineId, setMachineId] = useState("");
   const [machineName, setMachineName] = useState("");
-  const [originalName, setOriginalName] = useState("");
+  const [machineLocation, setMachineLocation] = useState("");
+  const [originalValues, setOriginalValues] = useState({ id: "", name: "", location: "" });
   const [source, setSource] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch current machine name when modal opens
+  // Fetch current machine settings when modal opens
   useEffect(() => {
     if (open) {
-      fetchMachineName();
+      fetchSettings();
     }
   }, [open]);
 
-  const fetchMachineName = async () => {
+  const fetchSettings = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const response = await fetch("/api/admin/machine-name");
       const data = await response.json();
       if (data.success) {
-        setMachineName(data.machineName);
-        setOriginalName(data.machineName);
+        setMachineId(data.machineId || "");
+        setMachineName(data.machineName || "");
+        setMachineLocation(data.machineLocation || "");
+        setOriginalValues({
+          id: data.machineId || "",
+          name: data.machineName || "",
+          location: data.machineLocation || "",
+        });
         setSource(data.source);
       } else {
-        setError(data.error || "Failed to fetch machine name");
+        setError(data.error || "Failed to fetch machine settings");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to fetch machine name");
+      setError(err.message || "Failed to fetch machine settings");
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSave = async () => {
-    if (!machineName.trim()) {
-      setError("Machine name cannot be empty");
+    if (!machineId.trim()) {
+      setError("Machine ID is required");
       return;
     }
 
@@ -72,25 +80,36 @@ export default function MachineSettingsModal({
       const response = await fetch("/api/admin/machine-name", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ machineName: machineName.trim() }),
+        body: JSON.stringify({
+          machineId: machineId.trim(),
+          machineName: machineName.trim(),
+          machineLocation: machineLocation.trim(),
+        }),
       });
       const data = await response.json();
       if (data.success) {
-        setOriginalName(machineName.trim());
+        setOriginalValues({
+          id: machineId.trim(),
+          name: machineName.trim(),
+          location: machineLocation.trim(),
+        });
         setSource("database");
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
-        setError(data.error || "Failed to save machine name");
+        setError(data.error || "Failed to save machine settings");
       }
     } catch (err: any) {
-      setError(err.message || "Failed to save machine name");
+      setError(err.message || "Failed to save machine settings");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const hasChanges = machineName.trim() !== originalName;
+  const hasChanges =
+    machineId.trim() !== originalValues.id ||
+    machineName.trim() !== originalValues.name ||
+    machineLocation.trim() !== originalValues.location;
 
   return (
     <Modal
@@ -123,7 +142,7 @@ export default function MachineSettingsModal({
             borderBottom: "1px solid #e0e0e0",
           }}
         >
-          <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#333" }}>
+          <Typography sx={{ fontSize: 32, fontWeight: 600, color: "#333" }}>
             Machine Settings
           </Typography>
           <IconButton onClick={onClose} size="small">
@@ -139,20 +158,43 @@ export default function MachineSettingsModal({
             </Box>
           ) : (
             <>
-              <Typography sx={{ fontSize: 14, color: "#666", mb: 1 }}>
-                Machine Name / Location
-              </Typography>
+              {/* <TextField
+                fullWidth
+                label="Machine ID"
+                value={machineId}
+                onChange={(e) => setMachineId(e.target.value)}
+                placeholder="e.g., LW-VM-TestingDB"
+                sx={{ mb: 2 }}
+                helperText="Unique identifier sent to the analytics backend"
+                size="medium"
+                InputLabelProps={{ sx: { fontSize: 24, fontWeight: 700 } }}
+                InputProps={{ sx: { fontSize: 24, fontWeight: 600 } }}
+              /> */}
+
               <TextField
                 fullWidth
+                label="Machine Name"
                 value={machineName}
                 onChange={(e) => setMachineName(e.target.value)}
-                placeholder="e.g., LeafWater_Jubilee_Hills"
+                placeholder="e.g., LW VM Floor 1"
                 sx={{ mb: 2 }}
-                helperText={
-                  source === "env"
-                    ? "Currently set via environment variable (NEXT_PUBLIC_MACHINE_NAME)"
-                    : "This name will be sent with customer scans to identify this machine"
-                }
+                helperText="Display name for this machine"
+                size="medium"
+                InputLabelProps={{ sx: { fontSize: 24, fontWeight: 700 } }}
+                InputProps={{ sx: { fontSize: 24, fontWeight: 600 } }}
+              />
+
+              <TextField
+                fullWidth
+                label="Location"
+                value={machineLocation}
+                onChange={(e) => setMachineLocation(e.target.value)}
+                placeholder="e.g., Floor 1"
+                sx={{ mb: 2 }}
+                helperText="Physical location of this machine"
+                size="medium"
+                InputLabelProps={{ sx: { fontSize: 24, fontWeight: 700 } }}
+                InputProps={{ sx: { fontSize: 24, fontWeight: 600 } }}
               />
 
               {source === "env" && (
@@ -161,14 +203,12 @@ export default function MachineSettingsModal({
                     bgcolor: "#fff3e0",
                     border: "1px solid #ffb74d",
                     borderRadius: 1,
-                    p: 2,
+                    p: 1.5,
                     mb: 2,
                   }}
                 >
-                  <Typography sx={{ fontSize: 13, color: "#e65100" }}>
-                    Note: Machine name is currently set via environment variable.
-                    Changes saved here will only take effect if the environment
-                    variable is removed.
+                  <Typography sx={{ fontSize: 14, color: "#e65100" }}>
+                    Currently using .env defaults. Saving here will override them.
                   </Typography>
                 </Box>
               )}
@@ -179,11 +219,11 @@ export default function MachineSettingsModal({
                     bgcolor: "#ffebee",
                     border: "1px solid #ef5350",
                     borderRadius: 1,
-                    p: 2,
+                    p: 1.5,
                     mb: 2,
                   }}
                 >
-                  <Typography sx={{ fontSize: 13, color: "#c62828" }}>
+                  <Typography sx={{ fontSize: 14, color: "#c62828" }}>
                     {error}
                   </Typography>
                 </Box>
@@ -195,16 +235,16 @@ export default function MachineSettingsModal({
                     bgcolor: "#e8f5e9",
                     border: "1px solid #66bb6a",
                     borderRadius: 1,
-                    p: 2,
+                    p: 1.5,
                     mb: 2,
                     display: "flex",
                     alignItems: "center",
                     gap: 1,
                   }}
                 >
-                  <CheckCircleIcon sx={{ color: "#2e7d32", fontSize: 20 }} />
-                  <Typography sx={{ fontSize: 13, color: "#2e7d32" }}>
-                    Machine name saved successfully!
+                  <CheckCircleIcon sx={{ color: "#2e7d32", fontSize: 24 }} />
+                  <Typography sx={{ fontSize: 12, color: "#2e7d32" }}>
+                    Machine settings saved! Next sale will use these values.
                   </Typography>
                 </Box>
               )}

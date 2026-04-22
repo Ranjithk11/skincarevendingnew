@@ -10,6 +10,7 @@ export interface Product {
   quantity: number;
   in_stock: boolean;
   shopify_url?: string;
+  discount?: { value: number } | null;
 }
 
 export interface VendingSlot {

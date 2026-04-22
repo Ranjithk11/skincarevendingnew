@@ -8,7 +8,7 @@ import {
 } from "./components";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import type { VendingSlot as ApiVendingSlot } from "@/redux/api/adminApi";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface Product {
   id: string;
@@ -66,29 +66,12 @@ export default function AdminDashboard({
   selectedSlot,
   isSyncing = false,
 }: AdminDashboardProps) {
-  const [products, setProducts] = useState<Product[]>([]);
-
-  // Fetch products from API
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('/api/admin/products');
-        const data = await response.json();
-        if (data && Array.isArray(data)) {
-          const mapped = data.map((p: any) => ({
-            ...p,
-            amount: p.quantity ?? p.amount ?? 0,
-            image: p.image_url ?? p.image ?? "",
-          }));
-          setProducts(mapped);
-        }
-      } catch (error) {
-        console.error('Error fetching products:', error);
-      }
-    };
-    
-    fetchProducts();
-  }, []);
+  // Use products from parent prop directly (parent handles fetching & refetching)
+  const products = (propProducts || []).map((p: any) => ({
+    ...p,
+    amount: p.quantity ?? p.amount ?? 0,
+    image: p.image_url ?? p.image ?? "",
+  }));
 
   const handleSlotClick = (slotNumber: number) => {
     onSlotClick?.(slotNumber);

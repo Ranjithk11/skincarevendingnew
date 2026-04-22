@@ -19,13 +19,28 @@ import crypto from "crypto";
 // ============================================================================
 
 export function getAnalyticsConfig() {
+  // Read dynamic machine settings from SQLite (set via admin UI),
+  // falling back to env vars
+  let dbMachineId = "";
+  let dbMachineName = "";
+  let dbMachineLocation = "";
+  try {
+    const { sqliteDb } = require("@/lib/sqlite-db");
+    dbMachineId = sqliteDb.getMachineId() || "";
+    const rawName = sqliteDb.getMachineName() || "";
+    dbMachineName = rawName === "LeafWater_Default" ? "" : rawName;
+    dbMachineLocation = sqliteDb.getMachineLocation() || "";
+  } catch {
+    // SQLite not available (e.g. during build), use env vars only
+  }
+
   return {
     baseUrl: (process.env.LW_ANALYTICS_URL || "http://localhost:8000").replace(/\/+$/, ""),
     username: process.env.LW_ANALYTICS_USERNAME || "admin",
     password: process.env.LW_ANALYTICS_PASSWORD || "",
-    machineId: process.env.LW_MACHINE_ID || "",
-    machineName: process.env.LW_MACHINE_NAME || "",
-    machineLocation: process.env.LW_MACHINE_LOCATION || "",
+    machineId: dbMachineId || process.env.LW_MACHINE_ID || "",
+    machineName: dbMachineName || process.env.LW_MACHINE_NAME || "",
+    machineLocation: dbMachineLocation || process.env.LW_MACHINE_LOCATION || "",
     apiKey: process.env.LW_MACHINE_API_KEY || "",
   };
 }
