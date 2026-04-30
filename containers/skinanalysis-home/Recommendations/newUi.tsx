@@ -489,7 +489,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
                                                 p: 2,
-                                                bgcolor: "#f0fdf4",
+                                                bgcolor: "#d8f8e1ff",
                                                 borderRadius: "16px",
                                                 boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.05)",
                                                 border: "1px solid #bbf7d0",
