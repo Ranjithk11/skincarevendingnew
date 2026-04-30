@@ -501,8 +501,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                     sx={{
                                                         fontSize: "24px",
                                                         fontWeight: 700,
-                                                        color: "#166534",
-                                                        lineHeight: 1.2,
+                                                        color: "#1f2937",                                                        lineHeight: 1.2,
                                                     }}
                                                 >
                                                     {(() => {
