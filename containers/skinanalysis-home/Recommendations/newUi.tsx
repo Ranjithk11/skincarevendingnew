@@ -489,10 +489,10 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                 alignItems: "center",
                                                 justifyContent: "space-between",
                                                 p: 2,
-                                                bgcolor: "#ffffff",
+                                                bgcolor: "#f0fdf4",
                                                 borderRadius: "16px",
                                                 boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.05)",
-                                                border: "1px solid #c9f5bfff",
+                                                border: "1px solid #bbf7d0",
                                                 minHeight: 90,
                                             }}
                                         >
@@ -501,7 +501,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                     sx={{
                                                         fontSize: "24px",
                                                         fontWeight: 700,
-                                                        color: "#1f2937",
+                                                        color: "#166534",
                                                         lineHeight: 1.2,
                                                     }}
                                                 >
