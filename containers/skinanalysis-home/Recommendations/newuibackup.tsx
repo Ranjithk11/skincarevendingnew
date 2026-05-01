@@ -119,20 +119,20 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         null;
 
     // Generate the public report URL for QR code
-    const reportUserId = 
+    const reportUserId =
         analysisData?.data?.user?._id ||
         analysisData?.user?._id ||
         analysisData?.data?.[0]?.userId ||
         analysisData?.data?.userId ||
         analysisData?.productRecommendation?.userId ||
         null;
-    
-    const productRecommendationId = 
+
+    const productRecommendationId =
         analysisData?.data?.productRecommendation?._id ||
         analysisData?.productRecommendation?._id ||
         reportSource?._id ||
         null;
-    
+
     const publicReportUrl = reportUserId && productRecommendationId
         ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://skincarevendingnew.vercel.app"}${APP_ROUTES.VIEW_SKINCARE_REC_VIA_PUBLIC_URL}?userId=${reportUserId}&productRecommendationId=${productRecommendationId}`
         : undefined;
@@ -442,7 +442,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                         </Box>
                                     </Typography> */}
                                     <Typography sx={{ fontSize: "30px", color: "#000", fontWeight: 400, mt: 2 }}>
-                                        Overall Skincare Health 
+                                        Overall Skincare Health
                                     </Typography>
                                 </Box>
                                 <Box
@@ -468,7 +468,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                     {overallSkinHealthRating || "--"}
                                 </Box>
 
-                                
+
                             </Box>
 
 
@@ -516,7 +516,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                 boxSizing: "border-box",
                             }}
                         >
-                             <Box sx={{ flex: 1 }}>
+                            {/* <Box sx={{ flex: 1 }}>
                                         {attributeCodes.length > 0 && (
                                             <Box>
                                                 {attributeCodes.map((item: any, index: number) => (
@@ -538,10 +538,10 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                      
                                     </Box>
 
-                           
+                            */}
 
                             {/* Display skinMetrics from API with score and level */}
-                            {/* <Box
+                            <Box
                                 sx={{
                                     width: "100%",
                                     display: "grid",
@@ -611,7 +611,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                             </Box>
                             <Box sx={{ mt: 4 }}>
                                 <ScoringMethodBar />
-                            </Box> */}
+                            </Box>
                         </Box>
 
                         {/* Skin Analysis Attributes - annotated image + detected attributes */}

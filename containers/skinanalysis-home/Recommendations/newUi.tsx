@@ -431,11 +431,20 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                 }}
                             >
                                 <Box sx={{ width: "100%", textAlign: "center", mb: 3 }}>
+                                    {/* <Typography sx={{ fontSize: "28px", fontWeight: 700 }}>
+                                        <Box component="span" sx={{ color: "#2ac78fff" }}>
+                                            {typeof overallSkinHealthScore === "number"
+                                                ? overallSkinHealthScore
+                                                : "--"}
+                                        </Box>{" "}
+                                        <Box component="span" sx={{ color: "#000", fontWeight: 500 }}>
+                                            out of 100
+                                        </Box>
+                                    </Typography> */}
                                     <Typography sx={{ fontSize: "30px", color: "#000", fontWeight: 400, mt: 2 }}>
-                                        Overall Skincare Health
+                                        Overall Skincare Health 
                                     </Typography>
                                 </Box>
-
                                 <Box
                                     sx={{
                                         minWidth: 180,
@@ -458,15 +467,21 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                 >
                                     {overallSkinHealthRating || "--"}
                                 </Box>
+
+                                
                             </Box>
+
+
                         </Box>
                     </Box>
+
+
 
                     <Box sx={{ mt: 5 }}>
                         <Typography
                             sx={{
                                 mt: 2.5,
-                                mb: 5,
+                                mb: 0.75,
                                 fontFamily:
                                     'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                                 fontWeight: 510,
@@ -478,46 +493,333 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                         >
                             Key Concerns
                         </Typography>
-
-                        {attributeCodes.length > 0 && (
-                            <Grid container spacing={2}>
-                                {attributeCodes.map((item: any, index: number) => (
-                                    <Grid item xs={6} key={index}>
+                        <Typography
+                            sx={{
+                                mt: 2,
+                                mb: 3,
+                                fontSize: "24px",
+                                color: "#6b7280",
+                                letterSpacing: 1,
+                            }}
+                        >
+                            Defects picked up by the scan
+                        </Typography>
+                        <Box
+                            sx={{
+                                mt: 3,
+                                width: "100%",
+                                border: "1px solid #d1d5db",
+                                borderRadius: "18px",
+                                p: 2,
+                                gap: 2,
+                                bgcolor: "#ffffff",
+                                boxSizing: "border-box",
+                            }}
+                        >
+                            {/* Display skinMetrics from API with score and level */}
+                            <Box
+                                sx={{
+                                    width: "100%",
+                                    display: "grid",
+                                    gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
+                                    gap: 2,
+                                }}
+                            >
+                                {skinMetricCards.length > 0 ? (
+                                    skinMetricCards.map((card, idx) => (
                                         <Box
+                                            key={`metric-${card.label}-${idx}`}
                                             sx={{
+                                                border: "2px solid #f0d89a",
+                                                borderRadius: "12px",
+                                                p: 3,
+                                                textAlign: "center",
+                                                bgcolor: "#ffffff",
+                                                minHeight: { xs: 90, sm: 110 },
                                                 display: "flex",
+                                                flexDirection: "column",
                                                 alignItems: "center",
-                                                justifyContent: "space-between",
-                                                p: 2,
-                                                bgcolor: "#d8f8e1ff",
-                                                borderRadius: "16px",
-                                                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.05)",
-                                                border: "1px solid #bbf7d0",
-                                                minHeight: 90,
+                                                justifyContent: "center",
                                             }}
                                         >
-                                            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flex: 1, minWidth: 0 }}>
+                                            <Typography
+                                                sx={{
+                                                    fontSize: "24px",
+                                                    fontWeight: 300,
+                                                    textTransform: "uppercase",
+                                                }}
+                                            >
+                                                {card.label}
+                                            </Typography>
+                                            {/* <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
+                                                {card.value ? (100 - parseInt(card.value)) : 0}%
+                                            </Typography> */}
+                                            {/* {card.level && (
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: "20px",
+                                                        fontWeight: 600,
+                                                        mt: 1,
+                                                        color: (() => {
+                                                            const reversedValue = card.value ? (100 - parseInt(card.value)) : 0;
+                                                            if (reversedValue <= 30) return "#FF5656"; // orange for NEEDS CARE
+                                                            if (reversedValue <= 60) return "#FFA239"; // amber for MODERATE
+                                                            return "#16A34A"; // green for GOOD
+                                                        })(),
+                                                        textTransform: "uppercase",
+                                                    }}
+                                                >
+                                                    {(() => {
+                                                        const reversedValue = card.value ? (100 - parseInt(card.value)) : 0;
+                                                        if (reversedValue <= 30) return "NEEDS CARE";
+                                                        if (reversedValue <= 60) return "MODERATE";
+                                                        return "GOOD";
+                                                    })()}
+                                                </Typography>
+                                            )} */}
+                                        </Box>
+                                    ))
+                                ) : (
+                                    <Typography sx={{ fontSize: "18px", color: "#6b7280", textAlign: "center", py: 2 }}>
+                                        No skin metrics detected
+                                    </Typography>
+                                )}
+                            </Box>
+                            {/* <Box sx={{ mt: 4 }}>
+                                <ScoringMethodBar />
+                            </Box> */}
+                        </Box>
+
+                        {/* Skin Analysis Attributes - annotated image + detected attributes */}
+                        {/* {(attributeCodes.length > 0 || analysisAiSummary.length > 0) && (
+                            <Box sx={{ mt: 5 }}>
+                                <Typography
+                                    sx={{
+                                        mb: 3,
+                                        fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                        fontWeight: 510,
+                                        fontSize: { xs: "28px", md: "32px" },
+                                        color: "#111827",
+                                    }}
+                                >
+                                    Skin Analysis Attributes
+                                </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: isWide ? "row" : "column",
+                                        gap: 3,
+                                        alignItems: isWide ? "flex-start" : "stretch",
+                                    }}
+                                >
+                                    {analysedImageUrl && (
+                                        <Box
+                                            sx={{
+                                                width: isWide ? 250 : "100%",
+                                                minWidth: isWide ? 250 : undefined,
+                                                height: isWide ? 300 : 280,
+                                                borderRadius: "16px",
+                                                overflow: "hidden",
+                                                bgcolor: "#e5e7eb",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <Box
+                                                component="img"
+                                                src={analysedImageUrl}
+                                                alt="Analysed"
+                                                sx={{
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    objectFit: "cover",
+                                                    display: "block",
+                                                }}
+                                            />
+                                        </Box>
+                                    )}
+                                    <Box sx={{ flex: 1 }}>
+                                        {attributeCodes.length > 0 && (
+                                            <Box>
+                                                {attributeCodes.map((item: any, index: number) => (
+                                                    <Typography
+                                                        key={index}
+                                                        sx={{
+                                                            fontSize: "24px",
+                                                            fontWeight: 600,
+                                                            color: "#1f2937",
+                                                            mb: 1.5,
+                                                            textTransform: "uppercase",
+                                                        }}
+                                                    >
+                                                        ({item.code})-{item?.attribute?.replace(/_/g, " ")}
+                                                    </Typography>
+                                                ))}
+                                            </Box>
+                                        )}
+                                        {analysisAiSummary.length > 0 && (
+                                            <Box sx={{ mt: attributeCodes.length > 0 ? 3 : 0 }}>
                                                 <Typography
                                                     sx={{
                                                         fontSize: "24px",
                                                         fontWeight: 700,
-                                                        color: "#1f2937",                                                        lineHeight: 1.2,
+                                                        color: "#16a34a",
+                                                        mb: 2,
                                                     }}
                                                 >
-                                                    {(() => {
-                                                        const raw = (item?.attribute?.replace(/_/g, " ") || `Concern ${index + 1}`).toLowerCase();
-                                                        return raw.charAt(0).toUpperCase() + raw.slice(1);
-                                                    })()}
+                                                    Smart Skin Analysis Report
                                                 </Typography>
-                                               
+                                                {analysisAiSummary.map((item: any, index: number) => (
+                                                    <Box key={index} sx={{ mb: 2 }}>
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: "22px",
+                                                                fontWeight: 700,
+                                                                color: "#111827",
+                                                            }}
+                                                        >
+                                                            {item.heading}
+                                                        </Typography>
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: "20px",
+                                                                color: "#374151",
+                                                                mt: 0.5,
+                                                            }}
+                                                        >
+                                                            {item.data?.replace(/>|-/g, " ")}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
                                             </Box>
-                                            
-                                        </Box>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        )}
+                                        )}
+                                    </Box>
+                                </Box>
+                            </Box>
+                        )} */}
 
+                        {/* <Grid container spacing={{ xs: 2, md: 3 }}>
+                            {keyConcerns.map((c) => (
+                                <Grid item xs={12} sm={4} key={c.title}>
+                                    <Box
+                                        sx={{
+                                            width: "100%",
+                                            height: 250,
+                                            borderRadius: 2,
+                                            overflow: "hidden",
+                                            boxShadow: 1,
+                                            bgcolor: "#ffffff",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            position: "relative",
+                                        }}
+                                    >
+                                        <Box
+                                            sx={{
+                                                position: "absolute",
+                                                inset: 0,
+                                                backgroundImage: `url(${c.imageSrc})`,
+                                                backgroundRepeat: "no-repeat",
+                                                backgroundPosition: "center",
+                                                backgroundSize: "cover",
+                                            }}
+                                        />
+                                        <Box
+                                            sx={{
+                                                position: "absolute",
+                                                left: 0,
+                                                right: 0,
+                                                bottom: 0,
+                                                p: 2,
+                                                bgcolor: "rgba(0,0,0,0.55)",
+                                            }}
+                                        >
+                                            <Typography sx={{ fontSize: "24px", color: "#fff", fontWeight: 500 }}>
+                                                {c.title}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
+                                </Grid>
+                            ))}
+                        </Grid> */}
+
+                        {/* <Box
+                            sx={{
+                                mt: 6,
+                                display: "flex",
+                                justifyContent: "left",
+                                gap: 2,
+                            }}
+                        >
+                            <Box
+                                onClick={() => setPostConcernTab("routine")}
+                                sx={{
+                                    width: 200,
+                                    height: 60,
+                                    borderRadius: "999px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: "pointer",
+                                    userSelect: "none",
+                                    fontFamily:
+                                        'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                    fontWeight: 600,
+                                    fontSize: "24px",
+                                    color:
+                                        postConcernTab === "routine" ? "#ffffff" : "#111827",
+                                    background:
+                                        postConcernTab === "routine"
+                                            ? "linear-gradient(90deg, #1DC9A0 0%, #316D52 100%)"
+                                            : "#ffffff",
+                                    border:
+                                        postConcernTab === "routine"
+                                            ? "1px solid transparent"
+                                            : "1px solid #d1d5db",
+                                    boxShadow:
+                                        postConcernTab === "routine"
+                                            ? "0 10px 22px rgba(0,0,0,0.12)"
+                                            : "none",
+                                }}
+                            >
+                                Routine
+                            </Box>
+
+                            <Box
+                                onClick={() => setPostConcernTab("recommendations")}
+                                sx={{
+                                    width: 240,
+                                    height: 60,
+                                    borderRadius: "999px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    cursor: "pointer",
+                                    userSelect: "none",
+                                    fontFamily:
+                                        'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                    fontWeight: 500,
+                                    fontSize: "24px",
+                                    color:
+                                        postConcernTab === "recommendations"
+                                            ? "#ffffff"
+                                            : "#111827",
+                                    background:
+                                        postConcernTab === "recommendations"
+                                            ? "linear-gradient(90deg, #1DC9A0 0%, #316D52 100%)"
+                                            : "#ffffff",
+                                    border:
+                                        postConcernTab === "recommendations"
+                                            ? "1px solid transparent"
+                                            : "1px solid #d1d5db",
+                                    boxShadow:
+                                        postConcernTab === "recommendations"
+                                            ? "0 10px 22px rgba(0,0,0,0.12)"
+                                            : "none",
+                                }}
+                            >
+                                Recommendations
+                            </Box>
+                        </Box> */}
                         {/* QR Code for Report with Analysis Summary */}
                         <Box sx={{ mt: 5 }}>
                             <ReportQRCode
