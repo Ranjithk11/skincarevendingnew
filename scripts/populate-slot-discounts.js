@@ -16,6 +16,13 @@ if (fs.existsSync(envPath)) {
 
 // Direct database access
 const dbPath = path.join(__dirname, '../data/vending.db');
+
+if (!fs.existsSync(dbPath)) {
+  console.error(`ERROR: Database file not found at ${dbPath}`);
+  console.error('Please ensure the database file exists');
+  process.exit(1);
+}
+
 const db = new Database(dbPath);
 
 // External API for product discounts
@@ -29,8 +36,14 @@ if (!API_BASE) {
 }
 
 async function getSlots() {
-  const stmt = db.prepare('SELECT * FROM vending_slots');
-  return stmt.all();
+  try {
+    const stmt = db.prepare('SELECT * FROM vending_slots');
+    const slots = stmt.all();
+    return slots || [];
+  } catch (e) {
+    console.error('Error fetching slots:', e.message);
+    return [];
+  }
 }
 
 async function getProductDiscountFromAPI(productName, productId) {
@@ -84,9 +97,16 @@ function updateSlotDiscount(slotId, discount) {
 
 async function main() {
   console.log('Fetching slots from database...');
+  console.log(`Database path: ${dbPath}`);
   const slots = getSlots();
   console.log(`Found ${slots.length} slots`);
   console.log(`Using API: ${API_BASE}`);
+
+  if (slots.length === 0) {
+    console.log('No slots found in database. Exiting.');
+    db.close();
+    return;
+  }
 
   let updated = 0;
   for (const slot of slots) {
