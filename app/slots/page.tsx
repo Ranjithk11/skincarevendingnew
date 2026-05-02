@@ -233,7 +233,9 @@ export default function SlotsPage() {
     const updates: Record<number, number> = {};
 
     Object.values(slotsData).forEach((slot) => {
-      if (!slot.product_id || slot.discount_value) return;
+      if (!slot.product_id) return;
+      // Only update if discount_value is missing or 0
+      if (slot.discount_value !== undefined && slot.discount_value !== null && slot.discount_value !== 0) return;
 
       const rawSlotProductId = String(slot.product_id);
       const nId = normalizeProductId(rawSlotProductId);
@@ -255,6 +257,7 @@ export default function SlotsPage() {
 
       const discountVal = Number((product as any)?.discount?.value) || 0;
       if (discountVal > 0) {
+        console.log(`[Backfill] Updating slot ${slot.slot_id} with discount ${discountVal} for product ${slot.product_name}`);
         updates[slot.slot_id] = discountVal;
         fetch("/api/admin/slots", {
           method: "POST",
@@ -275,6 +278,7 @@ export default function SlotsPage() {
 
     // Batch update local state once
     if (Object.keys(updates).length > 0) {
+      console.log(`[Backfill] Updating ${Object.keys(updates).length} slots with discounts`);
       setSlotsData((prev) => {
         const next = { ...prev };
         for (const [slotId, discountVal] of Object.entries(updates)) {
