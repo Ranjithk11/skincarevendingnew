@@ -46,10 +46,22 @@ function getSlots() {
   }
 }
 
+function cleanSearchTerm(name) {
+  // Remove special characters that cause API issues
+  return name
+    .replace(/%/g, ' ')
+    .replace(/\+/g, ' ')
+    .replace(/&/g, ' ')
+    .replace(/\|/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function getProductDiscountFromAPI(productName, productId, retries = 3) {
   try {
+    const cleanName = cleanSearchTerm(productName);
     const params = new URLSearchParams();
-    params.set('search', productName);
+    params.set('search', cleanName);
     params.set('limit', '50');
     
     const headers = {
@@ -81,7 +93,7 @@ async function getProductDiscountFromAPI(productName, productId, retries = 3) {
     const product = rawProducts.find(p => 
       String(p._id || p.id) === productId ||
       String(p._id || p.id) === productId?.replace('products/', '') ||
-      String(p?.name).toUpperCase().includes(productName.toUpperCase().substring(0, 15))
+      String(p?.name).toUpperCase().includes(cleanName.toUpperCase().substring(0, 15))
     );
     
     return product?.discount?.value || null;
