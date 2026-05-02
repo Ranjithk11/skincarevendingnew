@@ -35,7 +35,7 @@ if (!API_BASE) {
   process.exit(1);
 }
 
-async function getSlots() {
+function getSlots() {
   try {
     const stmt = db.prepare('SELECT * FROM vending_slots');
     const slots = stmt.all();
