@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { Box, Typography, Dialog, IconButton, CircularProgress } from "@mui/material";
+import { Box, Typography, Dialog, IconButton, CircularProgress, Select, MenuItem } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { VirtualKeyboard } from "@/components/ui";
 import { useSendOtpMutation, useVerifyOtpMutation } from "@/redux/api/authApi";
+import * as countryTelephoneData from 'country-telephone-data'; 
 
 interface MobileOtpDialogProps {
   open: boolean;
@@ -27,6 +28,11 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
   const [error, setError] = useState("");
   const [activeField, setActiveField] = useState<"phone" | "otp">("phone");
   const [updating, setUpdating] = useState(false);
+  
+  // Default to India
+  const [selectedCountry, setSelectedCountry] = useState(
+    (countryTelephoneData as any).allCountries?.find((c: any) => c.iso2 === 'in') || (countryTelephoneData as any).allCountries?.[0]
+  );
 
   const phoneRef = useRef<HTMLInputElement>(null);
   const otpRef = useRef<HTMLInputElement>(null);
@@ -34,7 +40,6 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
   const [sendOtp, { isLoading: isSendingOtp }] = useSendOtpMutation();
   const [verifyOtp, { isLoading: isVerifyingOtp }] = useVerifyOtpMutation();
 
-  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setStep("phone");
@@ -45,7 +50,6 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
     }
   }, [open]);
 
-  // Focus the right input when step changes
   useEffect(() => {
     if (step === "phone") {
       setTimeout(() => phoneRef.current?.focus(), 100);
@@ -60,13 +64,14 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
 
       const currentField = activeField;
       const setter = currentField === "phone" ? setPhone : setOtp;
-      const maxLen = currentField === "phone" ? 10 : 6;
+      
+      // Dynamic max length based on country data or default to 15 (international max)
+      const maxLen = currentField === "phone" ? 15 : 6;
 
       setter((prev) => {
         if (key === "backspace") return prev.slice(0, -1);
         if (key === "return" || key === "space") return prev;
         if (key === "arrowleft" || key === "arrowright") return prev;
-        // Only digits
         if (!/^\d$/.test(key)) return prev;
         if (prev.length >= maxLen) return prev;
         return prev + key;
@@ -77,13 +82,13 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
 
   const handleSendOtp = async () => {
     setError("");
-    if (phone.length !== 10) {
-      setError("Please enter a valid 10-digit phone number");
+    if (phone.length < 7) {
+      setError("Please enter a valid phone number");
       return;
     }
 
     try {
-      const phoneWithCode = `+91${phone}`;
+      const phoneWithCode = `+${selectedCountry.dialCode}${phone}`;
       const result: any = await sendOtp({
         input: phoneWithCode,
         inputType: "phoneNumber",
@@ -91,14 +96,13 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
       });
 
       if (result?.error) {
-        setError(result?.error?.data?.message || "Failed to send OTP. Please try again.");
+        setError(result?.error?.data?.message || "Failed to send OTP.");
         return;
       }
-
       setStep("otp");
       setActiveField("otp");
     } catch (err: any) {
-      setError(err?.message || "Failed to send OTP");
+      setError("Failed to send OTP");
     }
   };
 
@@ -110,7 +114,7 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
     }
 
     try {
-      const phoneWithCode = `+91${phone}`;
+      const phoneWithCode = `+${selectedCountry.dialCode}${phone}`;
       const result: any = await verifyOtp({
         input: phoneWithCode,
         action: "otpVerifyLogin",
@@ -122,7 +126,6 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
         return;
       }
 
-      // OTP verified - now update mobile number on user profile
       if (userId) {
         setUpdating(true);
         try {
@@ -132,7 +135,7 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
             body: JSON.stringify({
               userId,
               phoneNumber: phone,
-              countryCode: "91",
+              countryCode: selectedCountry.dialCode,
             }),
           });
         } catch (e) {
@@ -143,7 +146,7 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
 
       onVerified(phone);
     } catch (err: any) {
-      setError(err?.message || "Verification failed");
+      setError("Verification failed");
     }
   };
 
@@ -151,7 +154,7 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
     setError("");
     setOtp("");
     try {
-      const phoneWithCode = `+91${phone}`;
+      const phoneWithCode = `+${selectedCountry.dialCode}${phone}`;
       const result: any = await sendOtp({
         input: phoneWithCode,
         inputType: "phoneNumber",
@@ -168,91 +171,58 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
     }
   };
 
-  const isLoading = isSendingOtp || isVerifyingOtp || updating;
-
   return (
     <Dialog
       open={open}
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: "24px",
-          overflow: "hidden",
-          maxWidth: 500,
-          mx: "auto",
-        },
-      }}
+      PaperProps={{ sx: { borderRadius: "24px", maxWidth: 500 } }}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          px: 3,
-          py: 2,
-          bgcolor: "#2d5a3d",
-        }}
-      >
-        <Typography sx={{ fontSize: "26px", fontWeight: 600, color: "#fff" }}>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 3, py: 2, bgcolor: "#2d5a3d" }}>
+        <Typography sx={{ fontSize: "22px", fontWeight: 600, color: "#fff" }}>
           {step === "phone" ? "Enter Mobile Number" : "Verify OTP"}
         </Typography>
-        <IconButton onClick={onClose} sx={{ color: "#fff" }}>
-          <CloseIcon sx={{ fontSize: 28 }} />
-        </IconButton>
+        <IconButton onClick={onClose} sx={{ color: "#fff" }}><CloseIcon /></IconButton>
       </Box>
 
-      {/* Body */}
       <Box sx={{ px: 3, py: 3, bgcolor: "#fff" }}>
         {step === "phone" ? (
           <>
-            <Typography sx={{ fontSize: "22px", color: "#6b7280", mb: 2 }}>
-              Enter your mobile number to view the report QR code
+            <Typography sx={{ fontSize: "18px", color: "#6b7280", mb: 2 }}>
+              Select your country and enter mobile number
             </Typography>
 
-            {/* Phone Input */}
-            <Box
-              onClick={() => {
-                setActiveField("phone");
-                phoneRef.current?.focus();
-              }}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                border: "3px solid #2d5a3d",
-                borderRadius: "12px",
-                px: 2,
-                py: 1.5,
-                bgcolor: "#f9fafb",
-                gap: 1,
-              }}
-            >
-              <Typography sx={{ fontSize: "24px", color: "#374151", fontWeight: 500 }}>
-                +91
-              </Typography>
-              <Box sx={{ width: "2px", height: 32, bgcolor: "#d1d5db" }} />
+            <Box sx={{ display: "flex", alignItems: "center", border: "2px solid #2d5a3d", borderRadius: "12px", px: 1, py: 1, bgcolor: "#f9fafb", gap: 1 }}>
+              <Select
+                value={selectedCountry.iso2}
+                onChange={(e) => {
+                  const country = (countryTelephoneData as any).allCountries?.find((c: any) => c.iso2 === e.target.value);
+                  if (country) setSelectedCountry(country);
+                }}
+                variant="standard"
+                disableUnderline
+                sx={{ width: '100px', fontSize: "18px", ml: 1 }}
+                MenuProps={{ PaperProps: { sx: { maxHeight: 400 } } }}
+              >
+                {(countryTelephoneData as any).allCountries?.map((c: any) => (
+                  <MenuItem key={c.iso2} value={c.iso2}>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <span>{c.format ? c.iso2.toUpperCase() : "🏳️"}</span> 
+                      <span>+{c.dialCode}</span>
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+
+              <Box sx={{ width: "1px", height: 30, bgcolor: "#ccc" }} />
+
               <input
                 ref={phoneRef}
                 value={phone}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                  setPhone(val);
-                }}
-                onFocus={() => setActiveField("phone")}
-                placeholder="Enter 10-digit number"
-                type="tel"
-                maxLength={10}
-                style={{
-                  flex: 1,
-                  border: "none",
-                  outline: "none",
-                  fontSize: "26px",
-                  fontFamily: "Roboto, sans-serif",
-                  backgroundColor: "transparent",
-                  letterSpacing: "2px",
-                }}
+                readOnly
+                placeholder="Phone Number"
+                style={{ flex: 1, border: "none", outline: "none", fontSize: "22px", backgroundColor: "transparent" }}
               />
             </Box>
           </>
@@ -262,7 +232,7 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
               We sent a verification code to
             </Typography>
             <Typography sx={{ fontSize: "24px", fontWeight: 600, color: "#111827", mb: 2 }}>
-              +91 {phone}
+              +{selectedCountry.dialCode} {phone}
             </Typography>
 
             {/* OTP Input */}
@@ -345,50 +315,21 @@ const MobileOtpDialog: React.FC<MobileOtpDialogProps> = ({
         )}
 
         {/* Error */}
-        {error && (
-          <Typography
-            sx={{
-              mt: 2,
-              fontSize: "20px",
-              color: error.includes("resent") ? "#16a34a" : "#dc2626",
-              textAlign: "center",
-            }}
-          >
-            {error}
-          </Typography>
-        )}
+        {error && <Typography sx={{ color: "red", mt: 1, textAlign: 'center' }}>{error}</Typography>}
 
         {/* Action Button */}
         <Box
-          onClick={!isLoading ? (step === "phone" ? handleSendOtp : handleVerifyOtp) : undefined}
-          sx={{
-            mt: 3,
-            py: 2,
-            bgcolor: isLoading ? "#9ca3af" : "#2d5a3d",
-            borderRadius: "12px",
-            textAlign: "center",
-            cursor: isLoading ? "default" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 1,
-          }}
+          onClick={!isSendingOtp ? (step === "phone" ? handleSendOtp : handleVerifyOtp) : undefined}
+          sx={{ mt: 3, py: 2, bgcolor: "#2d5a3d", borderRadius: "12px", textAlign: "center", color: "#fff", cursor: "pointer", fontWeight: "bold" }}
         >
-          {isLoading && <CircularProgress size={22} sx={{ color: "#fff" }} />}
-          <Typography sx={{ fontSize: "24px", fontWeight: 600, color: "#fff" }}>
-            {step === "phone"
-              ? isSendingOtp
-                ? "Sending..."
-                : "Send OTP"
-              : isVerifyingOtp || updating
-              ? "Verifying..."
-              : "Verify & View Report"}
-          </Typography>
+          {isSendingOtp ? "Processing..." : step === "phone" ? "Send OTP" : "Verify"}
         </Box>
       </Box>
 
-      {/* Virtual Keyboard */}
-      <VirtualKeyboard onKeyPress={handleKeyPress} layout="numeric" />
+      {/* Virtual Keyboard is always visible at the bottom of dialog */}
+      <Box sx={{ bgcolor: "#f3f4f6", p: 1 }}>
+        <VirtualKeyboard onKeyPress={handleKeyPress} layout="numeric" />
+      </Box>
     </Dialog>
   );
 };
