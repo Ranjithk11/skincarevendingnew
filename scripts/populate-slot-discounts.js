@@ -1,32 +1,71 @@
-const API_BASE = 'http://localhost:3000';
+const Database = require('better-sqlite3');
+const path = require('path');
+const fs = require('fs');
 
-async function getSlots() {
-  const res = await fetch(`${API_BASE}/api/admin/slots`);
-  if (!res.ok) throw new Error('Failed to fetch slots');
-  const data = await res.json();
-  // Handle both array and object formats
-  return Array.isArray(data) ? data : Object.values(data);
+// Load environment variables from .env.local if it exists
+const envPath = path.join(__dirname, '../.env.local');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  envContent.split('\n').forEach(line => {
+    const [key, ...valueParts] = line.split('=');
+    if (key && valueParts.length) {
+      process.env[key.trim()] = valueParts.join('=').trim();
+    }
+  });
 }
 
-async function getProductDiscount(productName, productId) {
+// Direct database access
+const dbPath = path.join(__dirname, '../data/vending.db');
+const db = new Database(dbPath);
+
+// External API for product discounts
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+const DB_TOKEN = process.env.NEXT_PUBLIC_DB_TOKEN;
+
+if (!API_BASE) {
+  console.error('ERROR: NEXT_PUBLIC_API_URL not set in environment variables');
+  console.error('Please set it in .env.local or pass it as environment variable');
+  process.exit(1);
+}
+
+async function getSlots() {
+  const stmt = db.prepare('SELECT * FROM vending_slots');
+  return stmt.all();
+}
+
+async function getProductDiscountFromAPI(productName, productId) {
   try {
     const params = new URLSearchParams();
-    params.set('page', '1');
-    params.set('limit', '50');
     params.set('search', productName);
-
-    const res = await fetch(`${API_BASE}/api/admin/products?${params.toString()}`);
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    const arr = Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : [];
-
-    const product = arr.find(p => 
-      String(p?.id || p?._id) === productId ||
-      String(p?.id || p?._id) === productId?.replace('products/', '') ||
+    params.set('limit', '50');
+    
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (DB_TOKEN) {
+      headers['x-db-token'] = DB_TOKEN;
+    }
+    
+    const response = await fetch(`${API_BASE}/product/fetch-by-filter?${params.toString()}`, {
+      headers,
+      cache: 'no-store',
+    });
+    
+    if (!response.ok) {
+      console.error(`API request failed: ${response.status}`);
+      return null;
+    }
+    
+    const result = await response.json();
+    const rawProducts = result?.data?.[0]?.products || result?.data || [];
+    
+    const product = rawProducts.find(p => 
+      String(p._id || p.id) === productId ||
+      String(p._id || p.id) === productId?.replace('products/', '') ||
       String(p?.name).toUpperCase().includes(productName.toUpperCase().substring(0, 15))
     );
-
+    
     return product?.discount?.value || null;
   } catch (e) {
     console.error(`Error fetching discount for ${productName}:`, e.message);
@@ -34,54 +73,35 @@ async function getProductDiscount(productName, productId) {
   }
 }
 
-async function updateSlotDiscount(slotId, discount) {
-  const slot = await getSlotById(slotId);
-  if (!slot) return;
-
-  const res = await fetch(`${API_BASE}/api/admin/slots`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      slot_id: slot.slot_id,
-      product_id: slot.product_id,
-      quantity: slot.quantity,
-      product_name: slot.product_name,
-      category: slot.category,
-      retail_price: slot.retail_price,
-      image_url: slot.image_url,
-      discount_value: discount,
-    }),
-  });
-
-  if (!res.ok) {
-    console.error(`Failed to update slot ${slotId}`);
-  }
-}
-
-async function getSlotById(slotId) {
-  const slots = await getSlots();
-  return slots.find(s => s.slot_id === slotId);
+function updateSlotDiscount(slotId, discount) {
+  const stmt = db.prepare(`
+    UPDATE vending_slots 
+    SET discount_value = ? 
+    WHERE slot_id = ?
+  `);
+  return stmt.run(discount, slotId);
 }
 
 async function main() {
-  console.log('Fetching slots...');
-  const slots = await getSlots();
+  console.log('Fetching slots from database...');
+  const slots = getSlots();
   console.log(`Found ${slots.length} slots`);
+  console.log(`Using API: ${API_BASE}`);
 
   let updated = 0;
   for (const slot of slots) {
     if (!slot.product_id || !slot.product_name) continue;
-    if (slot.discount_value !== null && slot.discount_value !== undefined) {
+    if (slot.discount_value !== null && slot.discount_value !== undefined && slot.discount_value !== 0) {
       console.log(`Slot ${slot.slot_id} already has discount: ${slot.discount_value}`);
       continue;
     }
 
     console.log(`Checking discount for slot ${slot.slot_id}: ${slot.product_name}`);
-    const discount = await getProductDiscount(slot.product_name, slot.product_id);
+    const discount = await getProductDiscountFromAPI(slot.product_name, slot.product_id);
     
     if (discount && discount > 0) {
       console.log(`✓ Slot ${slot.slot_id}: Found discount ${discount}%`);
-      await updateSlotDiscount(slot.slot_id, discount);
+      updateSlotDiscount(slot.slot_id, discount);
       updated++;
     } else {
       console.log(`✗ Slot ${slot.slot_id}: No discount found`);
@@ -89,6 +109,7 @@ async function main() {
   }
 
   console.log(`\nDone! Updated ${updated} slots with discounts.`);
+  db.close();
 }
 
 main().catch(console.error);

@@ -45,7 +45,7 @@
     "ag-grid-community": "^30.2.0",
     "ag-grid-react": "^30.2.0",
     "axios": "^1.6.2",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^12.9.0",
     "compressorjs": "^1.2.1",
     "cookies-next": "^4.1.0",
     "country-telephone-data": "^0.6.3",
