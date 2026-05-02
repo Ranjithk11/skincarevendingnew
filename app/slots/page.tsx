@@ -184,8 +184,6 @@ export default function SlotsPage() {
         const params = new URLSearchParams();
         params.set("page", "1");
         params.set("limit", "1000");
-        params.set("hasBrand", "true");
-        params.set("isShopifyAvailable", "true");
 
         const res = await fetch(`/api/admin/products?${params.toString()}`, {
           method: "GET",
