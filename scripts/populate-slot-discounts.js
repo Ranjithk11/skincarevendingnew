@@ -46,7 +46,7 @@ function getSlots() {
   }
 }
 
-async function getProductDiscountFromAPI(productName, productId) {
+async function getProductDiscountFromAPI(productName, productId, retries = 3) {
   try {
     const params = new URLSearchParams();
     params.set('search', productName);
@@ -66,6 +66,11 @@ async function getProductDiscountFromAPI(productName, productId) {
     });
     
     if (!response.ok) {
+      if (response.status >= 500 && retries > 0) {
+        console.log(`  Retrying... (${retries} attempts left)`);
+        await new Promise(r => setTimeout(r, 1000));
+        return getProductDiscountFromAPI(productName, productId, retries - 1);
+      }
       console.error(`API request failed: ${response.status}`);
       return null;
     }
@@ -81,6 +86,11 @@ async function getProductDiscountFromAPI(productName, productId) {
     
     return product?.discount?.value || null;
   } catch (e) {
+    if (retries > 0) {
+      console.log(`  Retrying after error... (${retries} attempts left)`);
+      await new Promise(r => setTimeout(r, 1000));
+      return getProductDiscountFromAPI(productName, productId, retries - 1);
+    }
     console.error(`Error fetching discount for ${productName}:`, e.message);
     return null;
   }
