@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const { adminDb } = await import("@/lib/admin-db");
     const body = await request.json();
-    const { slot_id, product_id, quantity = 0, product_name, category, retail_price, image_url } = body;
+    const { slot_id, product_id, quantity = 0, product_name, category, retail_price, image_url, discount_value } = body;
 
     if (!slot_id) {
       return NextResponse.json(
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       category: category,
       retail_price: retail_price ? parseFloat(retail_price) : undefined,
       image_url: image_url,
+      discount_value: discount_value ? parseFloat(discount_value) : undefined,
     };
 
     const slot = adminDb.assignProductToSlot(

@@ -87,6 +87,10 @@ function initDb() {
   if (!hasImageUrlCol) {
     db.exec("ALTER TABLE vending_slots ADD COLUMN image_url TEXT");
   }
+  const hasDiscountCol = slotCols.some((c) => String(c?.name) === "discount_value");
+  if (!hasDiscountCol) {
+    db.exec("ALTER TABLE vending_slots ADD COLUMN discount_value REAL");
+  }
 
   // Product overrides table
   db.exec(`
@@ -494,6 +498,7 @@ export interface VendingSlot {
   product_name?: string;
   category?: string;
   retail_price?: number;
+  discount_value?: number;
   last_updated?: string;
 }
 
@@ -828,6 +833,7 @@ export const sqliteDb = {
         product_name: row.product_name,
         category: row.category,
         retail_price: row.retail_price,
+        discount_value: row.discount_value ?? undefined,
         image_url: row.image_url,
         quantity: row.quantity,
         last_updated: row.last_updated,
@@ -845,6 +851,7 @@ export const sqliteDb = {
       product_name: row.product_name,
       category: row.category,
       retail_price: row.retail_price,
+      discount_value: row.discount_value ?? undefined,
       image_url: row.image_url,
       quantity: row.quantity,
       last_updated: row.last_updated,
@@ -855,7 +862,7 @@ export const sqliteDb = {
     slotId: number,
     productId: string | number | null,
     quantity: number = 0,
-    productInfo?: { name?: string; category?: string; retail_price?: number; image_url?: string }
+    productInfo?: { name?: string; category?: string; retail_price?: number; image_url?: string; discount_value?: number }
   ): VendingSlot | undefined {
     const lastUpdated = new Date().toISOString();
 
@@ -863,13 +870,13 @@ export const sqliteDb = {
       // Clear the slot
       db.prepare(`
         UPDATE vending_slots 
-        SET product_id = NULL, product_name = NULL, category = NULL, retail_price = NULL, image_url = NULL, quantity = 0, last_updated = ?
+        SET product_id = NULL, product_name = NULL, category = NULL, retail_price = NULL, image_url = NULL, discount_value = NULL, quantity = 0, last_updated = ?
         WHERE slot_id = ?
       `).run(lastUpdated, slotId);
     } else {
       db.prepare(`
         UPDATE vending_slots 
-        SET product_id = ?, product_name = ?, category = ?, retail_price = ?, image_url = ?, quantity = ?, last_updated = ?
+        SET product_id = ?, product_name = ?, category = ?, retail_price = ?, image_url = ?, discount_value = COALESCE(?, discount_value), quantity = ?, last_updated = ?
         WHERE slot_id = ?
       `).run(
         String(productId),
@@ -877,6 +884,7 @@ export const sqliteDb = {
         productInfo?.category || null,
         productInfo?.retail_price || null,
         productInfo?.image_url || null,
+        productInfo?.discount_value ?? null,
         quantity,
         lastUpdated,
         slotId

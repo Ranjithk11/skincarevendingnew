@@ -15,6 +15,7 @@
     import { capitalizeWords } from "@/utils/func";
     import { useCart, CartItem } from "./CartContext";
     import UpiQrPayment from "@/components/payments/UpiQrPayment";
+    import { ProductPrice } from "./components";
     import { toast } from "react-toastify";
     import { useRouter } from "next/navigation";
     import { APP_ROUTES } from "@/utils/routes";
@@ -489,9 +490,13 @@
                                                             </Typography>
                                                         </Box>
 
-                                                        <Typography sx={{ fontWeight: 700, fontSize: 24, whiteSpace: "nowrap" }}>
-                                                            Rs.{Math.round(Number.isFinite(lineTotal) ? lineTotal : 0)}/-
-                                                        </Typography>
+                                                        <ProductPrice
+                                                            retailPrice={it.originalPrice}
+                                                            discountValue={it.discountValue}
+                                                            priceText={it.priceText || ""}
+                                                            productId={it.id}
+                                                            productName={it.name}
+                                                        />
                                                     </Box>
                                                 );
                                             })}
@@ -631,9 +636,15 @@
                                                     >
                                                         {capitalizeWords(item.name)}
                                                     </Typography>
-                                                    <Typography sx={{ mt: 0.5, fontWeight: 800, fontSize: 24, color: "#b91c1c" }}>
-                                                        {item.priceText || ""}
-                                                    </Typography>
+                                                    <Box sx={{ mt: 0.5 }}>
+                                                        <ProductPrice
+                                                            retailPrice={item.originalPrice}
+                                                            discountValue={item.discountValue}
+                                                            priceText={item.priceText || ""}
+                                                            productId={item.id}
+                                                            productName={item.name}
+                                                        />
+                                                    </Box>
 
                                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1, flexWrap: "wrap" }}>
                                                         <Box

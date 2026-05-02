@@ -20,14 +20,15 @@ const calculateDiscount = (originalPrice?: number, discountPercentage?: number) 
 };
 
 const ProductPrice: React.FC<ProductPriceProps> = ({
-  retailPrice,
-  discountValue,
+  retailPrice: rawRetailPrice,
+  discountValue: rawDiscountValue,
   priceText,
 }) => {
-  const finalDiscountValue = discountValue || 0;
+  const retailPrice = Number(rawRetailPrice) || 0;
+  const finalDiscountValue = Number(rawDiscountValue) || 0;
 
   const hasDiscount =
-    Number.isFinite(retailPrice as number) &&
+    Number.isFinite(retailPrice) &&
     Number.isFinite(finalDiscountValue) &&
     finalDiscountValue > 0 &&
     calculateDiscount(retailPrice, finalDiscountValue) !== retailPrice;
