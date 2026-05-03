@@ -46,118 +46,96 @@ function getSlots() {
   }
 }
 
-function cleanSearchTerm(name) {
-  // Remove special characters that cause API issues
-  return name
-    .replace(/%/g, ' ')
-    .replace(/\+/g, ' ')
-    .replace(/&/g, ' ')
-    .replace(/\|/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+// Fetch ALL products from API (paginated) and build a map by ID
+async function fetchAllProducts() {
+  const productMap = new Map();
+  let page = 1;
+  const limit = 50;
+  let totalFetched = 0;
+  
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (DB_TOKEN) {
+    headers['x-db-token'] = DB_TOKEN;
+  }
+  
+  console.log(`Fetching all products from ${API_BASE}...`);
+  
+  while (true) {
+    try {
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('limit', String(limit));
+      
+      const response = await fetch(`${API_BASE}/product/fetch-by-filter?${params.toString()}`, {
+        headers,
+        cache: 'no-store',
+      });
+      
+      if (!response.ok) {
+        console.error(`API request failed on page ${page}: ${response.status}`);
+        break;
+      }
+      
+      const result = await response.json();
+      const rawProducts = result?.data?.[0]?.products || result?.data || [];
+      
+      if (rawProducts.length === 0) {
+        break;
+      }
+      
+      for (const p of rawProducts) {
+        const id = String(p._id || p.id);
+        productMap.set(id, p);
+        productMap.set('products/' + id, p);
+        if (p.name) {
+          productMap.set(p.name.toUpperCase().trim(), p);
+        }
+      }
+      
+      totalFetched += rawProducts.length;
+      
+      if (rawProducts.length < limit) {
+        break;
+      }
+      
+      page++;
+    } catch (e) {
+      console.error(`Error fetching page ${page}:`, e.message);
+      break;
+    }
+  }
+  
+  console.log(`Fetched ${totalFetched} products from API (${page} pages)`);
+  return productMap.size > 0 ? productMap : null;
 }
 
-async function searchProductByName(searchTerm, productId, retries = 3) {
-  try {
-    const params = new URLSearchParams();
-    params.set('search', searchTerm);
-    params.set('limit', '50');
-    
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    
-    if (DB_TOKEN) {
-      headers['x-db-token'] = DB_TOKEN;
-    }
-    
-    const response = await fetch(`${API_BASE}/product/fetch-by-filter?${params.toString()}`, {
-      headers,
-      cache: 'no-store',
-    });
-    
-    if (!response.ok) {
-      if (response.status >= 500 && retries > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        return searchProductByName(searchTerm, productId, retries - 1);
-      }
-      console.error(`API request failed: ${response.status}`);
-      return null;
-    }
-    
-    const result = await response.json();
-    const rawProducts = result?.data?.[0]?.products || result?.data || [];
-    
-    if (rawProducts.length === 0) {
-      console.log(`  API returned 0 products for "${searchTerm}"`);
-      return null;
-    }
-    
-    console.log(`  API returned ${rawProducts.length} products for "${searchTerm}"`);
-    console.log(`  First product: "${rawProducts[0]?.name}" (id=${rawProducts[0]?._id || rawProducts[0]?.id})`);
-    
-    const product = rawProducts.find(p => {
-      const matchId = String(p._id || p.id) === productId || String(p._id || p.id) === productId?.replace('products/', '');
-      const matchName = String(p?.name).toUpperCase().includes(searchTerm.toUpperCase().substring(0, 15));
-      if (matchId) console.log(`    Matched by ID: ${p._id || p.id}`);
-      if (matchName) console.log(`    Matched by name: ${p.name}`);
-      return matchId || matchName;
-    });
-    
-    if (!product) {
-      console.log(`  No product matched for "${searchTerm}"`);
-    } else {
-      console.log(`  Found product: "${product.name}" discount=${JSON.stringify(product.discount)}`);
-    }
-    
-    return product || null;
-  } catch (e) {
-    if (retries > 0) {
-      await new Promise(r => setTimeout(r, 1000));
-      return searchProductByName(searchTerm, productId, retries - 1);
-    }
-    console.error(`Error fetching for "${searchTerm}":`, e.message);
+function getDiscountFromMap(productMap, productId, productName) {
+  if (!productMap) return null;
+  
+  // Try exact ID match first
+  let product = productMap.get(String(productId));
+  
+  if (!product && productName) {
+    // Try by cleaned name
+    const cleanName = productName.toUpperCase().trim();
+    product = productMap.get(cleanName);
+  }
+  
+  if (!product) {
     return null;
   }
-}
-
-async function getProductDiscountFromAPI(productName, productId, retries = 3) {
-  try {
-    const cleanName = cleanSearchTerm(productName);
-    
-    // Try full name first
-    let product = await searchProductByName(cleanName, productId, retries);
-    
-    if (!product) {
-      // Try first 2-3 words as fallback
-      const words = cleanName.split(' ').filter(w => w.length > 2);
-      const shortName = words.slice(0, 2).join(' ');
-      if (shortName && shortName !== cleanName) {
-        console.log(`  Trying shorter search: "${shortName}"`);
-        product = await searchProductByName(shortName, productId, retries);
-      }
-    }
-    
-    if (!product) {
-      // Try brand + first keyword
-      const words = cleanName.split(' ');
-      if (words.length >= 2) {
-        const brandSearch = words[0] + ' ' + words[1];
-        console.log(`  Trying brand search: "${brandSearch}"`);
-        product = await searchProductByName(brandSearch, productId, retries);
-      }
-    }
-    
-    if (!product) {
-      console.log(`  No product found for "${cleanName}"`);
-      return null;
-    }
-    
-    return product?.discount?.value || null;
-  } catch (e) {
-    console.error(`Error fetching discount for ${productName}:`, e.message);
-    return null;
+  
+  const discount = product?.discount;
+  const discountValue = discount?.value || discount?.percentage || discount;
+  
+  if (discountValue && Number(discountValue) > 0) {
+    return Number(discountValue);
   }
+  
+  return null;
 }
 
 function updateSlotDiscount(slotId, discount) {
@@ -182,27 +160,39 @@ async function main() {
     return;
   }
 
+  // Fetch all products once
+  const productMap = await fetchAllProducts();
+  
+  if (!productMap) {
+    console.error('Failed to fetch products from API. Exiting.');
+    db.close();
+    process.exit(1);
+  }
+
   let updated = 0;
+  let skipped = 0;
+  let noDiscount = 0;
+  
   for (const slot of slots) {
     if (!slot.product_id || !slot.product_name) continue;
     if (slot.discount_value !== null && slot.discount_value !== undefined && slot.discount_value !== 0) {
-      console.log(`Slot ${slot.slot_id} already has discount: ${slot.discount_value}`);
+      skipped++;
       continue;
     }
 
-    console.log(`Checking discount for slot ${slot.slot_id}: ${slot.product_name}`);
-    const discount = await getProductDiscountFromAPI(slot.product_name, slot.product_id);
+    const discount = getDiscountFromMap(productMap, slot.product_id, slot.product_name);
     
     if (discount && discount > 0) {
-      console.log(`✓ Slot ${slot.slot_id}: Found discount ${discount}%`);
+      console.log(`✓ Slot ${slot.slot_id}: Found discount ${discount}% for "${slot.product_name}"`);
       updateSlotDiscount(slot.slot_id, discount);
       updated++;
     } else {
-      console.log(`✗ Slot ${slot.slot_id}: No discount found`);
+      console.log(`✗ Slot ${slot.slot_id}: No discount for "${slot.product_name}" (id=${slot.product_id})`);
+      noDiscount++;
     }
   }
 
-  console.log(`\nDone! Updated ${updated} slots with discounts.`);
+  console.log(`\nDone! Updated ${updated} slots, skipped ${skipped}, no discount found for ${noDiscount}.`);
   db.close();
 }
 
