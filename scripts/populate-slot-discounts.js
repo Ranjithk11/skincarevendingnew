@@ -57,11 +57,10 @@ function cleanSearchTerm(name) {
     .trim();
 }
 
-async function getProductDiscountFromAPI(productName, productId, retries = 3) {
+async function searchProductByName(searchTerm, productId, retries = 3) {
   try {
-    const cleanName = cleanSearchTerm(productName);
     const params = new URLSearchParams();
-    params.set('search', cleanName);
+    params.set('search', searchTerm);
     params.set('limit', '50');
     
     const headers = {
@@ -79,9 +78,8 @@ async function getProductDiscountFromAPI(productName, productId, retries = 3) {
     
     if (!response.ok) {
       if (response.status >= 500 && retries > 0) {
-        console.log(`  Retrying... (${retries} attempts left)`);
         await new Promise(r => setTimeout(r, 1000));
-        return getProductDiscountFromAPI(productName, productId, retries - 1);
+        return searchProductByName(searchTerm, productId, retries - 1);
       }
       console.error(`API request failed: ${response.status}`);
       return null;
@@ -90,19 +88,73 @@ async function getProductDiscountFromAPI(productName, productId, retries = 3) {
     const result = await response.json();
     const rawProducts = result?.data?.[0]?.products || result?.data || [];
     
-    const product = rawProducts.find(p => 
-      String(p._id || p.id) === productId ||
-      String(p._id || p.id) === productId?.replace('products/', '') ||
-      String(p?.name).toUpperCase().includes(cleanName.toUpperCase().substring(0, 15))
-    );
+    if (rawProducts.length === 0) {
+      console.log(`  API returned 0 products for "${searchTerm}"`);
+      return null;
+    }
+    
+    console.log(`  API returned ${rawProducts.length} products for "${searchTerm}"`);
+    console.log(`  First product: "${rawProducts[0]?.name}" (id=${rawProducts[0]?._id || rawProducts[0]?.id})`);
+    
+    const product = rawProducts.find(p => {
+      const matchId = String(p._id || p.id) === productId || String(p._id || p.id) === productId?.replace('products/', '');
+      const matchName = String(p?.name).toUpperCase().includes(searchTerm.toUpperCase().substring(0, 15));
+      if (matchId) console.log(`    Matched by ID: ${p._id || p.id}`);
+      if (matchName) console.log(`    Matched by name: ${p.name}`);
+      return matchId || matchName;
+    });
+    
+    if (!product) {
+      console.log(`  No product matched for "${searchTerm}"`);
+    } else {
+      console.log(`  Found product: "${product.name}" discount=${JSON.stringify(product.discount)}`);
+    }
+    
+    return product || null;
+  } catch (e) {
+    if (retries > 0) {
+      await new Promise(r => setTimeout(r, 1000));
+      return searchProductByName(searchTerm, productId, retries - 1);
+    }
+    console.error(`Error fetching for "${searchTerm}":`, e.message);
+    return null;
+  }
+}
+
+async function getProductDiscountFromAPI(productName, productId, retries = 3) {
+  try {
+    const cleanName = cleanSearchTerm(productName);
+    
+    // Try full name first
+    let product = await searchProductByName(cleanName, productId, retries);
+    
+    if (!product) {
+      // Try first 2-3 words as fallback
+      const words = cleanName.split(' ').filter(w => w.length > 2);
+      const shortName = words.slice(0, 2).join(' ');
+      if (shortName && shortName !== cleanName) {
+        console.log(`  Trying shorter search: "${shortName}"`);
+        product = await searchProductByName(shortName, productId, retries);
+      }
+    }
+    
+    if (!product) {
+      // Try brand + first keyword
+      const words = cleanName.split(' ');
+      if (words.length >= 2) {
+        const brandSearch = words[0] + ' ' + words[1];
+        console.log(`  Trying brand search: "${brandSearch}"`);
+        product = await searchProductByName(brandSearch, productId, retries);
+      }
+    }
+    
+    if (!product) {
+      console.log(`  No product found for "${cleanName}"`);
+      return null;
+    }
     
     return product?.discount?.value || null;
   } catch (e) {
-    if (retries > 0) {
-      console.log(`  Retrying after error... (${retries} attempts left)`);
-      await new Promise(r => setTimeout(r, 1000));
-      return getProductDiscountFromAPI(productName, productId, retries - 1);
-    }
     console.error(`Error fetching discount for ${productName}:`, e.message);
     return null;
   }
