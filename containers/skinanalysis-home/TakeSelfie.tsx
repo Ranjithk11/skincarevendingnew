@@ -33,7 +33,141 @@ import PageBackground from "@/components/ui/PageBackground";
 import { useAppSelector } from "@/redux/store/store";
 import Image from "next/image";
 import { ArrowBack } from "@mui/icons-material";
-import { useVoiceMessages } from "@/contexts/VoiceContext";
+import { useVoiceMessages, useVoice } from "@/contexts/VoiceContext";
+
+// Friendly progressive-message loader shown while AI analysis is in progress.
+const ANALYSIS_MESSAGES = [
+  { icon: "mdi:robot-happy-outline", text: "Analysing your image using AI...", voice: "Analysing your image using A I." },
+  { icon: "mdi:face-recognition", text: "Scanning your facial features...", voice: "Scanning your facial features." },
+  { icon: "mdi:magnify-scan", text: "Detecting your skin concerns...", voice: "Detecting your skin concerns." },
+  { icon: "mdi:flask-outline", text: "Curating recommended products for you...", voice: "Curating recommended products for you." },
+  { icon: "mdi:file-document-edit-outline", text: "Preparing your personalised report...", voice: "Almost there. Preparing your personalised report." },
+];
+
+const AnalysisLoader: React.FC = () => {
+  const [index, setIndex] = useState(0);
+  const { speak } = useVoice();
+
+  useEffect(() => {
+    // Speak the first message immediately
+    speak(ANALYSIS_MESSAGES[0].voice);
+
+    const id = setInterval(() => {
+      setIndex((prev) => {
+        // Stop at the last message - don't loop
+        if (prev >= ANALYSIS_MESSAGES.length - 1) {
+          return prev;
+        }
+        const next = prev + 1;
+        speak(ANALYSIS_MESSAGES[next].voice);
+        return next;
+      });
+    }, 5000);
+
+    return () => clearInterval(id);
+  }, [speak]);
+
+  const current = ANALYSIS_MESSAGES[index];
+
+  return (
+    <Box
+      sx={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 10,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 2,
+        p: 2,
+        borderRadius: "10px",
+        overflow: "hidden",
+        background:
+          "linear-gradient(160deg, rgba(45,90,61,0.55) 0%, rgba(212,175,55,0.35) 50%, rgba(45,90,61,0.65) 100%)",
+        backdropFilter: "blur(2px)",
+        "&::before": {
+          content: '""',
+          position: "absolute",
+          inset: 0,
+          background:
+            "radial-gradient(circle at 30% 20%, rgba(255,215,0,0.25), transparent 55%), radial-gradient(circle at 80% 80%, rgba(45,90,61,0.4), transparent 55%)",
+          animation: "pulseGlow 3s ease-in-out infinite",
+          "@keyframes pulseGlow": {
+            "0%, 100%": { opacity: 0.7 },
+            "50%": { opacity: 1 },
+          },
+        },
+      }}
+    >
+      <Box
+        sx={{
+          position: "relative",
+          width: 72,
+          height: 72,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1,
+        }}
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "50%",
+            border: "4px solid rgba(255,255,255,0.25)",
+            borderTopColor: "#FFD700",
+            boxShadow: "0 0 20px rgba(255,215,0,0.4)",
+            animation: "spin 1.1s linear infinite",
+            "@keyframes spin": {
+              "0%": { transform: "rotate(0deg)" },
+              "100%": { transform: "rotate(360deg)" },
+            },
+          }}
+        />
+        <Icon icon={current.icon} width={36} color="#fff" />
+      </Box>
+      <Typography
+        key={current.text}
+        sx={{
+          fontSize: "24px",
+          fontWeight: 600,
+          color: "#fff",
+          textAlign: "center",
+          px: 1,
+          textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+          zIndex: 1,
+          animation: "fadeSlide 0.5s ease",
+          "@keyframes fadeSlide": {
+            "0%": { opacity: 0, transform: "translateY(6px)" },
+            "100%": { opacity: 1, transform: "translateY(0)" },
+          },
+        }}
+      >
+        {current.text}
+      </Typography>
+      <Box sx={{ display: "flex", gap: 0.75, mt: 0.5, zIndex: 1 }}>
+        {ANALYSIS_MESSAGES.map((_, i) => (
+          <Box
+            key={i}
+            sx={{
+              width: 15,
+              height: 15,
+              borderRadius: "50%",
+              bgcolor: i === index ? "#FFD700" : "rgba(255,255,255,0.4)",
+              boxShadow: i === index ? "0 0 8px rgba(255,215,0,0.6)" : "none",
+              transition: "all 0.3s ease",
+            }}
+          />
+        ))}
+      </Box>
+      <Typography sx={{ fontSize: "24px", color: "rgba(255,255,255,0.85)", textAlign: "center", px: 1, zIndex: 1, textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}>
+        Just a few seconds...
+      </Typography>
+    </Box>
+  );
+};
 
 const StyledTakeSelfie = styled(Container)(({ theme }) => ({
   flexGrow: 1,
@@ -600,7 +734,7 @@ const TakeSelfie = () => {
 
           autoAnalyzeTimerRef.current = setTimeout(() => {
             setIsAutoAnalyzing(true);
-            speakMessage('analyzing');
+            // Voice-over is handled inside <AnalysisLoader /> for sequential messages
             getRecommnedSkinAttributes({
               userId: resolvedUserId,
               fileName: fileName,
@@ -819,11 +953,7 @@ const TakeSelfie = () => {
                       </Box>
                     )}
                     {(isLoadingSkinAttributes || isAutoAnalyzing) && (
-                      <div className="ocrloader">
-                        <p>Analysing...</p>
-                        <em></em>
-                        <span></span>
-                      </div>
+                      <AnalysisLoader />
                     )}
                   </Box>
                   {!isLoadingSkinAttributes && !isAutoAnalyzing && (
