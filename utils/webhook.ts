@@ -76,10 +76,11 @@ export async function sendScanCompletedWebhook(
       }
     }
 
+    // Always prefer the public production URL so external services (Make.com,
+    // CRM, email automations) receive a clickable link, even when this code
+    // runs on localhost during development.
     const baseUrl =
-      process.env.NEXT_PUBLIC_RESULT_BASE_URL ||
-      (typeof window !== "undefined" ? window.location.origin : "") ||
-      DEFAULT_RESULT_BASE_URL;
+      process.env.NEXT_PUBLIC_RESULT_BASE_URL || DEFAULT_RESULT_BASE_URL;
 
     const resultUrl =
       payload.resultUrl ||
