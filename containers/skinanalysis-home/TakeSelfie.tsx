@@ -34,6 +34,7 @@ import { useAppSelector } from "@/redux/store/store";
 import Image from "next/image";
 import { ArrowBack } from "@mui/icons-material";
 import { useVoiceMessages, useVoice } from "@/contexts/VoiceContext";
+import { sendScanCompletedWebhook } from "@/utils/webhook";
 
 // Friendly progressive-message loader shown while AI analysis is in progress.
 const ANALYSIS_MESSAGES = [
@@ -786,6 +787,17 @@ const TakeSelfie = () => {
                   } catch (localDbError) {
                     console.warn('Failed to save scan to local DB:', localDbError);
                   }
+
+                  // Notify external automation (Make.com) about scan completion
+                  const sessUser = session?.user as any;
+                  void sendScanCompletedWebhook({
+                    name: sessUser?.name as string,
+                    email: sessUser?.email as string,
+                    phone: (sessUser?.mobileNumber ||
+                      sessUser?.phoneNumber ||
+                      sessUser?.phone) as string,
+                    userId: resolvedUserId,
+                  });
                 }
               })
               .catch((error) => {

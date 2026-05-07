@@ -33,6 +33,7 @@ import LipsProductsView from "./Recommendations/LipProducts";
 import TopLogo from "./Recommendations/TopLogo";
 import { APP_ROUTES } from "@/utils/routes";
 import { useTheme } from "@mui/material/styles";
+import { sendScanCompletedWebhook } from "@/utils/webhook";
 
 const StyledViewAdminSkincareReport = styled(Container)(({ theme }) => ({
   minHeight: "100vh",
@@ -155,6 +156,18 @@ const ViewAdminSkincareReport = () => {
         fileName:
           data?.data?.productRecommendation?.capturedImages[0]?.fileName,
       });
+
+      // Notify external automation (Make.com) that a scan report is being viewed.
+      // The webhook utility de-duplicates per userId per session so it only fires once.
+      const user = data?.data?.user as any;
+      if (user?._id) {
+        void sendScanCompletedWebhook({
+          name: user?.name,
+          email: user?.email,
+          phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
+          userId: user?._id,
+        });
+      }
     }
   }, [data]);
 
