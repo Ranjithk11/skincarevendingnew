@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const ADMIN_CREDENTIALS = [
-  { username: "admin", password: "admin123" },
-  { username: "Admin", password: "admin123" },
+  { username: "admin", password: "BeautyPod@2026" },
+  { username: "Admin", password: "BeautyPod@2026" },
 ];
 
 export async function POST(request: NextRequest) {

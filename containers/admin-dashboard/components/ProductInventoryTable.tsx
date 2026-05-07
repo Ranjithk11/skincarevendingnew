@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Box, IconButton, Typography, Link } from "@mui/material";
+import { useMemo, useState } from "react";
+import { Box, IconButton, InputAdornment, TextField, Typography, Link } from "@mui/material";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import SearchIcon from "@mui/icons-material/Search";
+import ClearIcon from "@mui/icons-material/Close";
 import ViewSlotsModal from "./ViewSlotsModal";
 import ProductPrice from "@/containers/skinanalysis-home/Recommendations/components/ProductPrice";
 
@@ -32,6 +34,18 @@ export default function ProductInventoryTable({
 }: ProductInventoryTableProps) {
   const [slotsModalOpen, setSlotsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const category = (p.category || "").toLowerCase();
+      const id = (p.id || "").toLowerCase();
+      return name.includes(q) || category.includes(q) || id.includes(q);
+    });
+  }, [products, searchQuery]);
 
   const handleViewSlots = (product: Product) => {
     setSelectedProduct(product);
@@ -74,6 +88,56 @@ export default function ProductInventoryTable({
       >
         Product Inventory
       </Typography>
+
+      {/* Search bar */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search products by name, category, or ID..."
+          variant="outlined"
+          size="medium"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon sx={{ color: "#9a9a9a", fontSize: 26 }} />
+              </InputAdornment>
+            ),
+            endAdornment: searchQuery ? (
+              <InputAdornment position="end">
+                <IconButton
+                  size="small"
+                  onClick={() => setSearchQuery("")}
+                  aria-label="clear search"
+                >
+                  <ClearIcon sx={{ fontSize: 22, color: "#9a9a9a" }} />
+                </IconButton>
+              </InputAdornment>
+            ) : null,
+            sx: {
+              borderRadius: "12px",
+              backgroundColor: "#fafafa",
+              fontSize: 18,
+              fontFamily: "Roboto, sans-serif",
+              "& fieldset": { borderColor: "#e0e0e0" },
+              "&:hover fieldset": { borderColor: "#bdbdbd" },
+            },
+          }}
+        />
+        {searchQuery && (
+          <Typography
+            sx={{
+              mt: 1,
+              fontSize: 14,
+              color: "#666",
+              fontFamily: "Roboto, sans-serif",
+            }}
+          >
+            Showing {filteredProducts.length} of {products.length} products
+          </Typography>
+        )}
+      </Box>
 
       <Box
         sx={{
@@ -148,16 +212,32 @@ export default function ProductInventoryTable({
         </Typography>
       </Box>
 
-      {products.map((product, index) => (
+      {filteredProducts.length === 0 && (
+        <Box sx={{ py: 6, textAlign: "center" }}>
+          <Typography
+            sx={{
+              fontSize: 18,
+              color: "#9a9a9a",
+              fontFamily: "Roboto, sans-serif",
+            }}
+          >
+            {searchQuery
+              ? `No products found matching "${searchQuery}"`
+              : "No products available"}
+          </Typography>
+        </Box>
+      )}
+
+      {filteredProducts.map((product, index) => (
         <Box
-          key={index}
+          key={product.id || index}
           sx={{
             display: "grid",
             gridTemplateColumns: "70px 1fr 100px 100px 100px 100px",
             gap: 2,
             alignItems: "center",
             py: 2,
-            borderBottom: index < products.length - 1 ? "1px solid #f0f0f0" : "none",
+            borderBottom: index < filteredProducts.length - 1 ? "1px solid #f0f0f0" : "none",
           }}
         >
           <Box
