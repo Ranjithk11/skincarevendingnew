@@ -21,6 +21,8 @@ import { useAppDispatch } from "@/redux/store/store";
 import { clearCart } from "@/redux/reducers/cartSlice";
 import { persistor } from "@/redux/store/store";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
+import DispenseErrorReporter from "./components/DispenseErrorReporter";
+import DispenseReporter from "./components/DispenseReporter";
 
 export default function FeedbackPage() {
   const theme = useTheme();
@@ -51,6 +53,12 @@ export default function FeedbackPage() {
     | { status: "error"; message: string }
   >({ status: "idle" });
   const [pickupTimer, setPickupTimer] = useState<number>(0);
+
+  // Machine location from environment or default
+  const machineLocation =
+    process.env.NEXT_PUBLIC_MACHINE_LOCATION ||
+    (session?.user as any)?.machineLocation ||
+    "LeafWater Vending Machine";
 
   const goHome = async () => {
     hasCompletedRef.current = true;
@@ -513,14 +521,40 @@ export default function FeedbackPage() {
                   </Typography>
                 ) : dispenseState.status === "done" ? (
                   <>
+                    <DispenseReporter
+                      active={dispenseState.status === "done"}
+                      user={{
+                        userId: (session?.user as any)?.id,
+                        name: (session?.user as any)?.name,
+                        email: (session?.user as any)?.email,
+                        phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone,
+                      }}
+                      products={checkoutItems.map((item: any) => ({
+                        id: item?.id,
+                        name: item?.name,
+                        quantity: item?.quantity,
+                        slotId: item?.slotId,
+                        retailPrice: item?.retail_price,
+                        amount: item?.amount,
+                      }))}
+                      transaction={checkoutSummary?.payment}
+                      command={{
+                        productId: (dispenseState.results as any)?.productId || checkoutItems[0]?.id,
+                        productName: (dispenseState.results as any)?.productName || checkoutItems[0]?.name,
+                        slotId: (dispenseState.results as any)?.slotId || checkoutItems[0]?.slotId,
+                        command: (dispenseState.results as any)?.command || "DISPENSE",
+                        timestamp: new Date().toISOString(),
+                      }}
+                      machineLocation={machineLocation}
+                    />
                     <Typography sx={{ fontSize: 20, color: "#166534" }}>
                       Dispensed successfully
                     </Typography>
                     {pickupTimer > 0 && (
-                      <Box sx={{ 
-                        mt: 2, 
-                        p: 2, 
-                        bgcolor: "#fef3c7", 
+                      <Box sx={{
+                        mt: 2,
+                        p: 2,
+                        bgcolor: "#fef3c7",
                         borderRadius: 2,
                         border: "2px solid #f59e0b",
                         textAlign: "center"
@@ -538,36 +572,59 @@ export default function FeedbackPage() {
                     )}
                   </>
                 ) : (
-                  <Box sx={{ 
-                    mt: 1, 
-                    p: 2, 
-                    bgcolor: "#fef2f2", 
-                    borderRadius: 2,
-                    border: "2px solid #ef4444"
-                  }}>
-                    <Typography sx={{ fontSize: 30, fontWeight: 700, color: "#b91c1c", mb: 1 }}>
-                      ⚠️ Product Dispensing Issue
-                    </Typography>
-                    <Typography sx={{ fontSize: 24, color: "#7f1d1d", mb: 1.5 }}>
-                      {dispenseState.message}
-                    </Typography>
-                    <Box sx={{ 
-                      bgcolor: "#ffffff", 
-                      p: 2, 
+                  <>
+                    <DispenseErrorReporter
+                      active={dispenseState.status === "error"}
+                      errorMessage={dispenseState.status === "error" ? dispenseState.message : ""}
+                      user={{
+                        userId: (session?.user as any)?.id,
+                        name: (session?.user as any)?.name,
+                        email: (session?.user as any)?.email,
+                        phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone,
+                      }}
+                      products={checkoutItems.map((item: any) => ({
+                        id: item?.id,
+                        name: item?.name,
+                        quantity: item?.quantity,
+                        slotId: item?.slotId,
+                        retailPrice: item?.retail_price,
+                        amount: item?.amount,
+                      }))}
+                      payment={checkoutSummary?.payment}
+                      raw={dispenseState.status === "error" ? dispenseState : null}
+                      machineLocation={machineLocation}
+                    />
+                    <Box sx={{
+                      mt: 1,
+                      p: 2,
+                      bgcolor: "#fef2f2",
                       borderRadius: 2,
-                      border: "1px solid #fecaca"
+                      border: "2px solid #ef4444"
                     }}>
-                      <Typography sx={{ fontSize: 28, fontWeight: 600, color: "#166534", mb: 1 }}>
-                        Don&apos;t worry! 🙏
+                      <Typography sx={{ fontSize: 30, fontWeight: 700, color: "#b91c1c", mb: 1 }}>
+                        ⚠️ Product Dispensing Issue
                       </Typography>
-                      <Typography sx={{ fontSize: 24, color: "#374151", lineHeight: 1.6 }}>
-                        Your amount will be refunded to your original payment method. Our team members will get back to you on this issue shortly.
+                      <Typography sx={{ fontSize: 24, color: "#7f1d1d", mb: 1.5 }}>
+                        {dispenseState.message}
                       </Typography>
-                      <Typography sx={{ fontSize: 24, color: "#6b7280", mt: 1.5, fontStyle: "italic" }}>
-                        For immediate assistance, please contact our support team. (+91 8008675263)
-                      </Typography>
+                      <Box sx={{
+                        bgcolor: "#ffffff",
+                        p: 2,
+                        borderRadius: 2,
+                        border: "1px solid #fecaca"
+                      }}>
+                        <Typography sx={{ fontSize: 28, fontWeight: 600, color: "#166534", mb: 1 }}>
+                          Don&apos;t worry! 🙏
+                        </Typography>
+                        <Typography sx={{ fontSize: 24, color: "#374151", lineHeight: 1.6 }}>
+                          Your amount will be refunded to your original payment method. Our team members will get back to you on this issue shortly.
+                        </Typography>
+                        <Typography sx={{ fontSize: 24, color: "#6b7280", mt: 1.5, fontStyle: "italic" }}>
+                          For immediate assistance, please contact our support team. (+91 8008675263)
+                        </Typography>
+                      </Box>
                     </Box>
-                  </Box>
+                  </>
                 )}
               </Box>
             </Box>
