@@ -396,6 +396,7 @@
                                                                 currency: "INR",
                                                                 status: "paid",
                                                                 method: paymentMode,
+                                                                machineLocation: machineLocation,
                                                             },
                                                         })
                                                     );

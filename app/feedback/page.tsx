@@ -58,6 +58,7 @@ export default function FeedbackPage() {
   const machineLocation =
     process.env.NEXT_PUBLIC_MACHINE_LOCATION ||
     (session?.user as any)?.machineLocation ||
+    (checkoutSummary?.payment?.machineLocation) ||
     "LeafWater Vending Machine";
 
   const goHome = async () => {
@@ -541,7 +542,7 @@ export default function FeedbackPage() {
                       command={{
                         productId: (dispenseState.results as any)?.productId || checkoutItems[0]?.id,
                         productName: (dispenseState.results as any)?.productName || checkoutItems[0]?.name,
-                        slotId: (dispenseState.results as any)?.slotId || checkoutItems[0]?.slotId,
+                        slotId: (dispenseState.results as any)?.slotId || checkoutItems[0]?.slotId || (checkoutItems[0]?.id?.replace(/^products\//, '')),
                         command: (dispenseState.results as any)?.command || "DISPENSE",
                         timestamp: new Date().toISOString(),
                       }}
