@@ -797,6 +797,8 @@ const TakeSelfie = () => {
                       sessUser?.phoneNumber ||
                       sessUser?.phone) as string,
                     userId: resolvedUserId,
+                    machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+                    machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
                   });
                 }
               })

@@ -15,6 +15,9 @@ const DEFAULT_PAYMENT_WEBHOOK_URL =
 const DEFAULT_DISPENSE_WEBHOOK_URL =
   "https://hook.eu1.make.com/bel61vvl1lpvleljhuzpyc5osor8fnz3";
 
+const DEFAULT_SLOT_UPDATE_WEBHOOK_URL =
+  "https://hook.eu1.make.com/2g5m8urqau04sgnynlxk4i7cdvjgdmoc";
+
 const DEFAULT_RESULT_BASE_URL = "https://skincare.leafwater.in";
 
 export interface ScanCompletedPayload {
@@ -29,6 +32,10 @@ export interface ScanCompletedPayload {
   resultUrl?: string;
   /** ISO 8601 string. Defaults to the current time. */
   scanTime?: string;
+  /** Machine name where the scan occurred */
+  machineName?: string;
+  /** Machine location where the scan occurred */
+  machineLocation?: string;
 }
 
 /**
@@ -104,6 +111,8 @@ export async function sendScanCompletedWebhook(
       phone: payload.phone || "",
       result_url: resultUrl,
       scan_time: payload.scanTime || new Date().toISOString(),
+      machine_name: payload.machineName || "",
+      machine_location: payload.machineLocation || "",
     };
 
     // Fire-and-forget. Use keepalive so the request survives navigation.
@@ -560,5 +569,88 @@ export async function sendDispenseSuccessWebhook(
     persistDispenseSuccessFiredToSession();
   } catch (err) {
     console.warn("[dispense_success webhook] unexpected error:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Slot/Product update webhook
+// ---------------------------------------------------------------------------
+
+export interface SlotUpdateProductInfo {
+  id?: string;
+  name?: string;
+  category?: string;
+  retail_price?: number;
+  discount_value?: number;
+  image_url?: string;
+  quantity?: number;
+}
+
+export interface SlotUpdateSlotInfo {
+  slot_id: number;
+  product_id?: string | null;
+  product_name?: string;
+  category?: string;
+  retail_price?: number;
+  discount_value?: number;
+  image_url?: string;
+  quantity: number;
+  last_updated?: string;
+}
+
+export interface SlotUpdatePayload {
+  /** All slots with their product information */
+  slots?: SlotUpdateSlotInfo[];
+  /** Updated product information (if product modification occurred) */
+  product?: SlotUpdateProductInfo;
+  /** Type of update: 'slot_assignment' or 'product_modification' */
+  updateType?: 'slot_assignment' | 'product_modification';
+  /** Slot IDs affected by this update */
+  affectedSlotIds?: number[];
+  /** Timestamp of the update */
+  timestamp?: string;
+  /** Machine location where the update occurred */
+  machineLocation?: string;
+}
+
+/**
+ * Best-effort POST of slot/product update data to the configured webhook.
+ *
+ * This webhook is called when:
+ * 1. A product is assigned to a slot (slot_assignment)
+ * 2. A product is modified in admin (product_modification)
+ *
+ * Failures are swallowed and logged so they never block the user-facing flow.
+ */
+export async function sendSlotUpdateWebhook(
+  payload: SlotUpdatePayload
+): Promise<void> {
+  try {
+    const url =
+      process.env.NEXT_PUBLIC_SLOT_UPDATE_WEBHOOK_URL ||
+      DEFAULT_SLOT_UPDATE_WEBHOOK_URL;
+
+    const body = {
+      event: payload.updateType || "slot_update",
+      occurred_at: payload.timestamp || new Date().toISOString(),
+      slots: payload.slots || [],
+      product: payload.product || null,
+      affected_slot_ids: payload.affectedSlotIds || [],
+      machine_location: payload.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+    };
+
+    console.log("[slot_update webhook] Sending webhook to:", url);
+    console.log("[slot_update webhook] Payload:", JSON.stringify(body, null, 2));
+
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,
+    }).catch((err) => {
+      console.warn("[slot_update webhook] request failed:", err);
+    });
+  } catch (err) {
+    console.warn("[slot_update webhook] unexpected error:", err);
   }
 }

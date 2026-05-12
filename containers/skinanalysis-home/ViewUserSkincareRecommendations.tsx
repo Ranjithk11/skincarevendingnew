@@ -166,6 +166,8 @@ const ViewAdminSkincareReport = () => {
           email: user?.email,
           phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
           userId: user?._id,
+          machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+          machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
         });
       }
     }
