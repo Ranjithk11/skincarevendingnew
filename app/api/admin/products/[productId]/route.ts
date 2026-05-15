@@ -5,6 +5,10 @@ import { adminDb } from "@/lib/admin-db";
 async function sendProductUpdateWebhook(productId: string, updatedProduct: any) {
   try {
     const { sendSlotUpdateWebhook } = await import("@/utils/webhook");
+    const { sqliteDb } = await import("@/lib/sqlite-db");
+
+    const machineLocation = sqliteDb.getMachineLocation() || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine";
+    const machineName = sqliteDb.getMachineName() || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine";
 
     // Get all slots
     const allSlots = adminDb.getAllSlots();
@@ -44,6 +48,8 @@ async function sendProductUpdateWebhook(productId: string, updatedProduct: any) 
       updateType: 'product_modification',
       affectedSlotIds: affectedSlotIds,
       timestamp: new Date().toISOString(),
+      machineLocation,
+      machineName,
     });
   } catch (error) {
     console.error("[sendProductUpdateWebhook] Error:", error);

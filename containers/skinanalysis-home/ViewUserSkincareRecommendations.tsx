@@ -161,14 +161,33 @@ const ViewAdminSkincareReport = () => {
       // The webhook utility de-duplicates per userId per session so it only fires once.
       const user = data?.data?.user as any;
       if (user?._id) {
-        void sendScanCompletedWebhook({
-          name: user?.name,
-          email: user?.email,
-          phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
-          userId: user?._id,
-          machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
-          machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
-        });
+        // Fetch machine settings from database
+        fetch("/api/admin/machine-name")
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              void sendScanCompletedWebhook({
+                name: user?.name,
+                email: user?.email,
+                phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
+                userId: user?._id,
+                machineName: data.machineName || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+                machineLocation: data.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+              });
+            }
+          })
+          .catch(err => {
+            console.error("[ViewUserSkincareRecommendations] Failed to fetch machine settings:", err);
+            // Fallback to env vars
+            void sendScanCompletedWebhook({
+              name: user?.name,
+              email: user?.email,
+              phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
+              userId: user?._id,
+              machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+              machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+            });
+          });
       }
     }
   }, [data]);

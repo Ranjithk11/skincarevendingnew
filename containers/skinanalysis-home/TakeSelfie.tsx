@@ -790,16 +790,38 @@ const TakeSelfie = () => {
 
                   // Notify external automation (Make.com) about scan completion
                   const sessUser = session?.user as any;
-                  void sendScanCompletedWebhook({
-                    name: sessUser?.name as string,
-                    email: sessUser?.email as string,
-                    phone: (sessUser?.mobileNumber ||
-                      sessUser?.phoneNumber ||
-                      sessUser?.phone) as string,
-                    userId: resolvedUserId,
-                    machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
-                    machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
-                  });
+
+                  // Fetch machine settings from database
+                  fetch("/api/admin/machine-name")
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.success) {
+                        void sendScanCompletedWebhook({
+                          name: sessUser?.name as string,
+                          email: sessUser?.email as string,
+                          phone: (sessUser?.mobileNumber ||
+                            sessUser?.phoneNumber ||
+                            sessUser?.phone) as string,
+                          userId: resolvedUserId,
+                          machineName: data.machineName || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+                          machineLocation: data.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+                        });
+                      }
+                    })
+                    .catch(err => {
+                      console.error("[TakeSelfie] Failed to fetch machine settings:", err);
+                      // Fallback to env vars
+                      void sendScanCompletedWebhook({
+                        name: sessUser?.name as string,
+                        email: sessUser?.email as string,
+                        phone: (sessUser?.mobileNumber ||
+                          sessUser?.phoneNumber ||
+                          sessUser?.phone) as string,
+                        userId: resolvedUserId,
+                        machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+                        machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+                      });
+                    });
                 }
               })
               .catch((error) => {

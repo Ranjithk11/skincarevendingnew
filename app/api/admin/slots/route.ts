@@ -69,12 +69,18 @@ export async function GET() {
 async function sendSlotUpdateWebhook(slots: any[], affectedSlotId?: number) {
   try {
     const { sendSlotUpdateWebhook } = await import("@/utils/webhook");
+    const { sqliteDb } = await import("@/lib/sqlite-db");
+
+    const machineLocation = sqliteDb.getMachineLocation() || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine";
+    const machineName = sqliteDb.getMachineName() || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine";
 
     await sendSlotUpdateWebhook({
       slots: slots,
       updateType: 'slot_assignment',
       affectedSlotIds: affectedSlotId ? [affectedSlotId] : [],
       timestamp: new Date().toISOString(),
+      machineLocation,
+      machineName,
     });
   } catch (error) {
     console.error("[sendSlotUpdateWebhook] Error:", error);

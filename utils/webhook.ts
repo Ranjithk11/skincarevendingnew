@@ -172,6 +172,8 @@ export interface DispenseErrorPayload {
   raw?: unknown;
   /** Machine location where the error occurred */
   machineLocation?: string;
+  /** Machine name where the error occurred */
+  machineName?: string;
   /** Optional dedup key. If the same key was reported in this session, the
    *  webhook will not fire again. Defaults to a hash of errorMessage + orderId. */
   dedupeKey?: string;
@@ -236,6 +238,7 @@ export async function sendDispenseErrorWebhook(
       error_message: payload.errorMessage || "Unknown dispense error",
       occurred_at: new Date().toISOString(),
       machine_location: payload.machineLocation || "",
+      machine_name: payload.machineName || "",
       user: {
         user_id: payload.user?.userId || "",
         name: payload.user?.name || "",
@@ -314,6 +317,8 @@ export interface PaymentPayload {
   selectedSlots?: (string | number)[];
   /** Machine location where payment occurred */
   machineLocation?: string;
+  /** Machine name where payment occurred */
+  machineName?: string;
   /** Optional dedup key. If the same key was reported in this session, the
    *  webhook will not fire again. Defaults to a hash of orderId. */
   dedupeKey?: string;
@@ -376,6 +381,7 @@ export async function sendPaymentWebhook(
       event: "payment_success",
       occurred_at: new Date().toISOString(),
       machine_location: payload.machineLocation || "",
+      machine_name: payload.machineName || "",
       selected_slots: payload.selectedSlots || [],
       user: {
         user_id: payload.user?.userId || "",
@@ -462,6 +468,8 @@ export interface DispenseSuccessPayload {
   command?: DispenseSuccessCommandInfo;
   /** Machine location where dispense occurred */
   machineLocation?: string;
+  /** Machine name where dispense occurred */
+  machineName?: string;
   /** Optional dedup key. If the same key was reported in this session, the
    *  webhook will not fire again. Defaults to a hash of orderId + productId. */
   dedupeKey?: string;
@@ -525,6 +533,7 @@ export async function sendDispenseSuccessWebhook(
       event: "dispense_success",
       occurred_at: new Date().toISOString(),
       machine_location: payload.machineLocation || "",
+      machine_name: payload.machineName || "",
       user: {
         user_id: payload.user?.userId || "",
         name: payload.user?.name || "",
@@ -611,6 +620,8 @@ export interface SlotUpdatePayload {
   timestamp?: string;
   /** Machine location where the update occurred */
   machineLocation?: string;
+  /** Machine name where the update occurred */
+  machineName?: string;
 }
 
 /**
@@ -637,6 +648,7 @@ export async function sendSlotUpdateWebhook(
       product: payload.product || null,
       affected_slot_ids: payload.affectedSlotIds || [],
       machine_location: payload.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+      machine_name: payload.machineName || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
     };
 
     console.log("[slot_update webhook] Sending webhook to:", url);

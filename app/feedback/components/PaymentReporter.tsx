@@ -19,6 +19,8 @@ interface PaymentReporterProps {
   selectedSlots?: (string | number)[];
   /** Machine location where payment occurred */
   machineLocation?: string;
+  /** Machine name where payment occurred */
+  machineName?: string;
 }
 
 /**
@@ -35,6 +37,7 @@ export default function PaymentReporter({
   transaction,
   selectedSlots,
   machineLocation,
+  machineName,
 }: PaymentReporterProps) {
   const lastFiredKeyRef = useRef<string | null>(null);
 
@@ -52,9 +55,10 @@ export default function PaymentReporter({
       transaction,
       selectedSlots,
       machineLocation,
+      machineName,
       dedupeKey: key,
     });
-  }, [active, user, products, transaction, selectedSlots, machineLocation]);
+  }, [active, user, products, transaction, selectedSlots, machineLocation, machineName]);
 
   return null;
 }

@@ -52,12 +52,25 @@
         const [isDispensing, setIsDispensing] = useState(false);
         const [paymentSuccess, setPaymentSuccess] = useState(false);
         const [paymentPayload, setPaymentPayload] = useState<any>(null);
+        const [machineLocation, setMachineLocation] = useState<string>("LeafWater Vending Machine");
+        const [machineName, setMachineName] = useState<string>("Vending Machine");
 
-        // Machine location from environment or default
-        const machineLocation =
-            process.env.NEXT_PUBLIC_MACHINE_LOCATION ||
-            (session?.user as any)?.machineLocation ||
-            "LeafWater Vending Machine";
+        // Fetch machine location and name from database
+        useEffect(() => {
+            const fetchMachineSettings = async () => {
+                try {
+                    const response = await fetch("/api/admin/machine-name");
+                    const data = await response.json();
+                    if (data.success) {
+                        if (data.machineLocation) setMachineLocation(data.machineLocation);
+                        if (data.machineName) setMachineName(data.machineName);
+                    }
+                } catch (error) {
+                    console.error("[CartProduct] Failed to fetch machine settings:", error);
+                }
+            };
+            fetchMachineSettings();
+        }, []);
 
         useEffect(() => {
             router.prefetch(APP_ROUTES.FEEDBACK);
@@ -851,6 +864,7 @@
                         transaction={paymentPayload}
                         selectedSlots={items.map((item) => item.slotId).filter((slot): slot is number => slot !== undefined).map(String)}
                         machineLocation={machineLocation}
+                        machineName={machineName}
                     />
                 </Dialog>
             </>
