@@ -8135,3 +8135,20 @@ Import trace for requested module:
 ./containers/skinanalysis-home/TakeSelfie.tsx
 [STM32] Home error: [Error: Opening COM4: Access denied]
 [STM32] Home error: [Error: Opening COM4: Access denied]
+ ⚠ ./node_modules/face-api.js/build/es6/env/createFileSystem.js
+Module not found: Can't resolve 'fs' in 'C:\leafwater\skincarevendingnew\node_modules\face-api.js\build\es6\env'
+
+Import trace for requested module:
+./node_modules/face-api.js/build/es6/env/createFileSystem.js
+./node_modules/face-api.js/build/es6/env/index.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
+
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+Module not found: Can't resolve 'encoding' in 'C:\leafwater\skincarevendingnew\node_modules\@tensorflow\tfjs-core\node_modules\node-fetch\lib'
+
+Import trace for requested module:
+./node_modules/@tensorflow/tfjs-core/node_modules/node-fetch/lib/index.es.js
+./node_modules/@tensorflow/tfjs-core/dist/tf-core.esm.js
+./node_modules/face-api.js/build/es6/index.js
+./containers/skinanalysis-home/TakeSelfie.tsx
