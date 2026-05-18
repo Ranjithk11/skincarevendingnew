@@ -753,7 +753,7 @@ export default function FeedbackPage() {
                 {isEditingEmail ? (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Box sx={{ bgcolor: "#fff", border: "2px solid #1a3c34", borderRadius: "8px", px: 1.5, py: 0.75, minWidth: 220 }}>
-                      <Typography sx={{ fontSize: 20, color: "#111827", minHeight: 24 }}>
+                      <Typography sx={{ fontSize: 24, color: "#111827", minHeight: 24 }}>
                         {userEmail || " "}
                         <Box component="span" sx={{ borderRight: "2px solid #1a3c34", animation: "blink 1s infinite", ml: 0.25 }}>&nbsp;</Box>
                       </Typography>
@@ -762,14 +762,14 @@ export default function FeedbackPage() {
                       size="small"
                       variant="contained"
                       onClick={handleEmailEditConfirm}
-                      sx={{ bgcolor: "#1a3c34", color: "#fff", textTransform: "none", fontSize: 16, borderRadius: "8px", "&:hover": { bgcolor: "#16362c" } }}
+                      sx={{ bgcolor: "#1a3c34", color: "#fff", textTransform: "none", fontSize: 24, borderRadius: "8px", "&:hover": { bgcolor: "#16362c" } }}
                     >
                       Done
                     </Button>
                   </Box>
                 ) : (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1, bgcolor: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px", px: 1.5, py: 0.75 }}>
-                    <Typography sx={{ fontSize: 20, color: "#374151" }}>{userEmail || "Enter email"}</Typography>
+                    <Typography sx={{ fontSize: 24, color: "#374151" }}>{userEmail || "Enter email"}</Typography>
                     <IconButton size="small" onClick={() => {
                       setIsEditingEmail(true);
                       setKeyboardTarget("email");
@@ -818,9 +818,9 @@ export default function FeedbackPage() {
                 sx={{ textAlign: "center", py: 1.5, borderBottom: invoiceExpanded ? "1px solid #e5e7eb" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 1, userSelect: "none" }}
               >
                 <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ fontSize: 14, color: "#9ca3af", letterSpacing: 2 }}>✦ ✦ ✦</Typography>
-                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#1a3c34" }}>Tax Invoice</Typography>
-                  <Typography sx={{ fontSize: 13, color: "#6b7280" }}>LeafWater Invoice</Typography>
+                  <Typography sx={{ fontSize: 24, color: "#9ca3af", letterSpacing: 2 }}>✦ ✦ ✦</Typography>
+                  <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#1a3c34" }}>Tax Invoice</Typography>
+                  <Typography sx={{ fontSize: 24, color: "#6b7280" }}>LeafWater Invoice</Typography>
                 </Box>
                 <Icon icon={invoiceExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} width={28} color="#6b7280" style={{ marginRight: 12 }} />
               </Box>
@@ -838,8 +838,8 @@ export default function FeedbackPage() {
                   <Box key={idx} sx={{ p: 2, borderRight: idx < 2 ? "1px solid #e5e7eb" : "none", display: "flex", alignItems: "flex-start", gap: 1 }}>
                     <Image src={item.icon} alt="" width={20} height={20} style={{ marginTop: 2, flexShrink: 0 }} />
                     <Box>
-                      <Typography sx={{ fontSize: 14, color: "#9ca3af" }}>{item.label}</Typography>
-                      <Typography sx={{ fontSize: 15, fontWeight: 600, color: "#111827", wordBreak: "break-word" }}>{item.value}</Typography>
+                      <Typography sx={{ fontSize: 24, color: "#9ca3af" }}>{item.label}</Typography>
+                      <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#111827", wordBreak: "break-word" }}>{item.value}</Typography>
                     </Box>
                   </Box>
                 ))}
@@ -855,8 +855,8 @@ export default function FeedbackPage() {
                   <Box key={idx} sx={{ p: 2, borderRight: idx < 2 ? "1px solid #e5e7eb" : "none", display: "flex", alignItems: "flex-start", gap: 1 }}>
                     <Image src={item.icon} alt="" width={20} height={20} style={{ marginTop: 2, flexShrink: 0 }} />
                     <Box>
-                      <Typography sx={{ fontSize: 14, color: "#9ca3af" }}>{item.label}</Typography>
-                      <Typography sx={{ fontSize: 15, fontWeight: 600, color: "#111827" }}>{item.value}</Typography>
+                      <Typography sx={{ fontSize: 24, color: "#9ca3af" }}>{item.label}</Typography>
+                      <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>{item.value}</Typography>
                     </Box>
                   </Box>
                 ))}
@@ -869,8 +869,8 @@ export default function FeedbackPage() {
                   sx={{
                     width: "100%",
                     borderCollapse: "collapse",
-                    "& th": { fontSize: 13, fontWeight: 600, color: "#6b7280", textAlign: "left", py: 1, px: 1.5, borderBottom: "2px solid #e5e7eb", bgcolor: "#f9fafb" },
-                    "& td": { fontSize: 14, color: "#111827", py: 1, px: 1.5, borderBottom: "1px solid #f3f4f6" },
+                    "& th": { fontSize: 24, fontWeight: 600, color: "#6b7280", textAlign: "left", py: 1, px: 1.5, borderBottom: "2px solid #e5e7eb", bgcolor: "#f9fafb" },
+                    "& td": { fontSize: 24, color: "#111827", py: 1, px: 1.5, borderBottom: "1px solid #f3f4f6" },
                   }}
                 >
                   <thead>
@@ -908,21 +908,21 @@ export default function FeedbackPage() {
                     { label: "Round Off", value: invoiceData.roundOff },
                   ].map((row, idx) => (
                     <Box key={idx} sx={{ display: "flex", justifyContent: "space-between", py: 0.25 }}>
-                      <Typography sx={{ fontSize: 14, color: idx === 0 ? "#111827" : "#6b7280" }}>{row.label}</Typography>
-                      <Typography sx={{ fontSize: 14, color: idx === 0 ? "#111827" : "#6b7280" }}>{Number(row.value).toFixed(2)}</Typography>
+                      <Typography sx={{ fontSize: 24, color: idx === 0 ? "#111827" : "#6b7280" }}>{row.label}</Typography>
+                      <Typography sx={{ fontSize: 24, color: idx === 0 ? "#111827" : "#6b7280" }}>{Number(row.value).toFixed(2)}</Typography>
                     </Box>
                   ))}
                 </Box>
 
                 {/* Grand Total Box */}
                 <Box sx={{ bgcolor: "#1a3c34", borderRadius: 2, px: 3, py: 1.5, textAlign: "center", minWidth: 160 }}>
-                  <Typography sx={{ fontSize: 13, color: "#a7f3d0" }}>Grand Total</Typography>
+                  <Typography sx={{ fontSize: 24, color: "#a7f3d0" }}>Grand Total</Typography>
                   <Typography sx={{ fontSize: 28, fontWeight: 800, color: "#fff", mt: 0.25 }}>
                     ₹{Number(invoiceData.grandTotal).toFixed(2)}
                   </Typography>
                   <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, bgcolor: "#16a34a", borderRadius: "20px", px: 1.5, py: 0.25, mt: 0.5 }}>
                     <Image src="/NewFeedback/paid_badge.svg" alt="" width={14} height={14} />
-                    <Typography sx={{ fontSize: 13, color: "#fff", fontWeight: 600 }}>Paid</Typography>
+                    <Typography sx={{ fontSize: 24, color: "#fff", fontWeight: 600 }}>Paid</Typography>
                   </Box>
                 </Box>
               </Box>
@@ -932,14 +932,14 @@ export default function FeedbackPage() {
                 <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
                   <Image src="/NewFeedback/lock_icon.svg" alt="" width={16} height={16} style={{ marginTop: 2 }} />
                   <Box>
-                    <Typography sx={{ fontSize: 13, color: "#9ca3af" }}>Amount in words</Typography>
-                    <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>{invoiceData.amountInWords}</Typography>
+                    <Typography sx={{ fontSize: 24, color: "#9ca3af" }}>Amount in words</Typography>
+                    <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>{invoiceData.amountInWords}</Typography>
                   </Box>
                 </Box>
                 <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-                  <Typography sx={{ fontSize: 13, color: "#9ca3af" }}>Payment Status</Typography>
+                  <Typography sx={{ fontSize: 24, color: "#9ca3af" }}>Payment Status</Typography>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>Paid</Typography>
+                    <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>Paid</Typography>
                     <Image src="/NewFeedback/shield_security.svg" alt="" width={16} height={16} />
                   </Box>
                 </Box>
@@ -949,8 +949,8 @@ export default function FeedbackPage() {
               <Box sx={{ px: 3, py: 1.5, borderTop: "1px solid #e5e7eb", display: "flex", alignItems: "center", gap: 2 }}>
                 <Image src="/NewFeedback/heart_badge.svg" alt="" width={28} height={28} />
                 <Box>
-                  <Typography sx={{ fontSize: 16, fontWeight: 700, color: "#1a3c34" }}>Thank you for choosing LeafWater!</Typography>
-                  <Typography sx={{ fontSize: 14, color: "#6b7280" }}>Your skincare journey matters to us.</Typography>
+                  <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#1a3c34" }}>Thank you for choosing LeafWater!</Typography>
+                  <Typography sx={{ fontSize: 24, color: "#6b7280" }}>Your skincare journey matters to us.</Typography>
                 </Box>
               </Box>
                 </>
@@ -970,8 +970,8 @@ export default function FeedbackPage() {
             textAlign: "center",
           }}
         >
-          <Typography sx={{ fontSize: 18, fontWeight: 700, pb: 0.5 }}>Quick Favour?</Typography>
-          <Typography sx={{ fontSize: 14, color: "#374151" }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 700, pb: 0.5 }}>Quick Favour?</Typography>
+          <Typography sx={{ fontSize: 24, color: "#374151" }}>
             Kindly rate your experience with us so far.
           </Typography>
 
@@ -1022,9 +1022,9 @@ export default function FeedbackPage() {
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "12px",
                   bgcolor: "#ffffff",
-                  fontSize: 16,
-                  "& textarea": { fontSize: 16 },
-                  "& textarea::placeholder": { fontSize: 16, opacity: 0.8 },
+                  fontSize: 24,
+                  "& textarea": { fontSize: 24 },
+                  "& textarea::placeholder": { fontSize: 24, opacity: 0.8 },
                   "& fieldset": { borderColor: "#d1d5db" },
                   "&:hover fieldset": { borderColor: "#9ca3af" },
                   "&.Mui-focused fieldset": { borderColor: "#9ca3af" },
@@ -1042,7 +1042,7 @@ export default function FeedbackPage() {
                 color: "#fff",
                 py: 1,
                 borderRadius: "12px",
-                fontSize: 16,
+                fontSize: 24,
                 fontWeight: 700,
                 textTransform: "none",
                 "&:hover": { bgcolor: "#16362c" },
@@ -1098,7 +1098,7 @@ export default function FeedbackPage() {
             }}
           >
             <Icon icon={notification.type === "success" ? "mdi:check-circle" : "mdi:alert-circle"} width={22} />
-            <Typography sx={{ fontSize: 18, fontWeight: 600 }}>{notification.message}</Typography>
+            <Typography sx={{ fontSize: 24, fontWeight: 600 }}>{notification.message}</Typography>
           </Box>
         )}
       </Box>
