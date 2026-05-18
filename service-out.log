@@ -269787,3 +269787,1868 @@ SQLite database initialized: C:\leafwater\skincarevendingnew\data\vending.db
  GET /api/auth/session 200 in 19ms
    Reload env: .env.local
  ✓ Compiled in 487ms (1570 modules)
+   Reload env: .env.local
+ ✓ Compiled in 986ms (1570 modules)
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 751ms (1573 modules)
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 2.3s (1796 modules)
+ GET / 404 in 3332ms
+   Reload env: .env.local
+ ✓ Compiled in 3.6s (1793 modules)
+ GET / 200 in 315ms
+ ✓ Compiled in 340ms (1793 modules)
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1051ms (1136 modules)
+ GET /api/auth/session 200 in 1306ms
+ GET /api/auth/session 200 in 22ms
+ ✓ Compiled /favicon.ico in 225ms (1164 modules)
+ GET /favicon.ico 200 in 301ms
+
+> mpf-fashion-web@0.1.0 dev
+> next dev
+
+  ▲ Next.js 14.2.4
+  - Local:        http://localhost:3000
+  - Environments: .env.local
+  - Experiments (use with caution):
+    · missingSuspenseWithCSRBailout
+
+ ✓ Starting...
+> [PWA] PWA support is disabled
+> [PWA] PWA support is disabled
+ ✓ Ready in 7.2s
+ ○ Compiling / ...
+ ✓ Compiled / in 6.6s (1570 modules)
+ GET / 200 in 6942ms
+ ○ Compiling /api/auth/[...nextauth] ...
+ ✓ Compiled /api/auth/[...nextauth] in 1515ms (1096 modules)
+ GET /api/auth/session 200 in 2184ms
+ GET /api/auth/session 200 in 19ms
+ ○ Compiling /slots ...
+ ✓ Compiled /slots in 940ms (1934 modules)
+ ✓ Compiled /api/admin/products in 240ms (1163 modules)
+ ✓ Compiled (1167 modules)
+SQLite database initialized: C:\leafwater\skincarevendingnew\data\vending.db
+[slot_update webhook] Sending webhook to: https://hook.eu1.make.com/2g5m8urqau04sgnynlxk4i7cdvjgdmoc
+[slot_update webhook] Payload: {
+  "event": "slot_assignment",
+  "occurred_at": "2026-05-18T13:30:27.104Z",
+  "slots": [
+    {
+      "slot_id": 1,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 525,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T12:47:35.962Z"
+    },
+    {
+      "slot_id": 2,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 1,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T13:15:26.374Z"
+    },
+    {
+      "slot_id": 3,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 4,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 5,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 6,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 7,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 8,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 9,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 10,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 11,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 12,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 1,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T13:15:32.384Z"
+    },
+    {
+      "slot_id": 13,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 14,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 15,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 16,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 17,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 18,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 19,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 20,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 21,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 22,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 23,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 24,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 25,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 26,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 1,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T13:15:39.425Z"
+    },
+    {
+      "slot_id": 27,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 28,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 29,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 30,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 31,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 32,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 33,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 34,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 35,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 36,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 37,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 38,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 39,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 40,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 41,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 42,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 43,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 44,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 45,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 46,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 47,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 48,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 49,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 1,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T13:15:47.871Z"
+    },
+    {
+      "slot_id": 50,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 51,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 52,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 53,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 54,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 55,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 56,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 57,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 58,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 59,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 60,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    }
+  ],
+  "product": null,
+  "affected_slot_ids": [],
+  "machine_location": "Ground-Floor",
+  "machine_name": "L_W_Studio"
+}
+[slot_update webhook] Sending webhook to: https://hook.eu1.make.com/2g5m8urqau04sgnynlxk4i7cdvjgdmoc
+[slot_update webhook] Payload: {
+  "event": "slot_assignment",
+  "occurred_at": "2026-05-18T13:30:27.109Z",
+  "slots": [
+    {
+      "slot_id": 1,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 525,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T12:47:35.962Z"
+    },
+    {
+      "slot_id": 2,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 1,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T13:15:26.374Z"
+    },
+    {
+      "slot_id": 3,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 4,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 5,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 6,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 7,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 8,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 9,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 10,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 11,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 12,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 1,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T13:15:32.384Z"
+    },
+    {
+      "slot_id": 13,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 14,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 15,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 16,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 17,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 18,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 19,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 20,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 21,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 22,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 23,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 24,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 25,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 26,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 1,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T13:15:39.425Z"
+    },
+    {
+      "slot_id": 27,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 28,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 29,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 30,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 31,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 32,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 33,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 34,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 35,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 36,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 37,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 38,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 39,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 40,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 41,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 42,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 43,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 44,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 45,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 46,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 47,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 48,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 49,
+      "product_id": "products/54250392",
+      "product_name": " Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g",
+      "category": null,
+      "retail_price": 1,
+      "discount_value": 10,
+      "image_url": "https://skin-care--products.s3.eu-north-1.amazonaws.com/3Brands/PLIX+-+THE+PLANT+FIX+Watermelon+Invisible+Sunscreen+Stick+With+SPF+50+PA+%2B%2B%2B.jpg",
+      "quantity": 10,
+      "last_updated": "2026-05-18T13:15:47.871Z"
+    },
+    {
+      "slot_id": 50,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 51,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 52,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 53,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 54,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 55,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 56,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 57,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 58,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 59,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    },
+    {
+      "slot_id": 60,
+      "product_id": null,
+      "product_name": null,
+      "category": null,
+      "retail_price": null,
+      "image_url": null,
+      "quantity": 0,
+      "last_updated": "2026-05-18 12:46:42"
+    }
+  ],
+  "product": null,
+  "affected_slot_ids": [],
+  "machine_location": "Ground-Floor",
+  "machine_name": "L_W_Studio"
+}
+ GET /api/admin/slots 200 in 579ms
+ GET /api/admin/slots 200 in 583ms
+ GET /api/admin/machine-name 200 in 598ms
+ GET /api/admin/machine-name 200 in 28ms
+[getSlotsForProduct] searchId: 54250711 productName:  Plix Pineapple Brightening Lip Balm With SPF 50 4 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PINEAPPLE 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54250644 productName:  Plix Guava Glowy Lip Tinted Balm 10 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA GLOW
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54250571 productName:  Plix Pomegranate Bright Lips Puddin' Scrub (For Dark, Dry & Pigmented Lips) 15 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX POMEGRANAT
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54250392 productName:  Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g
+[getSlotsForProduct] ID match rows: [
+  {
+    slot_id: 49,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 26,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 12,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 2,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 1,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  }
+]
+[getSlotsForProduct] searchId: 54250229 productName:  Plix Pineapple Advanced Depigmentation Dewy Sunscreen (SPF 50 PA++++) 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PINEAPPLE 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54250014 productName:  Plix Guava Glow Invisible Sunscreen 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA GLOW
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249767 productName:  Plix Jamun Oil-Balancing Sunscreen (with SPF 50 for Everyday Sun Protection) 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN OIL-
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249620 productName:  Plix Jamun Niacinamide Moisturizer For Active Acne & Pimples 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN NIAC
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249325 productName:  Plix Guava Glow Smoothie Moisturizer 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA GLOW
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249185 productName:  Plix Pineapple De-Pigmentation Smoothie Moisturizer 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PINEAPPLE 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249100 productName:  Plix Guava 3% Glycolic Acid Serum For Glowing Skin+Exfoliation 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA 3% G
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54248989 productName:  Plix Jamun 2% Salicylic Acid Exfoliating Face Serum | For Active Acne & Blackheads 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN 2% S
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54248920 productName:  Plix Jamun 10% Niacinamide Face Serum For Blemishes & Acne Marks Removal 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN 10% 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54248843 productName:  Plix Pineapple De-Pigmentation Dewy Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PINEAPPLE 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54248688 productName:  Plix Watermelon hydrogel eye patches to de-puff & revive under-eye area instantly 28 Patches
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX WATERMELON
+[getSlotsForProduct] Name match rows: [
+  {
+    slot_id: 49,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 26,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 12,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 2,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 1,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  }
+]
+[getSlotsForProduct] searchId: 54247367 productName:  Plix Guava Fresh Eyes Puddin' Under Eye Gel 15 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA FRES
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54247288 productName:  Plix Watermelon Hydrogel Under Eye Patches for Dark Circles & Puffiness With Caffeine 60 Patches
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX WATERMELON
+[getSlotsForProduct] Name match rows: [
+  {
+    slot_id: 49,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 26,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 12,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 2,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 1,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  }
+]
+[getSlotsForProduct] searchId: 54246893 productName:  Plix Jamun Clarifying Fruity Toner for Pore Refining & Reducing Acne 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN CLAR
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246828 productName:  Plix Peaches & Lemon 3-in-1 Detan Face Wash, Scrub & Mask for Smooth, Bright Skin 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PEACHES & 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246755 productName:  Plix Avocado Ceramide Moisture Rush Juicy Cleanser 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX AVOCADO CE
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246676 productName:  Plix Jamun Salicylic Acid Cleanser Gel For Active Acne 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN SALI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246493 productName: The Face Shop Rice Water Bright Vegan Eye Cream 20 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP R
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246396 productName: The Face ShopThe Therapy Vegan Multi Lipcerin 15 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOPTH
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246335 productName: The Face Shop The Therapy Vegan Sunscreen Stick SPF50+ 18 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP T
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246159 productName: The Face Shop Natural Sun Eco No Shine Hydrating Sun Cream 50 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP N
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246081 productName: The Face Shop Ceramide & Rice Lightweight Emulsion 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP C
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245994 productName: The Face Shop Collagen & Pomegranate Volume Lifting Serum 80 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP C
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245929 productName: The Face Shop Alltimate Vegan Mucin Peptide 8 Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP A
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245860 productName: The Face Shop White Seed Brightening Serum 50 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP W
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245780 productName: The Face Shop Alltimate PDRN Deep Hydration Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP A
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245719 productName: The Face Shop White Seed Brightening Toner 250 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP W
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244874 productName: The Face Shop Ceramide & Rice Moisturizing Toner 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP C
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244797 productName: The Face Shop Tea Tree Pore Clarifying Gel Cleanser 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP T
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244734 productName: The Face Shop Rice Water Bright Cleansing Foam 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP R
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244629 productName: Plum Bright Years Under-Eye Recovery Gel 15 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM BRIGHT YEA
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244572 productName: Plum 3% Vitamin C, 3% Peptide & 3% Caffeine Under Eye Cream with Mandarin 15 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 3% VITAMIN
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244465 productName: Plum Cica & Hya-Betaine Vegan Mucin Face Essence With Azuki Bean Extracts & ATP 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM CICA & HYA
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244348 productName: Plum 1% Salicylic Acid Clearly Gentle Gel Face Wash with Blueberry 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 1% SALICYL
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244265 productName: Plum Vitamin C Foaming Face Wash with Mandarin 110 mL
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM VITAMIN C 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244156 productName: Plum 2% Niacinamide & Rice Water Face Wash 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 2% NIACINA
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244061 productName: Plum Green Tea Pore Cleansing Face Wash for Acne 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM GREEN TEA 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243996 productName: Plum 2% Encapsulated Salicylic Acid Anti-Acne Face Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 2% ENCAPSU
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243943 productName: Plum 15% Vitamin C Serum with Mandarin for glowing skin 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 15% VITAMI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243880 productName: Plum 10% Niacinamide & Rice Water Brightening Face Serum 50 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 10% NIACIN
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243751 productName: Neutrogena Visible Repair Regenerating Cream 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA VISI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243668 productName: Neutrogena Visible Repair Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA VISI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243587 productName: Neutrogena Visible Repair Eye Cream 15 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA VISI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243468 productName: Neutrogena Ultra Sheer Dry Touch Sunscreen SPF 50+ 80 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA ULTR
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243395 productName: Neutrogena Hydro Boost Face Sunscreen SPF 50+ PA++++ 50 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA HYDR
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243216 productName: Neutrogena Deep Clean® Blackhead Eliminating Daily Face Scrub 100 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA DEEP
+[getSlotsForProduct] Name match rows: []
+ GET /api/admin/products?page=1&limit=1000 200 in 977ms
+[getSlotsForProduct] searchId: 54250711 productName:  Plix Pineapple Brightening Lip Balm With SPF 50 4 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PINEAPPLE 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54250644 productName:  Plix Guava Glowy Lip Tinted Balm 10 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA GLOW
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54250571 productName:  Plix Pomegranate Bright Lips Puddin' Scrub (For Dark, Dry & Pigmented Lips) 15 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX POMEGRANAT
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54250392 productName:  Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g
+[getSlotsForProduct] ID match rows: [
+  {
+    slot_id: 49,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 26,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 12,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 2,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 1,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  }
+]
+[getSlotsForProduct] searchId: 54250229 productName:  Plix Pineapple Advanced Depigmentation Dewy Sunscreen (SPF 50 PA++++) 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PINEAPPLE 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54250014 productName:  Plix Guava Glow Invisible Sunscreen 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA GLOW
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249767 productName:  Plix Jamun Oil-Balancing Sunscreen (with SPF 50 for Everyday Sun Protection) 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN OIL-
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249620 productName:  Plix Jamun Niacinamide Moisturizer For Active Acne & Pimples 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN NIAC
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249325 productName:  Plix Guava Glow Smoothie Moisturizer 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA GLOW
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249185 productName:  Plix Pineapple De-Pigmentation Smoothie Moisturizer 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PINEAPPLE 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54249100 productName:  Plix Guava 3% Glycolic Acid Serum For Glowing Skin+Exfoliation 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA 3% G
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54248989 productName:  Plix Jamun 2% Salicylic Acid Exfoliating Face Serum | For Active Acne & Blackheads 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN 2% S
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54248920 productName:  Plix Jamun 10% Niacinamide Face Serum For Blemishes & Acne Marks Removal 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN 10% 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54248843 productName:  Plix Pineapple De-Pigmentation Dewy Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PINEAPPLE 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54248688 productName:  Plix Watermelon hydrogel eye patches to de-puff & revive under-eye area instantly 28 Patches
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX WATERMELON
+[getSlotsForProduct] Name match rows: [
+  {
+    slot_id: 49,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 26,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 12,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 2,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 1,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  }
+]
+[getSlotsForProduct] searchId: 54247367 productName:  Plix Guava Fresh Eyes Puddin' Under Eye Gel 15 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX GUAVA FRES
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54247288 productName:  Plix Watermelon Hydrogel Under Eye Patches for Dark Circles & Puffiness With Caffeine 60 Patches
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX WATERMELON
+[getSlotsForProduct] Name match rows: [
+  {
+    slot_id: 49,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 26,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 12,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 2,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  },
+  {
+    slot_id: 1,
+    quantity: 10,
+    product_id: 'products/54250392',
+    product_name: ' Plix Watermelon Invisible Sunscreen Stick SPF 50 PA +++ UVA & UVB Shield 20 g'
+  }
+]
+[getSlotsForProduct] searchId: 54246893 productName:  Plix Jamun Clarifying Fruity Toner for Pore Refining & Reducing Acne 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN CLAR
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246828 productName:  Plix Peaches & Lemon 3-in-1 Detan Face Wash, Scrub & Mask for Smooth, Bright Skin 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX PEACHES & 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246755 productName:  Plix Avocado Ceramide Moisture Rush Juicy Cleanser 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX AVOCADO CE
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246676 productName:  Plix Jamun Salicylic Acid Cleanser Gel For Active Acne 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLIX JAMUN SALI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246493 productName: The Face Shop Rice Water Bright Vegan Eye Cream 20 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP R
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246396 productName: The Face ShopThe Therapy Vegan Multi Lipcerin 15 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOPTH
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246335 productName: The Face Shop The Therapy Vegan Sunscreen Stick SPF50+ 18 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP T
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246159 productName: The Face Shop Natural Sun Eco No Shine Hydrating Sun Cream 50 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP N
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54246081 productName: The Face Shop Ceramide & Rice Lightweight Emulsion 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP C
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245994 productName: The Face Shop Collagen & Pomegranate Volume Lifting Serum 80 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP C
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245929 productName: The Face Shop Alltimate Vegan Mucin Peptide 8 Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP A
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245860 productName: The Face Shop White Seed Brightening Serum 50 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP W
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245780 productName: The Face Shop Alltimate PDRN Deep Hydration Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP A
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54245719 productName: The Face Shop White Seed Brightening Toner 250 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP W
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244874 productName: The Face Shop Ceramide & Rice Moisturizing Toner 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP C
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244797 productName: The Face Shop Tea Tree Pore Clarifying Gel Cleanser 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP T
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244734 productName: The Face Shop Rice Water Bright Cleansing Foam 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: THE FACE SHOP R
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244629 productName: Plum Bright Years Under-Eye Recovery Gel 15 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM BRIGHT YEA
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244572 productName: Plum 3% Vitamin C, 3% Peptide & 3% Caffeine Under Eye Cream with Mandarin 15 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 3% VITAMIN
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244465 productName: Plum Cica & Hya-Betaine Vegan Mucin Face Essence With Azuki Bean Extracts & ATP 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM CICA & HYA
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244348 productName: Plum 1% Salicylic Acid Clearly Gentle Gel Face Wash with Blueberry 100 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 1% SALICYL
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244265 productName: Plum Vitamin C Foaming Face Wash with Mandarin 110 mL
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM VITAMIN C 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244156 productName: Plum 2% Niacinamide & Rice Water Face Wash 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 2% NIACINA
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54244061 productName: Plum Green Tea Pore Cleansing Face Wash for Acne 150 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM GREEN TEA 
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243996 productName: Plum 2% Encapsulated Salicylic Acid Anti-Acne Face Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 2% ENCAPSU
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243943 productName: Plum 15% Vitamin C Serum with Mandarin for glowing skin 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 15% VITAMI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243880 productName: Plum 10% Niacinamide & Rice Water Brightening Face Serum 50 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: PLUM 10% NIACIN
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243751 productName: Neutrogena Visible Repair Regenerating Cream 50 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA VISI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243668 productName: Neutrogena Visible Repair Serum 30 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA VISI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243587 productName: Neutrogena Visible Repair Eye Cream 15 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA VISI
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243468 productName: Neutrogena Ultra Sheer Dry Touch Sunscreen SPF 50+ 80 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA ULTR
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243395 productName: Neutrogena Hydro Boost Face Sunscreen SPF 50+ PA++++ 50 ml
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA HYDR
+[getSlotsForProduct] Name match rows: []
+[getSlotsForProduct] searchId: 54243216 productName: Neutrogena Deep Clean® Blackhead Eliminating Daily Face Scrub 100 g
+[getSlotsForProduct] ID match rows: []
+[getSlotsForProduct] Trying name match with: NEUTROGENA DEEP
+[getSlotsForProduct] Name match rows: []
+ GET /api/admin/products?page=1&limit=1000 200 in 992ms
+[startup sync] Synced 60 slots to webhook
+[startup sync] Synced 60 slots to webhook
