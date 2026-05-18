@@ -1,69 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// GET - Get machine name (priority: env var -> db setting)
+// GET - Get all machine settings (DB values, with env var fallbacks)
 export async function GET() {
   try {
-    // Priority 1: Environment variable
-    const envMachineName = process.env.NEXT_PUBLIC_MACHINE_NAME;
-    if (envMachineName) {
-      return NextResponse.json({ 
-        success: true, 
-        machineName: envMachineName,
-        source: 'env'
-      });
-    }
-
-    // Priority 2: Database setting
     const { sqliteDb } = await import("@/lib/sqlite-db");
-    const dbMachineName = sqliteDb.getMachineName();
-    
-    return NextResponse.json({ 
-      success: true, 
-      machineName: dbMachineName,
-      source: 'database'
+
+    const dbMachineId = sqliteDb.getMachineId() || "";
+    const rawName = sqliteDb.getMachineName() || "";
+    const dbMachineName = rawName === "LeafWater_Default" ? "" : rawName;
+    const dbMachineLocation = sqliteDb.getMachineLocation() || "";
+
+    return NextResponse.json({
+      success: true,
+      machineId: dbMachineId || process.env.LW_MACHINE_ID || "",
+      machineName: dbMachineName || process.env.LW_MACHINE_NAME || "",
+      machineLocation: dbMachineLocation || process.env.LW_MACHINE_LOCATION || "",
+      source: dbMachineId ? "database" : "env",
     });
   } catch (error: any) {
-    console.error("[Machine Name API] Error getting machine name:", error);
+    console.error("[Machine Settings API] Error getting settings:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to get machine name" },
+      { success: false, error: error.message || "Failed to get machine settings" },
       { status: 500 }
     );
   }
 }
 
-// POST - Set machine name in database
+// POST - Save machine settings to database
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { machineName } = body;
+    const { machineId, machineName, machineLocation } = body;
 
-    if (!machineName || typeof machineName !== "string") {
+    if (!machineId || typeof machineId !== "string" || !machineId.trim()) {
       return NextResponse.json(
-        { success: false, error: "Machine name is required" },
-        { status: 400 }
-      );
-    }
-
-    const trimmedName = machineName.trim();
-    if (trimmedName.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Machine name cannot be empty" },
+        { success: false, error: "Machine ID is required" },
         { status: 400 }
       );
     }
 
     const { sqliteDb } = await import("@/lib/sqlite-db");
-    sqliteDb.setMachineName(trimmedName);
 
-    return NextResponse.json({ 
-      success: true, 
-      machineName: trimmedName,
-      message: "Machine name updated successfully"
+    sqliteDb.setMachineId(machineId.trim());
+    if (machineName?.trim()) sqliteDb.setMachineName(machineName.trim());
+    if (machineLocation?.trim()) sqliteDb.setMachineLocation(machineLocation.trim());
+
+    return NextResponse.json({
+      success: true,
+      machineId: machineId.trim(),
+      machineName: machineName?.trim() || "",
+      machineLocation: machineLocation?.trim() || "",
+      message: "Machine settings updated successfully",
     });
   } catch (error: any) {
-    console.error("[Machine Name API] Error setting machine name:", error);
+    console.error("[Machine Settings API] Error saving settings:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to set machine name" },
+      { success: false, error: error.message || "Failed to save machine settings" },
       { status: 500 }
     );
   }

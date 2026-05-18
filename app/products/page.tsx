@@ -368,7 +368,7 @@ export default function BrowseProductsPage() {
         isKiosk={isKiosk}
         cartCount={cartCount}
         onCartClick={() => setOpenCart(true)}
-        onScanAgainClick={() => router.push(APP_ROUTES.SELFIE)}
+        onScanAgainClick={() => router.push(APP_ROUTES.HOME)}
       />
 
       {/* Main Content */}

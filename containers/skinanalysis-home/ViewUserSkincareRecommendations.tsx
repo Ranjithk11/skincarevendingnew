@@ -33,6 +33,7 @@ import LipsProductsView from "./Recommendations/LipProducts";
 import TopLogo from "./Recommendations/TopLogo";
 import { APP_ROUTES } from "@/utils/routes";
 import { useTheme } from "@mui/material/styles";
+import { sendScanCompletedWebhook } from "@/utils/webhook";
 
 const StyledViewAdminSkincareReport = styled(Container)(({ theme }) => ({
   minHeight: "100vh",
@@ -155,6 +156,39 @@ const ViewAdminSkincareReport = () => {
         fileName:
           data?.data?.productRecommendation?.capturedImages[0]?.fileName,
       });
+
+      // Notify external automation (Make.com) that a scan report is being viewed.
+      // The webhook utility de-duplicates per userId per session so it only fires once.
+      const user = data?.data?.user as any;
+      if (user?._id) {
+        // Fetch machine settings from database
+        fetch("/api/admin/machine-name")
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              void sendScanCompletedWebhook({
+                name: user?.name,
+                email: user?.email,
+                phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
+                userId: user?._id,
+                machineName: data.machineName || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+                machineLocation: data.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+              });
+            }
+          })
+          .catch(err => {
+            console.error("[ViewUserSkincareRecommendations] Failed to fetch machine settings:", err);
+            // Fallback to env vars
+            void sendScanCompletedWebhook({
+              name: user?.name,
+              email: user?.email,
+              phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
+              userId: user?._id,
+              machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+              machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+            });
+          });
+      }
     }
   }, [data]);
 
@@ -166,7 +200,7 @@ const ViewAdminSkincareReport = () => {
             isKiosk={isKiosk}
             cartCount={cartCount}
             onCartClick={() => setOpenCart(true)}
-            onScanAgainClick={() => router.push(APP_ROUTES.SELFIE)}
+            onScanAgainClick={() => router.push(APP_ROUTES.HOME)}
           />
 
           {/* Spacer for fixed TopLogo header */}

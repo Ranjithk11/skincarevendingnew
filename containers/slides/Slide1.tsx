@@ -249,7 +249,7 @@ export default function Slide1({
             />
 
             {/* Email Field */}
-            <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Email </Typography>
+            <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Email (Optional) </Typography>
             <Box
               onClick={() => {
                 setActiveField("email");

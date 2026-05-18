@@ -91,7 +91,14 @@ export default function LandingTopSection({
       <ActionButton
         variant="primary"
         fullWidth
-        icon={<Image src="/wending/scanlogo.svg" alt="Scan" width={40} height={40} />}
+        icon={
+          <Box
+            component="img"
+            src="/wending/scanlogo.svg"
+            alt="Scan"
+            sx={{ width: 40, height: 40, display: "block" }}
+          />
+        }
         sx={{
           mb: { xs: 2, sm: 3, md: 3 },
           mt: 2,

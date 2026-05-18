@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AdminDashboard } from "@/containers/admin-dashboard";
 import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal } from "@/containers/admin-dashboard/components";
+import { Snackbar, Alert } from "@mui/material";
 import { useRouter } from "next/navigation";
 import {
   useGetVendingSlotsQuery,
@@ -40,6 +41,9 @@ export default function AdminDashboardPage() {
     price: number;
     quantity: number;
   } | null>(null);
+
+  // Success snackbar state
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({ open: false, message: "", severity: "success" });
 
   // Machine settings modal state
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -176,6 +180,8 @@ export default function AdminDashboardPage() {
     id: product.id.toString(),
     name: product.name,
     category: product.category || "Uncategorized",
+    retail_price: product.retail_price,
+    discount: product.discount || null,
     price: `Rs.${product.retail_price}`,
     amount: product.quantity || getProductQuantityFromSlots(product.id.toString(), product.name),
     image: product.image_url,
@@ -196,6 +202,8 @@ export default function AdminDashboardPage() {
       id: productId,
       name: adminMatch?.name ?? productName,
       category: adminMatch?.category ?? (p.productCategory?.title || p.category || "Uncategorized"),
+      retail_price: adminMatch?.retail_price ?? (p.retailPrice || p.retail_price || 0),
+      discount: adminMatch?.discount ?? (p.discount || null),
       price: adminMatch?.price ?? `Rs.${p.retailPrice || p.retail_price || 0}`,
       amount: adminMatch?.amount ?? getProductQuantityFromSlots(productId, productName),
       image: adminMatch?.image ?? (p.images?.[0]?.url || p.image_url || ""),
@@ -313,13 +321,14 @@ export default function AdminDashboardPage() {
     try {
       // Find the product in admin products first
       let product = productsData?.find((p: Product) => p.id.toString() === productId);
-      
+
       // If not found, search in browse products (allCategoryProducts)
       let productName = product?.name;
       let category = product?.category;
       let retailPrice = product?.retail_price;
       let imageUrl = product?.image_url;
-      
+      let discountValue = product?.discount?.value;
+
       if (!product) {
         const browseProduct = allCategoryProducts.find((p: any) => (p._id || p.id) === productId);
         if (browseProduct) {
@@ -327,17 +336,22 @@ export default function AdminDashboardPage() {
           category = browseProduct.productCategory?.title || browseProduct.category || "Uncategorized";
           retailPrice = browseProduct.retailPrice || browseProduct.retail_price || 0;
           imageUrl = browseProduct.images?.[0]?.url || browseProduct.image_url || "";
+          // Extract discount from browse product
+          if (browseProduct.discount) {
+            discountValue = browseProduct.discount.value || browseProduct.discount.percentage || browseProduct.discount;
+          }
         }
       }
-      
-      await assignProduct({ 
-        slotId: slotNumber, 
-        productId: productId, 
+
+      await assignProduct({
+        slotId: slotNumber,
+        productId: productId,
         quantity,
         productName: productName,
         category: category,
         retailPrice: retailPrice,
         imageUrl: imageUrl,
+        discountValue: discountValue,
       });
       refetchSlots();
       refetchProducts();
@@ -515,9 +529,11 @@ export default function AdminDashboardPage() {
       });
       
       // Refetch products to show updated data
-      refetchProducts();
+      await refetchProducts();
+      setSnackbar({ open: true, message: "Product updated successfully!", severity: "success" });
     } catch (error) {
       console.error("Error saving product:", error);
+      setSnackbar({ open: true, message: "Failed to update product.", severity: "error" });
     }
   };
 
@@ -620,6 +636,23 @@ export default function AdminDashboardPage() {
         open={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
       />
+
+      {/* Success/Error Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%", fontSize: 18 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   );
 }

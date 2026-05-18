@@ -1,6 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/admin-db";
 
+// Send webhook for product modifications
+async function sendProductUpdateWebhook(productId: string, updatedProduct: any) {
+  try {
+    const { sendSlotUpdateWebhook } = await import("@/utils/webhook");
+    const { sqliteDb } = await import("@/lib/sqlite-db");
+
+    const machineLocation = sqliteDb.getMachineLocation() || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine";
+    const machineName = sqliteDb.getMachineName() || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine";
+
+    // Get all slots
+    const allSlots = adminDb.getAllSlots();
+
+    // Find slots that have this product
+    const affectedSlotIds: number[] = [];
+    Object.values(allSlots).forEach((slot: any) => {
+      if (slot.product_id === productId || slot.product_id === `products/${productId}`) {
+        affectedSlotIds.push(slot.slot_id);
+      }
+    });
+
+    // Convert slots to array format
+    const slotsArray = Object.values(allSlots).map(slot => ({
+      slot_id: slot.slot_id,
+      product_id: slot.product_id,
+      product_name: slot.product_name,
+      category: slot.category,
+      retail_price: slot.retail_price,
+      discount_value: slot.discount_value,
+      image_url: slot.image_url,
+      quantity: slot.quantity,
+      last_updated: slot.last_updated,
+    }));
+
+    await sendSlotUpdateWebhook({
+      slots: slotsArray,
+      product: {
+        id: productId,
+        name: updatedProduct.name,
+        category: updatedProduct.category,
+        retail_price: updatedProduct.retail_price,
+        discount_value: updatedProduct.discount_value,
+        image_url: updatedProduct.image_url,
+        quantity: updatedProduct.quantity,
+      },
+      updateType: 'product_modification',
+      affectedSlotIds: affectedSlotIds,
+      timestamp: new Date().toISOString(),
+      machineLocation,
+      machineName,
+    });
+  } catch (error) {
+    console.error("[sendProductUpdateWebhook] Error:", error);
+  }
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { productId: string } }
@@ -8,7 +63,7 @@ export async function PUT(
   try {
     const productId = params.productId;
     const body = await request.json();
-    
+
     // Try to update in local DB first (for local products with numeric IDs)
     const numericId = parseInt(productId);
     if (!isNaN(numericId)) {
@@ -20,6 +75,9 @@ export async function PUT(
       });
 
       if (updatedProduct) {
+        // Send webhook for product modification
+        sendProductUpdateWebhook(productId, updatedProduct);
+
         return NextResponse.json({
           success: true,
           product: updatedProduct,
@@ -34,6 +92,9 @@ export async function PUT(
       retail_price: body.retail_price,
       quantity: body.quantity,
     });
+
+    // Send webhook for product modification
+    sendProductUpdateWebhook(productId, override);
 
     return NextResponse.json({
       success: true,

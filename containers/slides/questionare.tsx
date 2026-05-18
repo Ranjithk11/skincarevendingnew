@@ -288,19 +288,15 @@ export default function Questionnaire() {
         setTimeout(() => setValidationError(""), 3000);
         return;
       }
-      if (!email.trim()) {
-        setValidationError("Please enter your email address");
-        speakMessage('invalidInput');
-        setTimeout(() => setValidationError(""), 3000);
-        return;
-      }
-
-      const emailValidation = isValidateEmail(email.trim());
-      if (emailValidation !== true) {
-        setValidationError(emailValidation as string);
-        speakMessage('invalidInput');
-        setTimeout(() => setValidationError(""), 3000);
-        return;
+      // Email is optional - if not provided, use machine location default
+      if (email.trim()) {
+        const emailValidation = isValidateEmail(email.trim());
+        if (emailValidation !== true) {
+          setValidationError(emailValidation as string);
+          speakMessage('invalidInput');
+          setTimeout(() => setValidationError(""), 3000);
+          return;
+        }
       }
       setValidationError("");
     }
@@ -334,22 +330,22 @@ export default function Questionnaire() {
       return;
     }
 
-    if (!email.trim()) {
-      setValidationError("Please enter your email address");
-      setTimeout(() => setValidationError(""), 3000);
-      return;
-    }
-
-    const emailValidation = isValidateEmail(email.trim());
-    if (emailValidation !== true) {
-      setValidationError(emailValidation as string);
-      setTimeout(() => setValidationError(""), 3000);
-      return;
+    // Email is optional - if not provided, use machine location default
+    if (email.trim()) {
+      const emailValidation = isValidateEmail(email.trim());
+      if (emailValidation !== true) {
+        setValidationError(emailValidation as string);
+        setTimeout(() => setValidationError(""), 3000);
+        return;
+      }
     }
 
     // MuiTelInput already includes country code in the phone value (e.g., "+91 98765 43210")
     // Remove spaces and format for API
     const formattedPhoneNumber = phone.replace(/\s/g, "");
+
+    // Use default email based on machine location if not provided
+    const finalEmail = email.trim() || `${machineLocation.replace(/-/g, '_')}@gmail.com`;
 
     const skinTypeIdByOption: Record<string, string> = {
       normal: "NORMAL_SKIN",
@@ -371,7 +367,7 @@ export default function Questionnaire() {
         actionType: "register",
         phoneNumber: formattedPhoneNumber,
         name,
-        email,
+        email: finalEmail,
         location: machineLocation,
         skinType: skinTypeId,
         onBoardingQuestions: JSON.stringify([]),
@@ -393,7 +389,7 @@ export default function Questionnaire() {
             userId: formattedPhoneNumber, // Use phone as unique ID
             name,
             phone: formattedPhoneNumber,
-            email,
+            email: finalEmail,
           }),
         });
       } catch (localDbError) {

@@ -209,7 +209,11 @@ export default function EditProductModal({
               onChange={(e) => setName(e.target.value)}
               onClick={() => focusField("name")}
               onFocus={() => focusField("name")}
-              InputProps={{ readOnly: true }}
+              InputProps={{
+                inputProps: {
+                  inputMode: "text",
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
@@ -239,7 +243,11 @@ export default function EditProductModal({
               onChange={(e) => setCat(e.target.value)}
               onClick={() => focusField("category")}
               onFocus={() => focusField("category")}
-              InputProps={{ readOnly: true }}
+              InputProps={{
+                inputProps: {
+                  inputMode: "text",
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
@@ -274,7 +282,11 @@ export default function EditProductModal({
               }}
               onClick={() => focusField("price")}
               onFocus={() => focusField("price")}
-              InputProps={{ readOnly: true }}
+              InputProps={{
+                inputProps: {
+                  inputMode: "decimal",
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
@@ -309,7 +321,11 @@ export default function EditProductModal({
               }}
               onClick={() => focusField("quantity")}
               onFocus={() => focusField("quantity")}
-              InputProps={{ readOnly: true }}
+              InputProps={{
+                inputProps: {
+                  inputMode: "numeric",
+                },
+              }}
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",

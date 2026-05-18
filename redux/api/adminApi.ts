@@ -10,6 +10,7 @@ export interface Product {
   quantity: number;
   in_stock: boolean;
   shopify_url?: string;
+  discount?: { value: number } | null;
 }
 
 export interface VendingSlot {
@@ -48,12 +49,13 @@ export interface AdminLoginResponse {
 
 export interface AssignProductRequest {
   slotId: number;
-  productId?: string | number | null;
+  productId: string;
   quantity?: number;
   productName?: string;
   category?: string;
   retailPrice?: number;
   imageUrl?: string;
+  discountValue?: number;
 }
 
 export interface UpdateSlotQuantityRequest {
@@ -112,17 +114,18 @@ export const adminApi = createApi({
 
     // Assign product to slot
     assignProductToSlot: builder.mutation<SyncResponse, AssignProductRequest>({
-      query: ({ slotId, productId, quantity = 0, productName, category, retailPrice, imageUrl }) => ({
+      query: ({ slotId, productId, quantity = 0, productName, category, retailPrice, imageUrl, discountValue }) => ({
         url: "/slots",
         method: "POST",
-        body: { 
-          slot_id: slotId, 
-          product_id: productId, 
+        body: {
+          slot_id: slotId,
+          product_id: productId,
           quantity,
           product_name: productName,
           category: category,
           retail_price: retailPrice,
           image_url: imageUrl,
+          discount_value: discountValue,
         },
       }),
       invalidatesTags: ["Slots", "Products"],

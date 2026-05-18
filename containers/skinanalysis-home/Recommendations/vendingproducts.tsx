@@ -398,14 +398,14 @@ export default function VendingProducts({ data }: Props) {
         {/* Personalized Recommendations Section - grouped by category */}
         {personalizedByCategory.length > 0 && (
           <>
-            <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#9A9A9A", mb: 2 }}>
+            {/* <Typography sx={{ fontSize: "24px", letterSpacing: 1, fontWeight: 400, color: "#9A9A9A", mb: 2 }}>
               PERSONALIZED FOR YOU
-            </Typography>
+            </Typography> */}
             {/* {personalizedByCategory.map((catGroup: any, catIdx: number) => (
               <Box key={`cat-${catIdx}`} sx={{ mb: 3 }}>
                 <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#333", mb: 1.5 }}>
                   {catGroup.categoryTitle}
-                </Typography>
+                // </Typography>
                 <Grid container spacing={{ xs: 1.5, md: 2 }}>
                   {catGroup.products.map((row: any, idx: number) => {
                     const product = row?.product;

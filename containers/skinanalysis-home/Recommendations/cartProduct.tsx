@@ -14,12 +14,14 @@
     import { Icon } from "@iconify/react";
     import { capitalizeWords } from "@/utils/func";
     import { useCart, CartItem } from "./CartContext";
-    import RazorpayCheckoutButton from "@/components/payments/RazorpayCheckoutButton";
+    import UpiQrPayment from "@/components/payments/UpiQrPayment";
+    import { ProductPrice } from "./components";
     import { toast } from "react-toastify";
     import { useRouter } from "next/navigation";
     import { APP_ROUTES } from "@/utils/routes";
     import { useVoiceMessages } from "@/contexts/VoiceContext";
-    import ProductPrice from "./components/ProductPrice";
+    import { useSession } from "next-auth/react";
+    import PaymentReporter from "@/app/feedback/components/PaymentReporter";
 
     type CartProductProps = {
         open: boolean;
@@ -42,77 +44,37 @@
         const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
         const { items, setQuantity, removeItem, clear } = useCart();
         const { speakMessage } = useVoiceMessages();
+        const { data: session } = useSession();
         const [showPriceDetails, setShowPriceDetails] = useState(false);
         const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
         const [couponApplied, setCouponApplied] = useState(false);
         const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
         const [isDispensing, setIsDispensing] = useState(false);
-        const [productsData, setProductsData] = useState<any[]>([]);
-        const [isProductsLoaded, setIsProductsLoaded] = useState(false);
+        const [paymentSuccess, setPaymentSuccess] = useState(false);
+        const [paymentPayload, setPaymentPayload] = useState<any>(null);
+        const [machineLocation, setMachineLocation] = useState<string>("LeafWater Vending Machine");
+        const [machineName, setMachineName] = useState<string>("Vending Machine");
+
+        // Fetch machine location and name from database
+        useEffect(() => {
+            const fetchMachineSettings = async () => {
+                try {
+                    const response = await fetch("/api/admin/machine-name");
+                    const data = await response.json();
+                    if (data.success) {
+                        if (data.machineLocation) setMachineLocation(data.machineLocation);
+                        if (data.machineName) setMachineName(data.machineName);
+                    }
+                } catch (error) {
+                    console.error("[CartProduct] Failed to fetch machine settings:", error);
+                }
+            };
+            fetchMachineSettings();
+        }, []);
 
         useEffect(() => {
             router.prefetch(APP_ROUTES.FEEDBACK);
         }, [router]);
-
-        // Fetch products data to get discount information
-        useEffect(() => {
-            const fetchProductsData = async () => {
-                try {
-                    const response = await fetch('/api/admin/products');
-                    const data = await response.json();
-                    if (data && Array.isArray(data)) {
-                        setProductsData(data);
-                        setIsProductsLoaded(true);
-                        console.log('Cart products data loaded:', data.length);
-                    }
-                } catch (error) {
-                    console.error('Error fetching products data:', error);
-                }
-            };
-            
-            fetchProductsData();
-        }, []);
-
-        // Get product discount by ID or name (enhanced matching)
-        const getProductDiscount = (productId?: string, productName?: string) => {
-            if (!productId && !productName) return 0;
-            
-            // First try to match by ID
-            let product = productsData.find(p => p._id === productId || p.id === productId);
-            
-            // If not found by ID, try to match by name (same logic as ProductPrice)
-            if (!product && productName) {
-                product = productsData.find(p => {
-                    const apiName = (p.name || '').toLowerCase().trim();
-                    const slotName = productName.toLowerCase().trim();
-                    
-                    // Extract key words for better matching
-                    const slotWords = slotName.split(/\s+/).filter((w: string) => w.length > 2);
-                    const apiWords = apiName.split(/\s+/).filter((w: string) => w.length > 2);
-                    
-                    // Check if any key words match
-                    const hasKeyWordMatch = slotWords.some((slotWord: string) => 
-                        apiWords.some((apiWord: string) => 
-                            slotWord.includes(apiWord) || apiWord.includes(slotWord)
-                        )
-                    );
-                    
-                    // Also try original partial matching
-                    const hasPartialMatch = apiName.includes(slotName) || slotName.includes(apiName);
-                    
-                    return hasKeyWordMatch || hasPartialMatch;
-                });
-            }
-            
-            console.log('Cart getProductDiscount:', {
-                productId,
-                productName,
-                foundProduct: product?.name,
-                discount: product?.discount?.value || 0
-            });
-            
-            return product?.discount?.value || 0;
-        };
 
         useEffect(() => {
             if (!open) return;
@@ -231,40 +193,21 @@
             }
         }, []);
 
-        // Calculate total using discounted prices directly (no memoization for now)
-        const calculateTotal = () => {
-            const sum = items.reduce((acc, item) => {
-                const originalPrice = item.originalPrice || parsePrice(item.priceText || "0");
-                const discountValue = getProductDiscount(item.id, item.name);
-                const discountedPrice = originalPrice - (originalPrice * (discountValue / 100));
-                console.log('Cart total calculation:', {
-                    itemName: item.name,
-                    originalPrice,
-                    discountValue,
-                    discountedPrice,
-                    quantity: item.quantity || 1,
-                    lineTotal: discountedPrice * (item.quantity || 1)
-                });
-                return acc + discountedPrice * (item.quantity || 1);
-            }, 0);
-            const finalTotal = Number.isFinite(sum) ? sum : 0;
-            console.log('Final cart total:', finalTotal);
-            return finalTotal;
-        };
-        
-        const total = calculateTotal();
+        const total = useMemo(() => {
+            const sum = items.reduce((acc, it) => acc + parsePrice(it.priceText) * (it.quantity || 0), 0);
+            return Number.isFinite(sum) ? sum : 0;
+        }, [items]);
 
         const discount = useMemo(() => {
-            // Calculate total discount amount for display
-            const originalTotal = items.reduce((acc, item) => {
-                const originalPrice = item.originalPrice || parsePrice(item.priceText || "0");
-                return acc + originalPrice * (item.quantity || 1);
-            }, 0);
-            const totalDiscount = originalTotal - total;
-            return Number.isFinite(totalDiscount) ? totalDiscount : 0;
-        }, [items, productsData, total]);
+            if (!couponApplied) return 0;
+            if (!Number.isFinite(total) || total <= 0) return 0;
+            return Math.min(120, Math.round(total));
+        }, [couponApplied, total]);
 
-        const payableTotal = total; // Now total is already the discounted amount
+        const payableTotal = useMemo(() => {
+            const next = total - discount;
+            return Number.isFinite(next) ? Math.max(0, next) : 0;
+        }, [total, discount]);
 
         const amountPaise = useMemo(() => {
             const amount = step === "checkout" ? payableTotal : total;
@@ -425,214 +368,118 @@
                                         py: 4,
                                     }}
                                 >
-                                    <Box
-                                        sx={{
-                                            bgcolor: "#316D52",
-                                            borderRadius: "24px",
-                                            p: 4,
-                                            width: "100%",
-                                            maxWidth: 450,
-                                            textAlign: "center",
+                                    <UpiQrPayment
+                                        amountPaise={amountPaise}
+                                        currency="INR"
+                                        mode={paymentMode}
+                                        receipt={`cart_${Date.now()}`}
+                                        autoTrigger
+                                        onProcessingStart={() => {
+                                            speakMessage("paymentProcessing");
                                         }}
-                                    >
-                                        <Typography
-                                            sx={{
-                                                color: "#fff",
-                                                fontWeight: 700,
-                                                fontSize: 32,
-                                                mb: 3,
-                                                textAlign: "left",
-                                            }}
-                                        >
-                                            Payment
-                                        </Typography>
+                                        onVerified={async (payload) => {
+                                            console.log("[Payment] onVerified called, items:", items, "payload:", payload);
+                                            const itemsToDispense = [...items];
 
-                                        <Box
-                                            sx={{
-                                                bgcolor: "#fff",
-                                                borderRadius: "16px",
-                                                p: 4,
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                alignItems: "center",
-                                                gap: 2,
-                                            }}
-                                        >
-                                            <Box
-                                                sx={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: 1,
-                                                    color: paymentMode === "live" ? "#316D52" : "#f59e0b",
-                                                    fontWeight: 600,
-                                                    fontSize: 20,
-                                                }}
-                                            >
-                                                <Icon
-                                                    icon={paymentMode === "live" ? "mdi:check-circle" : "mdi:alert-circle"}
-                                                    width={24}
-                                                />
-                                                <Typography sx={{ fontWeight: 600, fontSize: 20 }}>
-                                                    {paymentMode === "live" ? "LIVE MODE" : "TEST MODE"}
-                                                </Typography>
-                                            </Box>
+                                            // Trigger payment webhook
+                                            setPaymentSuccess(true);
+                                            setPaymentPayload({
+                                                orderId: payload?.orderId,
+                                                paymentId: payload?.paymentId,
+                                                amount: payableTotal,
+                                                currency: "INR",
+                                                status: "paid",
+                                                method: paymentMode,
+                                            });
 
-                                            <Button
-                                                variant="contained"
-                                                onClick={() => setPaymentMode(paymentMode === "live" ? "test" : "live")}
-                                                sx={{
-                                                    bgcolor: paymentMode === "live" ? "#f59e0b" : "#316D52",
-                                                    color: "#fff",
-                                                    fontWeight: 700,
-                                                    fontSize: 18,
-                                                    borderRadius: "8px",
-                                                    px: 3,
-                                                    py: 1,
-                                                    textTransform: "none",
-                                                    "&:hover": {
-                                                        bgcolor: paymentMode === "live" ? "#d97706" : "#234a31",
-                                                    },
-                                                }}
-                                            >
-                                                <Icon icon="mdi:arrow-left" width={20} style={{ marginRight: 8 }} />
-                                                Switch to {paymentMode === "live" ? "TEST" : "LIVE"} Mode
-                                            </Button>
+                                            if (typeof window !== "undefined") {
+                                                try {
+                                                    window.sessionStorage.setItem(
+                                                        "kiosk_checkout_summary",
+                                                        JSON.stringify({
+                                                            items: itemsToDispense,
+                                                            total,
+                                                            discount,
+                                                            payableTotal,
+                                                            createdAt: Date.now(),
+                                                            payment: {
+                                                                orderId: payload?.orderId,
+                                                                paymentId: payload?.paymentId,
+                                                                amount: payableTotal,
+                                                                currency: "INR",
+                                                                status: "paid",
+                                                                method: paymentMode,
+                                                                machineLocation: machineLocation,
+                                                            },
+                                                        })
+                                                    );
+                                                } catch {
+                                                }
+                                            }
 
-                                            <Typography sx={{ color: "#6b7280", fontSize: 16 }}>
-                                                {paymentMode === "live"
-                                                    ? "Click to enable test payments"
-                                                    : "Click to enable live payments"}
-                                            </Typography>
+                                            router.push(APP_ROUTES.FEEDBACK);
 
-                                            <Divider sx={{ width: "100%", my: 2 }} />
+                                            // Record the sale/order and transaction
+                                            void (async () => {
+                                                try {
+                                                    const orderItems = itemsToDispense.map(item => ({
+                                                        productId: item.id || "",
+                                                        productName: item.name,
+                                                        quantity: item.quantity || 1,
+                                                        price: parsePrice(item.priceText),
+                                                        slotId: item.slotId,
+                                                    }));
 
-                                            <Typography sx={{ fontSize: 20, color: "#6b7280" }}>
-                                                Amount to Pay
-                                            </Typography>
-                                            <Typography
-                                                sx={{
-                                                    fontSize: 40,
-                                                    fontWeight: 700,
-                                                    color: "#316D52",
-                                                }}
-                                            >
-                                                ₹{payableTotal.toFixed(2)}
-                                            </Typography>
+                                                    const orderResponse = await fetch("/api/admin/orders", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            items: orderItems,
+                                                            totalAmount: payableTotal,
+                                                            paymentId: payload?.paymentId,
+                                                            razorpayOrderId: payload?.orderId,
+                                                            paymentMode,
+                                                        }),
+                                                    });
+                                                    const orderData = await orderResponse.json();
+                                                    console.log("[Payment] Order recorded:", orderData);
 
-                                            <RazorpayCheckoutButton
-                                                amountPaise={amountPaise}
-                                                currency="INR"
-                                                mode={paymentMode}
-                                                receipt={`cart_${Date.now()}`}
-                                                onProcessingStart={() => {
-                                                    speakMessage("paymentProcessing");
-                                                }}
-                                                onVerified={async (payload) => {
-                                                    console.log("[Payment] onVerified called, items:", items, "payload:", payload);
-                                                    const itemsToDispense = [...items];
+                                                    // Also record transaction
+                                                    await fetch("/api/admin/transactions", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            transactionId: payload?.paymentId || `txn_${Date.now()}`,
+                                                            amount: payableTotal,
+                                                            paymentId: payload?.paymentId,
+                                                            status: "completed",
+                                                        }),
+                                                    }).catch(err => console.warn("[Payment] Failed to record transaction:", err));
 
-                                                    if (typeof window !== "undefined") {
-                                                        try {
-                                                            window.sessionStorage.setItem(
-                                                                "kiosk_checkout_summary",
-                                                                JSON.stringify({
-                                                                    items: itemsToDispense,
-                                                                    total,
-                                                                    discount,
-                                                                    payableTotal,
-                                                                    createdAt: Date.now(),
-                                                                })
-                                                            );
-                                                        } catch {
-                                                        }
-                                                    }
-
-                                                    router.push(APP_ROUTES.FEEDBACK);
-
-                                                    // Record the sale/order and transaction
-                                                    void (async () => {
-                                                        try {
-                                                            const orderItems = itemsToDispense.map(item => ({
-                                                                productId: item.id || "",
-                                                                productName: item.name,
-                                                                quantity: item.quantity || 1,
-                                                                price: parsePrice(item.priceText),
-                                                                slotId: item.slotId,
-                                                            }));
-
-                                                            const orderResponse = await fetch("/api/admin/orders", {
-                                                                method: "POST",
-                                                                headers: { "Content-Type": "application/json" },
-                                                                body: JSON.stringify({
-                                                                    items: orderItems,
-                                                                    totalAmount: payableTotal,
-                                                                    paymentId: payload?.paymentId,
-                                                                    razorpayOrderId: payload?.orderId,
-                                                                    paymentMode,
-                                                                }),
-                                                            });
-                                                            const orderData = await orderResponse.json();
-                                                            console.log("[Payment] Order recorded:", orderData);
-
-                                                            // Also record transaction
-                                                            await fetch("/api/admin/transactions", {
-                                                                method: "POST",
-                                                                headers: { "Content-Type": "application/json" },
-                                                                body: JSON.stringify({
-                                                                    transactionId: payload?.paymentId || `txn_${Date.now()}`,
-                                                                    amount: payableTotal,
-                                                                    paymentId: payload?.paymentId,
-                                                                    status: "completed",
-                                                                }),
-                                                            }).catch(err => console.warn("[Payment] Failed to record transaction:", err));
-
-                                                            // Push sale to POSIFLY (async, non-blocking)
-                                                            fetch("/api/posifly/push-sale", {
-                                                                method: "POST",
-                                                                headers: { "Content-Type": "application/json" },
-                                                                body: JSON.stringify({
-                                                                    orderId: orderData?.orderId || payload?.paymentId || `order_${Date.now()}`,
-                                                                    items: orderItems,
-                                                                    totalAmount: payableTotal,
-                                                                    discountAmount: discount,
-                                                                    paymentId: payload?.paymentId,
-                                                                    razorpayOrderId: payload?.orderId,
-                                                                    paymentMode,
-                                                                }),
-                                                            }).then(res => res.json())
-                                                              .then(data => console.log("[POSIFLY] Sale pushed:", data))
-                                                              .catch(err => console.warn("[POSIFLY] Failed to push sale:", err));
-                                                        } catch (err) {
-                                                            console.error("[Payment] Failed to record order:", err);
-                                                        }
-                                                    })();
-                                                }}
-                                                onError={() => {
-                                                    // keep dialog open so user can retry
-                                                }}
-                                                label={isDispensing ? "Dispensing..." : "Pay Now"}
-                                                buttonProps={{
-                                                    fullWidth: true,
-                                                    sx: {
-                                                        mt: 2,
-                                                        fontFamily:
-                                                            'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
-                                                        fontWeight: 700,
-                                                        fontSize: "24px",
-                                                        py: 1.5,
-                                                        borderRadius: "12px",
-                                                        bgcolor: "#316D52",
-                                                        color: "white",
-                                                        "&:hover": { bgcolor: "#234a31" },
-                                                    },
-                                                }}
-                                            />
-
-                                            <Typography sx={{ color: "#9ca3af", fontSize: 14, mt: 2 }}>
-                                                Secure payment processed by Razorpay
-                                            </Typography>
-                                        </Box>
-                                    </Box>
+                                                    // Save POSIFLY bill data
+                                                    await fetch("/api/posifly/bills", {
+                                                        method: "POST",
+                                                        headers: { "Content-Type": "application/json" },
+                                                        body: JSON.stringify({
+                                                            orderId: orderData?.order?.id || `order_${Date.now()}`,
+                                                            items: orderItems,
+                                                            totalAmount: payableTotal,
+                                                            discountAmount: discount,
+                                                            paymentId: payload?.paymentId,
+                                                            razorpayOrderId: payload?.orderId,
+                                                            paymentMode,
+                                                        }),
+                                                    }).catch(err => console.warn("[Payment] Failed to save POSIFLY bill:", err));
+                                                } catch (err) {
+                                                    console.error("[Payment] Failed to record order:", err);
+                                                }
+                                            })();
+                                        }}
+                                        onError={() => {
+                                            setStep("checkout");
+                                        }}
+                                        label="Pay with UPI"
+                                    />
                                 </Box>
                             ) : step === "checkout" ? (
                                 <>
@@ -643,10 +490,7 @@
 
                                         <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
                                             {items.map((it, idx) => {
-                                                const originalPrice = it.originalPrice || parsePrice(it.priceText || "0");
-                                                const discountValue = getProductDiscount(it.id);
-                                                const discountedPrice = originalPrice - (originalPrice * (discountValue / 100));
-                                                const lineTotal = discountedPrice * (it.quantity || 0);
+                                                const lineTotal = parsePrice(it.priceText) * (it.quantity || 0);
                                                 return (
                                                     <Box key={`${it.id || it.name}-${idx}-checkout`} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                                         <Box
@@ -690,9 +534,13 @@
                                                             </Typography>
                                                         </Box>
 
-                                                        <Typography sx={{ fontWeight: 700, fontSize: 24, whiteSpace: "nowrap" }}>
-                                                            Rs.{Math.round(Number.isFinite(lineTotal) ? lineTotal : 0)}/-
-                                                        </Typography>
+                                                        <ProductPrice
+                                                            retailPrice={it.originalPrice}
+                                                            discountValue={it.discountValue}
+                                                            priceText={it.priceText || ""}
+                                                            productId={it.id}
+                                                            productName={it.name}
+                                                        />
                                                     </Box>
                                                 );
                                             })}
@@ -832,10 +680,11 @@
                                                     >
                                                         {capitalizeWords(item.name)}
                                                     </Typography>
-                                                    <Box mt={1}>
+                                                    <Box sx={{ mt: 0.5 }}>
                                                         <ProductPrice
-                                                            retailPrice={item.originalPrice || parsePrice(item.priceText || "0")}
-                                                            priceText={item.priceText}
+                                                            retailPrice={item.originalPrice}
+                                                            discountValue={item.discountValue}
+                                                            priceText={item.priceText || ""}
                                                             productId={item.id}
                                                             productName={item.name}
                                                         />
@@ -868,20 +717,23 @@
                                                                 <Icon icon="mdi:minus" />
                                                             </IconButton>
                                                             <Box
-                                                                sx={{
-                                                                    minWidth: 30,
-                                                                    height: 30,
-                                                                    display: "flex",
-                                                                    alignItems: "center",
-                                                                    justifyContent: "center",
-                                                                    fontSize: 14,
-                                                                    fontWeight: 500,
-                                                                    borderLeft: "1px solid rgba(0,0,0,0.15)",
-                                                                    borderRight: "1px solid rgba(0,0,0,0.15)",
+                                                                component="input"
+                                                                value={item.quantity}
+                                                                onChange={(e) => {
+                                                                    const next = Number(e.target.value);
+                                                                    if (Number.isFinite(next)) setQuantity(key, next);
                                                                 }}
-                                                            >
-                                                                {item.quantity || 1}
-                                                            </Box>
+                                                                inputMode="numeric"
+                                                                style={{
+                                                                    width: 40,
+                                                                    height: 30,
+                                                                    border: 0,
+                                                                    outline: "none",
+                                                                    textAlign: "center",
+                                                                    fontSize: 24,
+                                                                    fontWeight: 700,
+                                                                }}
+                                                            />
                                                             <IconButton
                                                                 size="small"
                                                                 onClick={() => {
@@ -938,34 +790,21 @@
                                     </Typography>
                                 </Box>
                                 <Box sx={{ textAlign: "right" }}>
-                                    {/* <Typography sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}>
-                                        Rs.{Math.round(total)}/-
-                                    </Typography> */}
+                                    {step === "checkout" && couponApplied && discount > 0 ? (
+                                        <Typography sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}>
+                                            Rs.{Math.round(total)}/-
+                                        </Typography>
+                                    ) : null}
                                     <Typography sx={{ fontWeight: 900, fontSize: 24 }}>
-                                        {(() => {
-                                            const displayAmount = Math.round(step === "checkout" ? payableTotal : (Number.isFinite(total) ? total : 0));
-                                            console.log('Cart display debug:', {
-                                                step,
-                                                total,
-                                                payableTotal,
-                                                displayAmount
-                                            });
-                                            return `Rs. ${displayAmount}/-`;
-                                        })()}
+                                        Rs. {Math.round(step === "checkout" ? payableTotal : (Number.isFinite(total) ? total : 0))}/-
                                     </Typography>
-                                    {/* <Typography sx={{ fontSize: 14, color: "#872121", fontWeight: 600, mt: 0.5 }}>
-                                        Discount: Rs.{discount}
-                                    </Typography> */}
                                 </Box>
                             </Box>
 
                             <Collapse in={showPriceDetails} timeout="auto" unmountOnExit>
                                 <Box sx={{ mt: 2, pt: 1.5, borderTop: "1px solid #e5e7eb" }}>
                                     {items.map((it, idx) => {
-                                        const originalPrice = it.originalPrice || parsePrice(it.priceText || "0");
-                                        const discountValue = getProductDiscount(it.id);
-                                        const discountedPrice = originalPrice - (originalPrice * (discountValue / 100));
-                                        const lineTotal = discountedPrice * (it.quantity || 0);
+                                        const lineTotal = parsePrice(it.priceText) * (it.quantity || 0);
                                         return (
                                             <Box
                                                 key={`${it.id || it.name}-${idx}-line`}
@@ -1004,6 +843,29 @@
 
                         {/* Bottom action buttons hidden - moved to top header */}
                     </Box>
+
+                    {/* Payment webhook reporter */}
+                    <PaymentReporter
+                        active={paymentSuccess}
+                        user={{
+                            userId: (session?.user as any)?.id,
+                            name: (session?.user as any)?.name,
+                            email: (session?.user as any)?.email,
+                            phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone,
+                        }}
+                        products={items.map((item) => ({
+                            id: item.id,
+                            name: item.name,
+                            quantity: item.quantity,
+                            slotId: item.slotId,
+                            retailPrice: parsePrice(item.priceText),
+                            amount: parsePrice(item.priceText) * (item.quantity || 0),
+                        }))}
+                        transaction={paymentPayload}
+                        selectedSlots={items.map((item) => item.slotId).filter((slot): slot is number => slot !== undefined).map(String)}
+                        machineLocation={machineLocation}
+                        machineName={machineName}
+                    />
                 </Dialog>
             </>
         );

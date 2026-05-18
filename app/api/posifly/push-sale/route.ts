@@ -4,7 +4,10 @@ import {
   LeafwaterOrder,
   PosiflyPayload,
   transformOrderToPosifly,
+  getPosiflyConfig,
 } from "@/lib/posifly";
+import { adminDb } from "@/lib/admin-db";
+import { localBillToAnalyticsSyncPayload, pushPosSyncToAnalytics } from "@/lib/analytics-sync";
 
 /**
  * POST /api/posifly/push-sale
@@ -75,6 +78,53 @@ export async function POST(request: NextRequest) {
     };
 
     console.log("[POSIFLY API] Received push-sale request:", order.orderId);
+
+    // Save to local POSIFLY tables (regardless of external push success)
+    try {
+      const posiflyPayload = transformOrderToPosifly(order);
+      const config = getPosiflyConfig();
+      const itemsForDb = posiflyPayload.item_details.items.map((item) => ({
+        billNumber: posiflyPayload.bill_details.billNumber,
+        outletRefId: config.outletRefId,
+        itemRefId: item.itemRefId,
+        name: item.name,
+        brand: item.brand || "",
+        barcode: item.barcode || "",
+        category: item.category || "",
+        subcategory: item.subcategory || "",
+        hsnCode: item.hsnCode || "",
+        uom: item.uom,
+        uomValue: item.uomValue,
+        mrp: item.mrp,
+        sp: item.sp,
+        discountValue: item.discountValue || 0,
+        quantity: item.quantity,
+        taxes: item.taxes,
+      }));
+
+      adminDb.savePosiflyBill({
+        billDetails: posiflyPayload.bill_details,
+        items: itemsForDb,
+        paymentDetails: posiflyPayload.payment_details,
+        chargesDetails: posiflyPayload.charges_details,
+      });
+      console.log("[POSIFLY API] Saved bill to local DB:", posiflyPayload.bill_details.billNumber);
+
+      // Also push to LW Analytics backend (fire-and-forget)
+      try {
+        const fullBill = adminDb.getPosiflyFullBill(posiflyPayload.bill_details.billNumber);
+        if (fullBill) {
+          const analyticsPayload = localBillToAnalyticsSyncPayload(fullBill);
+          pushPosSyncToAnalytics(analyticsPayload)
+            .then((res) => console.log("[Analytics] POS synced:", res.bill_number))
+            .catch((err) => console.warn("[Analytics] POS sync failed (non-blocking):", err?.message));
+        }
+      } catch (analyticsErr: any) {
+        console.warn("[Analytics] POS sync prep failed (non-blocking):", analyticsErr?.message);
+      }
+    } catch (dbErr) {
+      console.warn("[POSIFLY API] Failed to save to local DB:", dbErr);
+    }
 
     // Push to POSIFLY with retry logic
     const result = await pushSaleWithRetry(order, 3, 1000);

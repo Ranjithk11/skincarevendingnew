@@ -41,8 +41,8 @@ export function getStm32Config(): Stm32Config {
     throw new Error("Invalid env STM32_BAUDRATE");
   }
 
-  // Default to 60 seconds timeout (dispense sequence takes time: homing, moving, dispensing, door)
-  const timeoutMs = timeoutRaw ? Number(timeoutRaw) : 60000;
+  // Default to 75 seconds timeout (Arduino SPINCONSTANT is 70s + buffer for other operations)
+  const timeoutMs = timeoutRaw ? Number(timeoutRaw) : 75000;
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error("Invalid env STM32_TIMEOUT_MS");
   }
@@ -88,10 +88,11 @@ export async function stm32Dispense(
 
   const commandPrefix = opts?.commandPrefix ?? "RQ";
   const commandSuffix = opts?.commandSuffix ?? "\r\n";
-  // Match Flask's success patterns: "Request sequence finished" or "200" or "Response 200"
+  // Match success patterns - require "Stopping motors" to confirm dispense completion
+  // This prevents false positives from early sensor triggers
   const okPattern =
     opts?.okPattern ??
-    /Product drop detected|Product detected|Request sequence finished|^200$|Response 200/i;
+    /Stopping motors|Request sequence finished|^200$|Response 200/i;
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
   const effectiveCode = code.toUpperCase().startsWith(commandPrefix.toUpperCase()) ? code : `${commandPrefix}${code}`;
@@ -204,9 +205,11 @@ export async function stm32DispenseMany(
 
   const commandPrefix = opts?.commandPrefix ?? "RQ";
   const commandSuffix = opts?.commandSuffix ?? "\r\n";
+  // Match success patterns - require "Stopping motors" to confirm dispense completion
+  // This prevents false positives from early sensor triggers
   const okPattern =
     opts?.okPattern ??
-    /Product drop detected|Product detected|Request sequence finished|^200$|Response 200/i;
+    /Stopping motors|Request sequence finished|^200$|Response 200/i;
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
   const finalizeCommandRaw = typeof opts?.finalizeCommand === "string" ? opts?.finalizeCommand.trim() : "";

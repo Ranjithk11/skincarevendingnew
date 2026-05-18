@@ -15,6 +15,7 @@ import VendingServices from "./vendingServices";
 import DietChart from "./DietChart";
 import SkincareRoutine from "./skincareRoutine";
 import ReportQRCode from "./ReportQRCode";
+import ScoringMethodBar from "@/components/ScoringMethodBar";
 
 type RecTabKey = "products" | "services" | "diet";
 
@@ -60,6 +61,11 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         { data: dataImageInfo },
     ] = useGetUploadImageInfoMutation();
 
+    const [
+        getAnalysedImageInfo,
+        { data: analysedImageInfo },
+    ] = useGetUploadImageInfoMutation();
+
     useEffect(() => {
         const userId =
             publicUserProfile?._id ||
@@ -86,9 +92,24 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
             userId,
             fileName,
         });
-    }, [analysisData, getUploadImageInfo]);
+
+        // Fetch annotated/analysed image separately
+        const analysedFileName =
+            analysisData?.data?.[0]?.analysedImages?.[0]?.fileName ||
+            analysisData?.data?.analysedImages?.[0]?.fileName ||
+            analysisData?.analysedImages?.[0]?.fileName ||
+            analysisData?.productRecommendation?.analysedImages?.[0]?.fileName;
+
+        if (analysedFileName && analysedFileName !== fileName) {
+            getAnalysedImageInfo({
+                userId,
+                fileName: analysedFileName,
+            });
+        }
+    }, [analysisData, getUploadImageInfo, getAnalysedImageInfo]);
 
     const userImageUrl = useData?.data?.url || dataImageInfo?.data?.url;
+    const analysedImageUrl = analysedImageInfo?.data?.url;
 
     const reportSource =
         analysisData?.data?.[0] ||
@@ -117,9 +138,30 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         : undefined;
 
     const overallSkinHealthScore = reportSource?.skinHealthScore?.overall;
-    const overallSkinHealthRating = reportSource?.skinHealthScore?.rating;
+    const overallSkinHealthRatingRaw = reportSource?.skinHealthScore?.rating;
 
     const skinMetrics = reportSource?.skinMetrics;
+    // Computed overall rating based on reversed metric scores (same logic as individual cards)
+    // Scoring: 80-100% = Optimal, 40-79% = Moderate, 0-39% = Needs Care
+    const computedOverall = (() => {
+        if (!skinMetrics) return { rating: overallSkinHealthRatingRaw || '--', color: '#111827' };
+
+        const entries = Array.isArray(skinMetrics)
+            ? skinMetrics.map((m: any) => m?.score).filter((s: any) => typeof s === 'number')
+            : Object.values(skinMetrics).map((v: any) => v?.score ?? v).filter((s: any) => typeof s === 'number');
+
+        if (entries.length === 0) return { rating: overallSkinHealthRatingRaw || '--', color: '#111827' };
+
+        const avgReversed = entries.reduce((sum: number, s: number) => sum + (100 - s), 0) / entries.length;
+
+        if (avgReversed >= 80) return { rating: 'GOOD', color: '#16A34A' };
+        if (avgReversed >= 40) return { rating: 'MODERATE', color: '#FFA239' };
+        return { rating: 'NEEDS CARE', color: '#FF5656' };
+    })();
+
+    const overallSkinHealthRating = computedOverall.rating;
+    const overallSkinHealthColor = computedOverall.color;
+
     const skinMetricCards: Array<{ label: string; value: string; level?: string; levelColor: string }> = (() => {
         const toLabel = (raw: string) =>
             raw
@@ -179,9 +221,19 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         }>;
     })();
 
-    // Use keyConcerns from API response (ignore attributeCode)
+    // Use keyConcerns from API response
     const keyConcernsFromApi = Array.isArray(reportSource?.keyConcerns)
         ? reportSource.keyConcerns
+        : [];
+
+    // Detected skin attributes (shown with annotated image)
+    const attributeCodes = Array.isArray(reportSource?.attributeCode)
+        ? reportSource.attributeCode
+        : [];
+
+    // AI analysis summary
+    const analysisAiSummary = Array.isArray(reportSource?.analysisAiSummary)
+        ? reportSource.analysisAiSummary
         : [];
 
     // Map severity to colors
@@ -251,7 +303,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                 isKiosk={isKiosk}
                 cartCount={cartCount}
                 onCartClick={() => setOpenCart(true)}
-                onScanAgainClick={() => router.push(APP_ROUTES.SELFIE)}
+                onScanAgainClick={() => router.push(APP_ROUTES.HOME)}
             />
 
             <CartProduct open={openCart} onClose={() => setOpenCart(false)} />
@@ -336,11 +388,11 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                 flexShrink: 0,
                             }}
                         >
-                            {userImageUrl ? (
+                            {(analysedImageUrl || userImageUrl) ? (
                                 <Box
                                     component="img"
-                                    src={userImageUrl}
-                                    alt="User"
+                                    src={analysedImageUrl || userImageUrl}
+                                    alt="Analysed"
                                     sx={{
                                         width: "100%",
                                         height: "100%",
@@ -408,11 +460,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                             'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
                                         fontWeight: 510,
                                         fontSize: "24px",
-                                        color: overallSkinHealthRating?.toUpperCase()?.includes("GOOD") 
-                                            ? "#2ac78fff" 
-                                            : overallSkinHealthRating?.toUpperCase()?.includes("NEEDS") 
-                                                ? "#D97706" 
-                                                : "#111827",
+                                        color: overallSkinHealthColor,
                                         boxSizing: "border-box",
                                         whiteSpace: "nowrap",
                                     }}
@@ -503,10 +551,10 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                             >
                                                 {card.label}
                                             </Typography>
-                                            <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
+                                            {/* <Typography sx={{ fontSize: "24px", fontWeight: 700, mt: 2 }}>
                                                 {card.value ? (100 - parseInt(card.value)) : 0}%
-                                            </Typography>
-                                            {card.level && (
+                                            </Typography> */}
+                                            {/* {card.level && (
                                                 <Typography
                                                     sx={{
                                                         fontSize: "20px",
@@ -514,8 +562,8 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                         mt: 1,
                                                         color: (() => {
                                                             const reversedValue = card.value ? (100 - parseInt(card.value)) : 0;
-                                                            if (reversedValue <= 30) return "#FFA239"; // orange for NEEDS CARE
-                                                            if (reversedValue <= 60) return "#FF5656"; // amber for MODERATE
+                                                            if (reversedValue <= 30) return "#FF5656"; // orange for NEEDS CARE
+                                                            if (reversedValue <= 60) return "#FFA239"; // amber for MODERATE
                                                             return "#16A34A"; // green for GOOD
                                                         })(),
                                                         textTransform: "uppercase",
@@ -528,7 +576,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                                         return "GOOD";
                                                     })()}
                                                 </Typography>
-                                            )}
+                                            )} */}
                                         </Box>
                                     ))
                                 ) : (
@@ -537,69 +585,117 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                     </Typography>
                                 )}
                             </Box>
-                            <Box>
-                                <Box sx={{ mt: 4, width: "100%", textAlign: "center" }}>
-                                <Typography sx={{ fontSize: "28px", fontWeight: 700, letterSpacing: 1, color: "#111827" }}>
-                                    SCORING METHOD
+                            {/* <Box sx={{ mt: 4 }}>
+                                <ScoringMethodBar />
+                            </Box> */}
+                        </Box>
+
+                        {/* Skin Analysis Attributes - annotated image + detected attributes */}
+                        {/* {(attributeCodes.length > 0 || analysisAiSummary.length > 0) && (
+                            <Box sx={{ mt: 5 }}>
+                                <Typography
+                                    sx={{
+                                        mb: 3,
+                                        fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+                                        fontWeight: 510,
+                                        fontSize: { xs: "28px", md: "32px" },
+                                        color: "#111827",
+                                    }}
+                                >
+                                    Skin Analysis Attributes
                                 </Typography>
-                                <Box sx={{ mt: 2, width: "100%", maxWidth: 720, mx: "auto" }}>
-                                    <Box
-                                        sx={{
-                                            width: "100%",
-                                            height: 26,
-                                            borderRadius: 1,
-                                            overflow: "hidden",
-                                            border: "2px solid #111827",
-                                            display: "flex",
-                                        }}
-                                    >
-                                        <Box sx={{ width: "20%", bgcolor: "#16A34A" }} />
-                                        <Box sx={{ width: "40%", bgcolor: "#FFA239" }} />
-                                        <Box sx={{ width: "40%", bgcolor: "#FF5656" }} />
-                                    </Box>
- 
-                                    <Box
-                                        sx={{
-                                            mt: 2,
-                                            width: "100%",
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "flex-start",
-                                            gap: 2,
-                                            flexWrap: "wrap",
-                                        }}
-                                    >
-                                        <Box sx={{ minWidth: 160, textAlign: "left" }}>
-                                            <Typography sx={{ fontSize: "24px", fontWeight: 700, color: "#111827" }}>
-                                                100-80%
-                                            </Typography>
-                                            <Typography sx={{ fontSize: "24px", color: "#111827" }}>
-                                                 (Optimal Condition)
-                                            </Typography>
+                                <Box
+                                    sx={{
+                                        display: "flex",
+                                        flexDirection: isWide ? "row" : "column",
+                                        gap: 3,
+                                        alignItems: isWide ? "flex-start" : "stretch",
+                                    }}
+                                >
+                                    {analysedImageUrl && (
+                                        <Box
+                                            sx={{
+                                                width: isWide ? 250 : "100%",
+                                                minWidth: isWide ? 250 : undefined,
+                                                height: isWide ? 300 : 280,
+                                                borderRadius: "16px",
+                                                overflow: "hidden",
+                                                bgcolor: "#e5e7eb",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            <Box
+                                                component="img"
+                                                src={analysedImageUrl}
+                                                alt="Analysed"
+                                                sx={{
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    objectFit: "cover",
+                                                    display: "block",
+                                                }}
+                                            />
                                         </Box>
- 
-                                        <Box sx={{ minWidth: 140, textAlign: "center" }}>
-                                            <Typography sx={{ fontSize: "24px", fontWeight: 700, color: "#111827" }}>
-                                                79 - 40%
-                                            </Typography>
-                                            <Typography sx={{ fontSize: "24px", color: "#111827" }}>
-                                                (Moderate)
-                                            </Typography>
-                                        </Box>
- 
-                                        <Box sx={{ minWidth: 220, textAlign: "right" }}>
-                                            <Typography sx={{ fontSize: "24px", fontWeight: 700, color: "#111827" }}>
-                                                39 - 0%
-                                            </Typography>
-                                            <Typography sx={{ fontSize: "24px", color: "#111827" }}>
-                                                (Severe - Needs Care)
-                                            </Typography>
-                                        </Box>
+                                    )}
+                                    <Box sx={{ flex: 1 }}>
+                                        {attributeCodes.length > 0 && (
+                                            <Box>
+                                                {attributeCodes.map((item: any, index: number) => (
+                                                    <Typography
+                                                        key={index}
+                                                        sx={{
+                                                            fontSize: "24px",
+                                                            fontWeight: 600,
+                                                            color: "#1f2937",
+                                                            mb: 1.5,
+                                                            textTransform: "uppercase",
+                                                        }}
+                                                    >
+                                                        ({item.code})-{item?.attribute?.replace(/_/g, " ")}
+                                                    </Typography>
+                                                ))}
+                                            </Box>
+                                        )}
+                                        {analysisAiSummary.length > 0 && (
+                                            <Box sx={{ mt: attributeCodes.length > 0 ? 3 : 0 }}>
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: "24px",
+                                                        fontWeight: 700,
+                                                        color: "#16a34a",
+                                                        mb: 2,
+                                                    }}
+                                                >
+                                                    Smart Skin Analysis Report
+                                                </Typography>
+                                                {analysisAiSummary.map((item: any, index: number) => (
+                                                    <Box key={index} sx={{ mb: 2 }}>
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: "22px",
+                                                                fontWeight: 700,
+                                                                color: "#111827",
+                                                            }}
+                                                        >
+                                                            {item.heading}
+                                                        </Typography>
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: "20px",
+                                                                color: "#374151",
+                                                                mt: 0.5,
+                                                            }}
+                                                        >
+                                                            {item.data?.replace(/>|-/g, " ")}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        )}
                                     </Box>
                                 </Box>
                             </Box>
-                            </Box>
-                        </Box>
+                        )} */}
 
                         {/* <Grid container spacing={{ xs: 2, md: 3 }}>
                             {keyConcerns.map((c) => (
@@ -731,6 +827,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                 title="View Your Report"
                                 subtitle="Scan to view on your phone"
                                 analysisSummary={reportSource?.analysisAiSummary || []}
+                                userId={reportUserId || undefined}
                             />
                         </Box>
                         <Box

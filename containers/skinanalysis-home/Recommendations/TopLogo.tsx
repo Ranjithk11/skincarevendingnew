@@ -23,7 +23,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
   onScanAgainClick,
   cartCount = 0,
   firstButtonLabel = "My cart",
-  secondButtonLabel = "Scan again",
+  secondButtonLabel = "Get AI Scan",
   firstButtonIcon = "/icons/cart.svg",
   secondButtonIcon = "/icons/face.png",
   mode = "actions",

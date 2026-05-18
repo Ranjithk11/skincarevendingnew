@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Box, Typography } from "@mui/material";
-import { QRCodeSVG } from "qrcode.react";
+import BlurredQROverlay from "@/components/BlurredQROverlay";
+import MobileOtpDialog from "@/components/MobileOtpDialog";
 
 interface AnalysisSummaryItem {
   heading: string;
@@ -14,6 +15,7 @@ interface ReportQRCodeProps {
   title?: string;
   subtitle?: string;
   analysisSummary?: AnalysisSummaryItem[];
+  userId?: string;
 }
 
 // Production base URL for QR codes - should be set in environment
@@ -24,7 +26,11 @@ const ReportQRCode: React.FC<ReportQRCodeProps> = ({
   title = "View Your Report",
   subtitle = "Scan to view on your phone",
   analysisSummary = [],
+  userId,
 }) => {
+  const [qrRevealed, setQrRevealed] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
+
   // Generate the report URL - prefer passed reportUrl, fallback to production URL with current path
   const qrUrl = useMemo(() => {
     // If a specific report URL is provided, use it directly
@@ -46,87 +52,91 @@ const ReportQRCode: React.FC<ReportQRCodeProps> = ({
     (item) => item.heading.toUpperCase() === "PROFESSIONAL SUMMARY"
   );
 
+  const handleTapToView = () => {
+    setOtpDialogOpen(true);
+  };
+
+  const handleOtpVerified = (_phoneNumber: string) => {
+    setOtpDialogOpen(false);
+    setQrRevealed(true);
+  };
+
   if (!qrUrl) return null;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 3,
-        width: "100%",
-        border: "2px solid #f0d89a",
-        borderRadius: "22px",
-        p: 3,
-        bgcolor: "#fffbf0",
-      }}
-    >
-      {/* Top Row: QR Code (Left) + Skin Overview (Right) */}
+    <>
+      <MobileOtpDialog
+        open={otpDialogOpen}
+        onClose={() => setOtpDialogOpen(false)}
+        onVerified={handleOtpVerified}
+        userId={userId}
+      />
       <Box
         sx={{
           display: "flex",
-          flexDirection: "row",
-          gap: 1,
+          flexDirection: "column",
+          gap: 3,
           width: "100%",
+          border: "2px solid #f0d89a",
+          borderRadius: "22px",
+          p: 3,
+          bgcolor: "#fffbf0",
         }}
       >
-        {/* QR Code Card - Left */}
+        {/* Top Row: QR Code (Left) + Skin Overview (Right) */}
         <Box
           sx={{
-            bgcolor: "#f0fdf4",
-            borderRadius: "18px",
-            p: 3,
             display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "2px solid #bbf7d0",
-            minWidth: 220,
-            maxWidth: 220,
-            flexShrink: 0,
+            flexDirection: "row",
+            gap: 1,
+            width: "100%",
           }}
         >
-          <Typography
-            sx={{
-              fontSize: "28px",
-              fontWeight: 600,
-              color: "#166534",
-              mb: 1.5,
-              textAlign: "center",
-            }}
-          >
-            {title}
-          </Typography>
-
+          {/* QR Code Card - Left */}
           <Box
             sx={{
-              bgcolor: "#ffffff",
-              p: 1,
-              borderRadius: "12px",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-              mb: 1.5,
+              bgcolor: "#f0fdf4",
+              borderRadius: "18px",
+              p: 3,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "2px solid #bbf7d0",
+              minWidth: 220,
+              maxWidth: 220,
+              flexShrink: 0,
             }}
           >
-            <QRCodeSVG
-              value={qrUrl}
-              size={140}
-              level="M"
-              includeMargin={true}
-              bgColor="#ffffff"
-              fgColor="#1f2937"
-            />
-          </Box>
+            <Typography
+              sx={{
+                fontSize: "28px",
+                fontWeight: 600,
+                color: "#166534",
+                mb: 1.5,
+                textAlign: "center",
+              }}
+            >
+              {title}
+            </Typography>
 
-          <Typography
-            sx={{
-              fontSize: "24px",
-              color: "#6b7280",
-              textAlign: "center",
-            }}
-          >
-            {subtitle}
-          </Typography>
-        </Box>
+            <BlurredQROverlay
+              qrUrl={qrUrl}
+              isRevealed={qrRevealed}
+              onTapToView={handleTapToView}
+              size={140}
+            />
+
+            <Typography
+              sx={{
+                fontSize: "24px",
+                color: "#6b7280",
+                textAlign: "center",
+              }}
+            >
+              {qrRevealed ? subtitle : "Verify mobile to view"}
+            </Typography>
+          </Box>
 
         {/* Skin Overview Card - Right */}
         {skinOverview && (
@@ -201,6 +211,7 @@ const ReportQRCode: React.FC<ReportQRCodeProps> = ({
         </Box>
       )}
     </Box>
+    </>
   );
 };
 

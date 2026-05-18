@@ -87,6 +87,10 @@ function initDb() {
   if (!hasImageUrlCol) {
     db.exec("ALTER TABLE vending_slots ADD COLUMN image_url TEXT");
   }
+  const hasDiscountCol = slotCols.some((c) => String(c?.name) === "discount_value");
+  if (!hasDiscountCol) {
+    db.exec("ALTER TABLE vending_slots ADD COLUMN discount_value REAL");
+  }
 
   // Product overrides table
   db.exec(`
@@ -232,6 +236,195 @@ function initDb() {
     )
   `);
 
+  // ==================== POSIFLY INTERNAL BACKING TABLES ====================
+  // These internal tables store enriched POSIFLY data from the push-sale flow.
+  // The POSIFLY-facing views (below) merge data from these + orders/order_items.
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS _posifly_bill_data (
+      billNumber TEXT PRIMARY KEY,
+      outletRefId TEXT NOT NULL,
+      posTerminalId TEXT NOT NULL,
+      billDate TEXT NOT NULL,
+      billTime TEXT NOT NULL,
+      billType TEXT NOT NULL DEFAULT 'SALE',
+      billValue TEXT NOT NULL,
+      netAmount TEXT NOT NULL,
+      taxAmount TEXT NOT NULL,
+      billDiscountValue REAL DEFAULT 0.00,
+      ShiftNumber TEXT DEFAULT '',
+      businessDate TEXT DEFAULT '',
+      billStatus TEXT NOT NULL DEFAULT 'COMPLETED',
+      isComplementBill INTEGER DEFAULT 0,
+      currency TEXT DEFAULT 'INR',
+      customerName TEXT DEFAULT '',
+      customerMobile TEXT DEFAULT '',
+      salesPersonName TEXT DEFAULT '',
+      flightNumber TEXT DEFAULT '',
+      PNRNumber TEXT DEFAULT '',
+      journeyFrom TEXT DEFAULT '',
+      journeyTo TEXT DEFAULT '',
+      gateNumber TEXT DEFAULT '',
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS _posifly_item_data (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      billNumber TEXT NOT NULL,
+      outletRefId TEXT NOT NULL,
+      itemRefId TEXT NOT NULL,
+      name TEXT NOT NULL,
+      brand TEXT DEFAULT '',
+      barcode TEXT DEFAULT '',
+      category TEXT DEFAULT '',
+      subcategory TEXT DEFAULT '',
+      hsnCode TEXT DEFAULT '',
+      uom TEXT NOT NULL DEFAULT 'UNIT',
+      uomValue INTEGER NOT NULL DEFAULT 1,
+      mrp REAL NOT NULL,
+      sp REAL NOT NULL,
+      discountValue REAL DEFAULT 0.0,
+      quantity INTEGER NOT NULL,
+      taxes TEXT DEFAULT '[]',
+      FOREIGN KEY (billNumber) REFERENCES _posifly_bill_data(billNumber)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS _posifly_payment_data (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      billNumber TEXT NOT NULL,
+      outletRefId TEXT NOT NULL,
+      paymentModes TEXT NOT NULL DEFAULT '[]',
+      FOREIGN KEY (billNumber) REFERENCES _posifly_bill_data(billNumber)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS _posifly_charges_data (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      billNumber TEXT NOT NULL,
+      outletRefId TEXT NOT NULL,
+      charges TEXT NOT NULL DEFAULT '[]',
+      FOREIGN KEY (billNumber) REFERENCES _posifly_bill_data(billNumber)
+    )
+  `);
+
+  // ==================== POSIFLY READ-ONLY VIEWS ====================
+  // View names match EXACTLY the POSIFLY Solution Specification Document.
+  // Views are inherently read-only in SQLite.
+  // POSIFLY agent queries these views directly from vending.db.
+  // Foreign key relationship: billNumber links all views.
+
+  // Migration: drop old views and old tables that conflict with spec view names.
+  // Disable FK checks so we can drop in any order, then re-enable.
+  db.exec(`PRAGMA foreign_keys = OFF`);
+  db.exec(`DROP VIEW IF EXISTS bill_details_view`);
+  db.exec(`DROP VIEW IF EXISTS item_details_view`);
+  db.exec(`DROP VIEW IF EXISTS payment_details_view`);
+  db.exec(`DROP VIEW IF EXISTS charges_details_view`);
+  db.exec(`DROP VIEW IF EXISTS bill_details`);
+  db.exec(`DROP VIEW IF EXISTS item_details`);
+  db.exec(`DROP VIEW IF EXISTS payment_details`);
+  db.exec(`DROP VIEW IF EXISTS charges_details`);
+  db.exec(`DROP TABLE IF EXISTS charges_details`);
+  db.exec(`DROP TABLE IF EXISTS payment_details`);
+  db.exec(`DROP TABLE IF EXISTS item_details`);
+  db.exec(`DROP TABLE IF EXISTS bill_details`);
+  db.exec(`PRAGMA foreign_keys = ON`);
+
+  // View: bill_details (spec C.2.1)
+  db.exec(`DROP VIEW IF EXISTS bill_details`);
+  db.exec(`
+    CREATE VIEW bill_details AS
+    SELECT
+      o.id                                                    AS billNumber,
+      COALESCE(pb.outletRefId, 'LEAFWATER_001')               AS outletRefId,
+      COALESCE(pb.posTerminalId, 'VENDING_01')                AS posTerminalId,
+      COALESCE(pb.billDate, strftime('%d/%m/%Y', o.created_at)) AS billDate,
+      COALESCE(pb.billTime, strftime('%H:%M', o.created_at))  AS billTime,
+      'SALE'                                                  AS billType,
+      CAST(o.total_amount AS TEXT)                             AS billValue,
+      CAST(ROUND(o.total_amount / 1.18, 2) AS TEXT)           AS netAmount,
+      CAST(ROUND(o.total_amount - (o.total_amount / 1.18), 2) AS TEXT) AS taxAmount,
+      COALESCE(pb.billDiscountValue, 0.00)                    AS billDiscountValue,
+      COALESCE(pb.ShiftNumber, '')                             AS ShiftNumber,
+      COALESCE(pb.businessDate, strftime('%d/%m/%Y', o.created_at)) AS businessDate,
+      CASE
+        WHEN o.status = 'completed' THEN 'COMPLETED'
+        WHEN o.status = 'failed'    THEN 'CANCELED'
+        ELSE 'COMPLETED'
+      END                                                     AS billStatus,
+      COALESCE(pb.isComplementBill, 0)                        AS isComplementBill,
+      'INR'                                                   AS currency,
+      COALESCE(pb.customerName, '')                            AS customerName,
+      COALESCE(pb.customerMobile, '')                          AS customerMobile,
+      COALESCE(pb.salesPersonName, '')                         AS salesPersonName,
+      COALESCE(pb.flightNumber, '')                            AS flightNumber,
+      COALESCE(pb.PNRNumber, '')                               AS PNRNumber,
+      COALESCE(pb.journeyFrom, '')                             AS journeyFrom,
+      COALESCE(pb.journeyTo, '')                               AS journeyTo,
+      COALESCE(pb.gateNumber, '')                              AS gateNumber,
+      o.created_at
+    FROM orders o
+    LEFT JOIN _posifly_bill_data pb ON pb.billNumber = o.id
+  `);
+
+  // View: item_details (spec C.2.2)
+  db.exec(`DROP VIEW IF EXISTS item_details`);
+  db.exec(`
+    CREATE VIEW item_details AS
+    SELECT
+      oi.order_id                                             AS billNumber,
+      'LEAFWATER_001'                                         AS outletRefId,
+      oi.product_id                                           AS itemRefId,
+      oi.product_name                                         AS name,
+      ''                                                      AS brand,
+      ''                                                      AS barcode,
+      COALESCE(vs.category, 'Skincare')                       AS category,
+      ''                                                      AS subcategory,
+      ''                                                      AS hsnCode,
+      'UNIT'                                                  AS uom,
+      1                                                       AS uomValue,
+      CAST(oi.price AS REAL)                                  AS mrp,
+      CAST(oi.price AS REAL)                                  AS sp,
+      0.0                                                     AS discountValue,
+      oi.quantity                                             AS quantity,
+      json_array(
+        json_object('name', 'CGST', 'value', '9'),
+        json_object('name', 'SGST', 'value', '9')
+      )                                                       AS taxes
+    FROM order_items oi
+    LEFT JOIN vending_slots vs ON oi.slot_id = vs.slot_id
+  `);
+
+  // View: payment_details (spec C.2.3)
+  db.exec(`DROP VIEW IF EXISTS payment_details`);
+  db.exec(`
+    CREATE VIEW payment_details AS
+    SELECT
+      o.id                                                    AS billNumber,
+      'LEAFWATER_001'                                         AS outletRefId,
+      json_array(
+        json_object('mode', 'UPI', 'value', CAST(o.total_amount AS REAL))
+      )                                                       AS paymentModes
+    FROM orders o
+    WHERE o.status IN ('completed', 'pending')
+  `);
+
+  // View: charges_details (spec C.2.4)
+  db.exec(`DROP VIEW IF EXISTS charges_details`);
+  db.exec(`
+    CREATE VIEW charges_details AS
+    SELECT
+      o.id                                                    AS billNumber,
+      'LEAFWATER_001'                                         AS outletRefId,
+      '[]'                                                    AS charges
+    FROM orders o
+  `);
+
   // Initialize 60 vending slots if they don't exist
   const slotCount = db.prepare('SELECT COUNT(*) as count FROM vending_slots').get() as { count: number };
   if (slotCount.count === 0) {
@@ -305,6 +498,7 @@ export interface VendingSlot {
   product_name?: string;
   category?: string;
   retail_price?: number;
+  discount_value?: number;
   last_updated?: string;
 }
 
@@ -639,6 +833,7 @@ export const sqliteDb = {
         product_name: row.product_name,
         category: row.category,
         retail_price: row.retail_price,
+        discount_value: row.discount_value ?? undefined,
         image_url: row.image_url,
         quantity: row.quantity,
         last_updated: row.last_updated,
@@ -656,6 +851,7 @@ export const sqliteDb = {
       product_name: row.product_name,
       category: row.category,
       retail_price: row.retail_price,
+      discount_value: row.discount_value ?? undefined,
       image_url: row.image_url,
       quantity: row.quantity,
       last_updated: row.last_updated,
@@ -666,7 +862,7 @@ export const sqliteDb = {
     slotId: number,
     productId: string | number | null,
     quantity: number = 0,
-    productInfo?: { name?: string; category?: string; retail_price?: number; image_url?: string }
+    productInfo?: { name?: string; category?: string; retail_price?: number; image_url?: string; discount_value?: number }
   ): VendingSlot | undefined {
     const lastUpdated = new Date().toISOString();
 
@@ -674,13 +870,13 @@ export const sqliteDb = {
       // Clear the slot
       db.prepare(`
         UPDATE vending_slots 
-        SET product_id = NULL, product_name = NULL, category = NULL, retail_price = NULL, image_url = NULL, quantity = 0, last_updated = ?
+        SET product_id = NULL, product_name = NULL, category = NULL, retail_price = NULL, image_url = NULL, discount_value = NULL, quantity = 0, last_updated = ?
         WHERE slot_id = ?
       `).run(lastUpdated, slotId);
     } else {
       db.prepare(`
         UPDATE vending_slots 
-        SET product_id = ?, product_name = ?, category = ?, retail_price = ?, image_url = ?, quantity = ?, last_updated = ?
+        SET product_id = ?, product_name = ?, category = ?, retail_price = ?, image_url = ?, discount_value = COALESCE(?, discount_value), quantity = ?, last_updated = ?
         WHERE slot_id = ?
       `).run(
         String(productId),
@@ -688,6 +884,7 @@ export const sqliteDb = {
         productInfo?.category || null,
         productInfo?.retail_price || null,
         productInfo?.image_url || null,
+        productInfo?.discount_value ?? null,
         quantity,
         lastUpdated,
         slotId
@@ -1045,6 +1242,22 @@ export const sqliteDb = {
     return this.setSetting('machine_name', name, 'Machine name/location for backend identification');
   },
 
+  getMachineId(): string | null {
+    return this.getSetting('machine_id');
+  },
+
+  setMachineId(id: string): boolean {
+    return this.setSetting('machine_id', id, 'Machine ID for analytics backend');
+  },
+
+  getMachineLocation(): string | null {
+    return this.getSetting('machine_location');
+  },
+
+  setMachineLocation(location: string): boolean {
+    return this.setSetting('machine_location', location, 'Machine physical location');
+  },
+
   // ==================== CART ====================
 
   getCart(userId: string): { items: any[]; total: number } {
@@ -1228,5 +1441,168 @@ export const sqliteDb = {
   // Close database connection (for cleanup)
   close(): void {
     db.close();
+  },
+
+  // ==================== POSIFLY DATA ====================
+
+  savePosiflyBill(data: {
+    billDetails: {
+      billNumber: string;
+      outletRefId: string;
+      posTerminalId: string;
+      billDate: string;
+      billTime: string;
+      billType: string;
+      billValue: string;
+      netAmount: string;
+      taxAmount: string;
+      billDiscountValue?: number;
+      ShiftNumber?: string;
+      businessDate?: string;
+      billStatus: string;
+      isComplementBill?: boolean;
+      currency?: string;
+      customerName?: string;
+      customerMobile?: string;
+      salesPersonName?: string;
+      flightNumber?: string;
+      PNRNumber?: string;
+      journeyFrom?: string;
+      journeyTo?: string;
+      gateNumber?: string;
+    };
+    items: Array<{
+      billNumber: string;
+      outletRefId: string;
+      itemRefId: string;
+      name: string;
+      brand?: string;
+      barcode?: string;
+      category?: string;
+      subcategory?: string;
+      hsnCode?: string;
+      uom: string;
+      uomValue: number;
+      mrp: number;
+      sp: number;
+      discountValue?: number;
+      quantity: number;
+      taxes: Array<{ name: string; value: string }>;
+    }>;
+    paymentDetails: {
+      billNumber: string;
+      outletRefId: string;
+      paymentModes: Array<{ mode: string; value: number }>;
+    };
+    chargesDetails: {
+      billNumber: string;
+      outletRefId: string;
+      charges: Array<{ mode: string; value: number }>;
+    };
+  }): string {
+    const txn = db.transaction(() => {
+      const bd = data.billDetails;
+      db.prepare(`
+        INSERT OR REPLACE INTO _posifly_bill_data (
+          billNumber, outletRefId, posTerminalId, billDate, billTime,
+          billType, billValue, netAmount, taxAmount, billDiscountValue,
+          ShiftNumber, businessDate, billStatus, isComplementBill, currency,
+          customerName, customerMobile, salesPersonName, flightNumber,
+          PNRNumber, journeyFrom, journeyTo, gateNumber
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        bd.billNumber, bd.outletRefId, bd.posTerminalId, bd.billDate, bd.billTime,
+        bd.billType, bd.billValue, bd.netAmount, bd.taxAmount, bd.billDiscountValue ?? 0,
+        bd.ShiftNumber ?? '', bd.businessDate ?? '', bd.billStatus, bd.isComplementBill ? 1 : 0,
+        bd.currency ?? 'INR', bd.customerName ?? '', bd.customerMobile ?? '',
+        bd.salesPersonName ?? '', bd.flightNumber ?? '', bd.PNRNumber ?? '',
+        bd.journeyFrom ?? '', bd.journeyTo ?? '', bd.gateNumber ?? ''
+      );
+
+      const insertItem = db.prepare(`
+        INSERT INTO _posifly_item_data (
+          billNumber, outletRefId, itemRefId, name, brand, barcode,
+          category, subcategory, hsnCode, uom, uomValue, mrp, sp,
+          discountValue, quantity, taxes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      for (const item of data.items) {
+        insertItem.run(
+          item.billNumber, item.outletRefId, item.itemRefId, item.name,
+          item.brand ?? '', item.barcode ?? '', item.category ?? '',
+          item.subcategory ?? '', item.hsnCode ?? '', item.uom, item.uomValue,
+          item.mrp, item.sp, item.discountValue ?? 0, item.quantity,
+          JSON.stringify(item.taxes)
+        );
+      }
+
+      const pd = data.paymentDetails;
+      db.prepare(`
+        INSERT OR REPLACE INTO _posifly_payment_data (billNumber, outletRefId, paymentModes)
+        VALUES (?, ?, ?)
+      `).run(pd.billNumber, pd.outletRefId, JSON.stringify(pd.paymentModes));
+
+      const cd = data.chargesDetails;
+      db.prepare(`
+        INSERT OR REPLACE INTO _posifly_charges_data (billNumber, outletRefId, charges)
+        VALUES (?, ?, ?)
+      `).run(cd.billNumber, cd.outletRefId, JSON.stringify(cd.charges));
+
+      return bd.billNumber;
+    });
+
+    const billNumber = txn();
+    console.log('[SQLite] Saved POSIFLY bill:', billNumber);
+    return billNumber;
+  },
+
+  // Read-only queries for POSIFLY (using spec-named VIEWS)
+  getPosiflyBills(limit = 100, offset = 0): any[] {
+    return db.prepare('SELECT * FROM bill_details ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+  },
+
+  getPosiflyBillByNumber(billNumber: string): any {
+    return db.prepare('SELECT * FROM bill_details WHERE billNumber = ?').get(billNumber);
+  },
+
+  getPosiflyItemsByBill(billNumber: string): any[] {
+    const rows = db.prepare('SELECT * FROM item_details WHERE billNumber = ?').all(billNumber) as any[];
+    return rows.map(row => ({
+      ...row,
+      taxes: typeof row.taxes === 'string' ? JSON.parse(row.taxes || '[]') : row.taxes,
+    }));
+  },
+
+  getPosiflyPaymentByBill(billNumber: string): any {
+    const row = db.prepare('SELECT * FROM payment_details WHERE billNumber = ?').get(billNumber) as any;
+    if (!row) return null;
+    return { ...row, paymentModes: typeof row.paymentModes === 'string' ? JSON.parse(row.paymentModes || '[]') : row.paymentModes };
+  },
+
+  getPosiflyChargesByBill(billNumber: string): any {
+    const row = db.prepare('SELECT * FROM charges_details WHERE billNumber = ?').get(billNumber) as any;
+    if (!row) return null;
+    return { ...row, charges: typeof row.charges === 'string' ? JSON.parse(row.charges || '[]') : row.charges };
+  },
+
+  getPosiflyFullBill(billNumber: string): any {
+    const bill = this.getPosiflyBillByNumber(billNumber);
+    if (!bill) return null;
+    return {
+      bill_details: bill,
+      item_details: this.getPosiflyItemsByBill(billNumber),
+      payment_details: this.getPosiflyPaymentByBill(billNumber),
+      charges_details: this.getPosiflyChargesByBill(billNumber),
+    };
+  },
+
+  getAllPosiflyData(limit = 100, offset = 0): any[] {
+    const bills = this.getPosiflyBills(limit, offset);
+    return bills.map((bill: any) => ({
+      bill_details: bill,
+      item_details: this.getPosiflyItemsByBill(bill.billNumber),
+      payment_details: this.getPosiflyPaymentByBill(bill.billNumber),
+      charges_details: this.getPosiflyChargesByBill(bill.billNumber),
+    }));
   },
 };

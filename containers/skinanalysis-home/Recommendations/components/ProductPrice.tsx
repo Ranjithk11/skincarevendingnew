@@ -1,14 +1,14 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Box, Typography } from "@mui/material";
 
 interface ProductPriceProps {
   retailPrice?: number;
   discountValue?: number;
   priceText?: string;
-  productId?: string; // Add productId to fetch discount from API
-  productName?: string; // Add productName to match by name if ID doesn't work
+  productId?: string;
+  productName?: string;
 }
 
 const calculateDiscount = (originalPrice?: number, discountPercentage?: number) => {
@@ -20,113 +20,18 @@ const calculateDiscount = (originalPrice?: number, discountPercentage?: number) 
 };
 
 const ProductPrice: React.FC<ProductPriceProps> = ({
-  retailPrice,
-  discountValue,
+  retailPrice: rawRetailPrice,
+  discountValue: rawDiscountValue,
   priceText,
-  productId,
-  productName,
 }) => {
-  console.log('ProductPrice props:', { retailPrice, discountValue, priceText, productId });
-  const [productsData, setProductsData] = useState<any[]>([]);
-  const [fetchedDiscount, setFetchedDiscount] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // Fetch products data to get discount information
-  useEffect(() => {
-    const fetchProductsData = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch('/api/admin/products');
-        const data = await response.json();
-        if (data && Array.isArray(data)) {
-          setProductsData(data);
-          
-          // Get discount for this specific product
-          if (productId || productName) {
-            console.log('Looking for product:', { productId, productName });
-            
-            // First try to match by ID
-            let product = data.find(p => p._id === productId || p.id === productId);
-            
-            // If not found by ID, try to match by name (case-insensitive, partial match)
-            if (!product && productName) {
-              product = data.find(p => {
-                const apiName = (p.name || '').toLowerCase().trim();
-                const slotName = productName.toLowerCase().trim();
-                
-                // Extract key words for better matching
-                const slotWords = slotName.split(/\s+/).filter((w: string) => w.length > 2);
-                const apiWords = apiName.split(/\s+/).filter((w: string) => w.length > 2);
-                
-                // Check if any key words match
-                const hasKeyWordMatch = slotWords.some((slotWord: string) => 
-                  apiWords.some((apiWord: string) => 
-                    slotWord.includes(apiWord) || apiWord.includes(slotWord)
-                  )
-                );
-                
-                // Also try original partial matching
-                const hasPartialMatch = apiName.includes(slotName) || slotName.includes(apiName);
-                
-                const matchResult = hasKeyWordMatch || hasPartialMatch;
-                
-                // Debug: Show matching details
-                if (slotName.includes('minimalist') || slotName.includes('spf')) {
-                  console.log('Matching details:', {
-                    slotName,
-                    apiName,
-                    slotWords,
-                    apiWords,
-                    hasKeyWordMatch,
-                    hasPartialMatch,
-                    matchResult
-                  });
-                }
-                
-                return matchResult;
-              });
-            }
-            
-            const discount = product?.discount?.value || 0;
-            setFetchedDiscount(discount);
-            console.log('ProductPrice fetched discount:', { 
-              productId, 
-              productName, 
-              discount, 
-              foundProduct: product?.name, 
-              matchMethod: product ? (productId ? 'ID' : 'Name') : 'None'
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching products data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchProductsData();
-  }, [productId, productName]);
-
-  // Use fetched discount or fallback to prop discountValue
-  const finalDiscountValue = fetchedDiscount || discountValue || 0;
+  const retailPrice = Number(rawRetailPrice) || 0;
+  const finalDiscountValue = Number(rawDiscountValue) || 0;
 
   const hasDiscount =
-    !isLoading &&
-    Number.isFinite(retailPrice as number) &&
+    Number.isFinite(retailPrice) &&
     Number.isFinite(finalDiscountValue) &&
     finalDiscountValue > 0 &&
     calculateDiscount(retailPrice, finalDiscountValue) !== retailPrice;
-
-  // Debug: Log the final calculation
-  console.log('ProductPrice calculation:', {
-    retailPrice,
-    fetchedDiscount,
-    discountValue,
-    finalDiscountValue,
-    hasDiscount,
-    discountedPrice: calculateDiscount(retailPrice, finalDiscountValue)
-  });
 
   return (
     <Box sx={{ textAlign: "left" }}>
