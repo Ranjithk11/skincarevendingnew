@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Box, Typography, TextField } from "@mui/material";
-import { MuiTelInput } from "mui-tel-input";
+import { MuiTelInput, matchIsValidTel } from "mui-tel-input";
 import PageBackground from "@/components/ui/PageBackground";
 import { VirtualKeyboard } from "@/components/ui";
 
@@ -46,6 +47,7 @@ export default function Slide1({
   currentSlide,
   validationError,
 }: Slide1Props) {
+  const [phoneError, setPhoneError] = useState<string>("");
 
   return (
     <Box
@@ -303,10 +305,10 @@ export default function Slide1({
         </Box>
 
         {/* Validation Error Message */}
-        {validationError && (
+        {(validationError || phoneError) && (
           <Box sx={{ px: 3, py: 1, bgcolor: "#fee2e2" }}>
-            <Typography sx={{ color: "#dc2626", fontSize: "20px", textAlign: "center" }}>
-              {validationError}
+            <Typography sx={{ color: "#dc2626", fontSize: "24px", textAlign: "center" }}>
+              {phoneError || validationError}
             </Typography>
           </Box>
         )}
@@ -322,7 +324,15 @@ export default function Slide1({
             flexShrink: 0,
             marginTop: "auto",
           }}
-          onClick={handleNext}
+          onClick={() => {
+            if (!matchIsValidTel(phone)) {
+              setPhoneError("Please enter a valid phone number");
+              return;
+            }
+
+            setPhoneError("");
+            handleNext();
+          }}
         >
           <Typography sx={{ color: "white", fontWeight: 600, fontSize: "30px" }}>Next</Typography>
         </Box>
