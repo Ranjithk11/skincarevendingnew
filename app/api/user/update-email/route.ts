@@ -4,7 +4,7 @@ import { API_ROUTES } from "@/redux/routes/apiRoutes";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, email } = body;
+    const { userId, email, name, phoneNumber } = body;
 
     if (!userId || !email) {
       return NextResponse.json(
@@ -40,6 +40,9 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         _key: userId.replace("users/", ""),
         email: email.trim(),
+        name: name || "",
+        phoneNumber: phoneNumber || "",
+        isValidated: true,
       }),
     });
 

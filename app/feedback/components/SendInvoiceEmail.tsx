@@ -1,7 +1,7 @@
 "use client";
 
 import React, { RefObject } from "react";
-import { Box, Button, IconButton, Typography } from "@mui/material";
+import { Box, Button, IconButton, TextField, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 
@@ -15,6 +15,7 @@ interface SendInvoiceEmailProps {
   onEditStart: () => void;
   onEditConfirm: () => void;
   onSendEmail: () => void;
+  onEmailChange: (value: string) => void;
 }
 
 export default function SendInvoiceEmail({
@@ -27,6 +28,7 @@ export default function SendInvoiceEmail({
   onEditStart,
   onEditConfirm,
   onSendEmail,
+  onEmailChange,
 }: SendInvoiceEmailProps) {
   return (
     <Box sx={{ width: "min(860px, 100%)", mt: 2 }}>
@@ -57,22 +59,26 @@ export default function SendInvoiceEmail({
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }} ref={emailFieldRef}>
           {isEditingEmail ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Box sx={{ bgcolor: "#fff", border: "2px solid #1a3c34", borderRadius: "8px", px: 1.5, py: 0.75, minWidth: 220 }}>
-                <Typography sx={{ fontSize: 24, color: "#111827", minHeight: 24 }}>
-                  {userEmail || " "}
-                  <Box component="span" sx={{ borderRight: "2px solid #1a3c34", animation: "blink 1s infinite", ml: 0.25 }}>&nbsp;</Box>
-                </Typography>
-              </Box>
-              <Button
-                size="small"
-                variant="contained"
-                onClick={onEditConfirm}
-                sx={{ bgcolor: "#1a3c34", color: "#fff", textTransform: "none", fontSize: 24, borderRadius: "8px", "&:hover": { bgcolor: "#16362c" } }}
-              >
-                Done
-              </Button>
-            </Box>
+            <TextField
+              autoFocus
+              value={userEmail}
+              onChange={(e) => onEmailChange(e.target.value)}
+              placeholder="Enter email"
+              type="email"
+              size="small"
+              sx={{
+                minWidth: 220,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "8px",
+                  fontSize: 24,
+                  bgcolor: "#fff",
+                  "& fieldset": { borderColor: "#1a3c34", borderWidth: 2 },
+                  "&:hover fieldset": { borderColor: "#1a3c34" },
+                  "&.Mui-focused fieldset": { borderColor: "#1a3c34" },
+                },
+                "& input": { fontSize: 24, py: 0.75, px: 1.5 },
+              }}
+            />
           ) : (
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, bgcolor: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px", px: 1.5, py: 0.75 }}>
               <Typography sx={{ fontSize: 24, color: "#374151" }}>{userEmail || "Enter email"}</Typography>
@@ -83,7 +89,12 @@ export default function SendInvoiceEmail({
           )}
           <Button
             variant="contained"
-            onClick={onSendEmail}
+            onClick={() => {
+              if (isEditingEmail) {
+                onEditConfirm();
+              }
+              onSendEmail();
+            }}
             disabled={isSendingEmail || emailSent || !userEmail.includes("@")}
             startIcon={<Image src="/NewFeedback/send_email_icon.svg" alt="" width={18} height={18} />}
             sx={{
@@ -99,7 +110,7 @@ export default function SendInvoiceEmail({
               "&:disabled": { bgcolor: emailSent ? "#16a34a" : "#d1d5db", color: "#fff" },
             }}
           >
-            {isSendingEmail ? "Sending..." : emailSent ? "Sent!" : "Send to Email"}
+            {isSendingEmail ? "Sending..." : emailSent ? "Sent!" : isEditingEmail ? "Update & Send" : "Send to Email"}
           </Button>
         </Box>
       </Box>

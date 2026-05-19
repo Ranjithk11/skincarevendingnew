@@ -283,7 +283,12 @@ export default function FeedbackPage() {
       const res = await fetch("/api/user/update-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: uid, email: userEmail }),
+        body: JSON.stringify({
+          userId: uid,
+          email: userEmail,
+          name: (session?.user as any)?.name || "",
+          phoneNumber: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || "",
+        }),
       });
       const data = await res.json();
       if (data.success) {
@@ -731,12 +736,10 @@ export default function FeedbackPage() {
             emailFieldRef={emailFieldRef}
             onEditStart={() => {
               setIsEditingEmail(true);
-              setKeyboardTarget("email");
-              setIsKeyboardOpen(true);
-              setTimeout(() => { emailFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
             }}
             onEditConfirm={handleEmailEditConfirm}
             onSendEmail={handleSendEmail}
+            onEmailChange={setUserEmail}
           />
         )}
 
@@ -793,7 +796,7 @@ export default function FeedbackPage() {
             sx={{ position: "fixed", inset: 0, zIndex: 1400 }}
           >
             <Box onClick={(e) => e.stopPropagation()} sx={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
-              <VirtualKeyboard onKeyPress={handleKeyboardKeyPress} layout="default" visible={isKeyboardOpen} />
+              <VirtualKeyboard onKeyPress={handleKeyboardKeyPress} layout={keyboardTarget === "email" ? "email" : "default"} visible={isKeyboardOpen} />
             </Box>
           </Box>
         ) : null}
