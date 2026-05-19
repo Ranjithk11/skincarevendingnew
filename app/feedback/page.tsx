@@ -3,11 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
-  Button,
   IconButton,
-  TextField,
   Typography,
-  useTheme,
 } from "@mui/material";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
@@ -23,6 +20,9 @@ import { persistor } from "@/redux/store/store";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 import DispenseErrorReporter from "./components/DispenseErrorReporter";
 import DispenseReporter from "./components/DispenseReporter";
+import SendInvoiceEmail from "./components/SendInvoiceEmail";
+import TaxInvoice from "./components/TaxInvoice";
+import FeedbackRating from "./components/FeedbackRating";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -82,7 +82,6 @@ const parsePrice = (priceText?: string): number => {
 // ---------------------------------------------------------------------------
 
 export default function FeedbackPage() {
-  const theme = useTheme();
   const router = useRouter();
   const { data: session } = useSession();
   const dispatch = useAppDispatch();
@@ -723,336 +722,58 @@ export default function FeedbackPage() {
 
         {/* -------- SEND INVOICE TO EMAIL -------- */}
         {invoiceData && (
-          <Box sx={{ width: "min(860px, 100%)", mt: 2 }}>
-            <Box
-              sx={{
-                bgcolor: "#fff",
-                borderRadius: 3,
-                px: 3,
-                py: 2.5,
-                border: "1px solid #e5e7eb",
-                display: "flex",
-                flexDirection: { xs: "column", sm: "row" },
-                alignItems: { xs: "flex-start", sm: "center" },
-                justifyContent: "space-between",
-                gap: 2,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Box sx={{ position: "relative" }}>
-                  <Image src="/NewFeedback/sparkle_gold.svg" alt="" width={16} height={16} style={{ position: "absolute", top: -4, left: -4 }} />
-                  <Image src="/NewFeedback/email_outline.svg" alt="Email" width={40} height={40} />
-                </Box>
-                <Box>
-                  <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#111827" }}>Send invoice to your email</Typography>
-                  <Typography sx={{ fontSize: 24, color: "#6b7280" }}>We&apos;ll email your invoice instantly.</Typography>
-                </Box>
-              </Box>
-
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }} ref={emailFieldRef}>
-                {isEditingEmail ? (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Box sx={{ bgcolor: "#fff", border: "2px solid #1a3c34", borderRadius: "8px", px: 1.5, py: 0.75, minWidth: 220 }}>
-                      <Typography sx={{ fontSize: 24, color: "#111827", minHeight: 24 }}>
-                        {userEmail || " "}
-                        <Box component="span" sx={{ borderRight: "2px solid #1a3c34", animation: "blink 1s infinite", ml: 0.25 }}>&nbsp;</Box>
-                      </Typography>
-                    </Box>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      onClick={handleEmailEditConfirm}
-                      sx={{ bgcolor: "#1a3c34", color: "#fff", textTransform: "none", fontSize: 24, borderRadius: "8px", "&:hover": { bgcolor: "#16362c" } }}
-                    >
-                      Done
-                    </Button>
-                  </Box>
-                ) : (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, bgcolor: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "8px", px: 1.5, py: 0.75 }}>
-                    <Typography sx={{ fontSize: 24, color: "#374151" }}>{userEmail || "Enter email"}</Typography>
-                    <IconButton size="small" onClick={() => {
-                      setIsEditingEmail(true);
-                      setKeyboardTarget("email");
-                      setIsKeyboardOpen(true);
-                      setTimeout(() => { emailFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
-                    }}>
-                      <Icon icon="mdi:pencil-outline" width={18} color="#6b7280" />
-                    </IconButton>
-                  </Box>
-                )}
-                <Button
-                  variant="contained"
-                  onClick={handleSendEmail}
-                  disabled={isSendingEmail || emailSent || !userEmail.includes("@")}
-                  startIcon={<Image src="/NewFeedback/send_email_icon.svg" alt="" width={18} height={18} />}
-                  sx={{
-                    bgcolor: emailSent ? "#16a34a" : "#1a3c34",
-                    color: "#fff",
-                    borderRadius: "10px",
-                    textTransform: "none",
-                    fontSize: 24,
-                    fontWeight: 600,
-                    px: 2.5,
-                    py: 1,
-                    "&:hover": { bgcolor: emailSent ? "#16a34a" : "#16362c" },
-                    "&:disabled": { bgcolor: emailSent ? "#16a34a" : "#d1d5db", color: "#fff" },
-                  }}
-                >
-                  {isSendingEmail ? "Sending..." : emailSent ? "Sent!" : "Send to Email"}
-                </Button>
-              </Box>
-            </Box>
-            {emailError && (
-              <Typography sx={{ fontSize: 24, color: "#dc2626", mt: 0.5, px: 1 }}>{emailError}</Typography>
-            )}
-          </Box>
+          <SendInvoiceEmail
+            userEmail={userEmail}
+            isEditingEmail={isEditingEmail}
+            isSendingEmail={isSendingEmail}
+            emailSent={emailSent}
+            emailError={emailError}
+            emailFieldRef={emailFieldRef}
+            onEditStart={() => {
+              setIsEditingEmail(true);
+              setKeyboardTarget("email");
+              setIsKeyboardOpen(true);
+              setTimeout(() => { emailFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
+            }}
+            onEditConfirm={handleEmailEditConfirm}
+            onSendEmail={handleSendEmail}
+          />
         )}
 
         {/* -------- TAX INVOICE (collapsible) -------- */}
         {invoiceData && (
-          <Box sx={{ width: "min(860px, 100%)", mt: 2 }}>
-            <Box sx={{ bgcolor: "#fff", borderRadius: 3, border: "1px solid #e5e7eb", overflow: "hidden" }}>
-              {/* Invoice Header — clickable to toggle */}
-              <Box
-                onClick={() => setInvoiceExpanded((prev) => !prev)}
-                sx={{ textAlign: "center", py: 1.5, borderBottom: invoiceExpanded ? "1px solid #e5e7eb" : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 1, userSelect: "none" }}
-              >
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ fontSize: 24, color: "#9ca3af", letterSpacing: 2 }}>✦ ✦ ✦</Typography>
-                  <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#1a3c34" }}>Tax Invoice</Typography>
-                  <Typography sx={{ fontSize: 24, color: "#6b7280" }}>LeafWater Invoice</Typography>
-                </Box>
-                <Icon icon={invoiceExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} width={28} color="#6b7280" style={{ marginRight: 12 }} />
-              </Box>
-
-              {/* Collapsible content */}
-              {invoiceExpanded && (
-                <>
-              {/* Invoice Details - 3 columns */}
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, borderBottom: "1px solid #e5e7eb" }}>
-                {[
-                  { icon: "/NewFeedback/invoice_document.svg", label: "Invoice No.", value: invoiceData.invoiceNo },
-                  { icon: "/NewFeedback/calendar.svg", label: "Invoice Date", value: invoiceData.invoiceDate },
-                  { icon: "/NewFeedback/reference_document.svg", label: "Order Reference", value: invoiceData.orderReference },
-                ].map((item, idx) => (
-                  <Box key={idx} sx={{ p: 2, borderRight: idx < 2 ? "1px solid #e5e7eb" : "none", display: "flex", alignItems: "flex-start", gap: 1 }}>
-                    <Image src={item.icon} alt="" width={20} height={20} style={{ marginTop: 2, flexShrink: 0 }} />
-                    <Box>
-                      <Typography sx={{ fontSize: 24, color: "#9ca3af" }}>{item.label}</Typography>
-                      <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#111827", wordBreak: "break-word" }}>{item.value}</Typography>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-
-              {/* GSTIN / State / Place of Supply - 3 columns */}
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, borderBottom: "1px solid #e5e7eb" }}>
-                {[
-                  { icon: "/NewFeedback/gst_document.svg", label: "GSTIN / UIN", value: invoiceData.gstin },
-                  { icon: "/NewFeedback/government_building.svg", label: "State", value: invoiceData.state },
-                  { icon: "/NewFeedback/location_pin.svg", label: "Place of Supply", value: invoiceData.placeOfSupply },
-                ].map((item, idx) => (
-                  <Box key={idx} sx={{ p: 2, borderRight: idx < 2 ? "1px solid #e5e7eb" : "none", display: "flex", alignItems: "flex-start", gap: 1 }}>
-                    <Image src={item.icon} alt="" width={20} height={20} style={{ marginTop: 2, flexShrink: 0 }} />
-                    <Box>
-                      <Typography sx={{ fontSize: 24, color: "#9ca3af" }}>{item.label}</Typography>
-                      <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>{item.value}</Typography>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-
-              {/* Items Table */}
-              <Box sx={{ px: 2, py: 1.5 }}>
-                <Box
-                  component="table"
-                  sx={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    "& th": { fontSize: 24, fontWeight: 600, color: "#6b7280", textAlign: "left", py: 1, px: 1.5, borderBottom: "2px solid #e5e7eb", bgcolor: "#f9fafb" },
-                    "& td": { fontSize: 24, color: "#111827", py: 1, px: 1.5, borderBottom: "1px solid #f3f4f6" },
-                  }}
-                >
-                  <thead>
-                    <tr>
-                      <th style={{ width: "5%" }}>#</th>
-                      <th style={{ width: "35%" }}>Description of Goods</th>
-                      <th style={{ width: "15%", textAlign: "center" }}>HSN/SAC</th>
-                      <th style={{ width: "10%", textAlign: "center" }}>Qty</th>
-                      <th style={{ width: "17%", textAlign: "right" }}>Rate (Incl. of Tax)</th>
-                      <th style={{ width: "18%", textAlign: "right" }}>Amount (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoiceData.items.map((item: any, idx: number) => (
-                      <tr key={idx}>
-                        <td>{idx + 1}</td>
-                        <td style={{ fontWeight: 600 }}>{item.name}</td>
-                        <td style={{ textAlign: "center" }}>3304</td>
-                        <td style={{ textAlign: "center" }}>{item.quantity}</td>
-                        <td style={{ textAlign: "right" }}>{Number(item.price).toFixed(2)}</td>
-                        <td style={{ textAlign: "right" }}>{Number(item.amount).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Box>
-              </Box>
-
-              {/* Subtotals */}
-              <Box sx={{ px: 3, pb: 1.5, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 3 }}>
-                <Box sx={{ flex: 1 }}>
-                  {[
-                    { label: "Subtotal", value: invoiceData.subtotal },
-                    { label: "CGST @ 2.50%", value: invoiceData.cgst },
-                    { label: "SGST @ 2.50%", value: invoiceData.sgst },
-                    { label: "Round Off", value: invoiceData.roundOff },
-                  ].map((row, idx) => (
-                    <Box key={idx} sx={{ display: "flex", justifyContent: "space-between", py: 0.25 }}>
-                      <Typography sx={{ fontSize: 24, color: idx === 0 ? "#111827" : "#6b7280" }}>{row.label}</Typography>
-                      <Typography sx={{ fontSize: 24, color: idx === 0 ? "#111827" : "#6b7280" }}>{Number(row.value).toFixed(2)}</Typography>
-                    </Box>
-                  ))}
-                </Box>
-
-                {/* Grand Total Box */}
-                <Box sx={{ bgcolor: "#1a3c34", borderRadius: 2, px: 3, py: 1.5, textAlign: "center", minWidth: 160 }}>
-                  <Typography sx={{ fontSize: 24, color: "#a7f3d0" }}>Grand Total</Typography>
-                  <Typography sx={{ fontSize: 28, fontWeight: 800, color: "#fff", mt: 0.25 }}>
-                    ₹{Number(invoiceData.grandTotal).toFixed(2)}
-                  </Typography>
-                  <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, bgcolor: "#16a34a", borderRadius: "20px", px: 1.5, py: 0.25, mt: 0.5 }}>
-                    <Image src="/NewFeedback/paid_badge.svg" alt="" width={14} height={14} />
-                    <Typography sx={{ fontSize: 24, color: "#fff", fontWeight: 600 }}>Paid</Typography>
-                  </Box>
-                </Box>
-              </Box>
-
-              {/* Amount in Words + Payment Status */}
-              <Box sx={{ px: 3, py: 1.5, borderTop: "1px solid #e5e7eb", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-                  <Image src="/NewFeedback/lock_icon.svg" alt="" width={16} height={16} style={{ marginTop: 2 }} />
-                  <Box>
-                    <Typography sx={{ fontSize: 24, color: "#9ca3af" }}>Amount in words</Typography>
-                    <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>{invoiceData.amountInWords}</Typography>
-                  </Box>
-                </Box>
-                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
-                  <Typography sx={{ fontSize: 24, color: "#9ca3af" }}>Payment Status</Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#111827" }}>Paid</Typography>
-                    <Image src="/NewFeedback/shield_security.svg" alt="" width={16} height={16} />
-                  </Box>
-                </Box>
-              </Box>
-
-              {/* Thank You */}
-              <Box sx={{ px: 3, py: 1.5, borderTop: "1px solid #e5e7eb", display: "flex", alignItems: "center", gap: 2 }}>
-                <Image src="/NewFeedback/heart_badge.svg" alt="" width={28} height={28} />
-                <Box>
-                  <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#1a3c34" }}>Thank you for choosing LeafWater!</Typography>
-                  <Typography sx={{ fontSize: 24, color: "#6b7280" }}>Your skincare journey matters to us.</Typography>
-                </Box>
-              </Box>
-                </>
-              )}
-            </Box>
-          </Box>
+          <TaxInvoice
+            invoiceData={invoiceData}
+            invoiceExpanded={invoiceExpanded}
+            onToggleExpanded={() => setInvoiceExpanded((prev) => !prev)}
+          />
         )}
 
         {/* -------- FEEDBACK SECTION -------- */}
-        <Box
-          sx={{
-            width: "min(860px, 100%)",
-            mt: 2,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            textAlign: "center",
+        <FeedbackRating
+          rating={rating}
+          displayRating={displayRating}
+          notes={notes}
+          isSubmitting={isSubmitting}
+          canSubmit={canSubmit}
+          isKeyboardOpen={isKeyboardOpen}
+          textFieldRef={textFieldRef}
+          onStarClick={handleStarClick}
+          onStarHover={handleStarHover}
+          onStarLeave={handleStarLeave}
+          onNotesChange={setNotes}
+          onNotesFocus={() => {
+            setKeyboardTarget("notes");
+            setIsKeyboardOpen(true);
+            setTimeout(() => { textFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
           }}
-        >
-          <Typography sx={{ fontSize: 24, fontWeight: 700, pb: 0.5 }}>Quick Favour?</Typography>
-          <Typography sx={{ fontSize: 24, color: "#374151" }}>
-            Kindly rate your experience with us so far.
-          </Typography>
-
-          <Box sx={{ display: "flex", gap: 0.5, mt: 1 }}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <IconButton
-                key={star}
-                onClick={() => handleStarClick(star)}
-                onMouseEnter={() => handleStarHover(star)}
-                onMouseLeave={handleStarLeave}
-                sx={{ p: 0.25, bgcolor: "transparent" }}
-              >
-                <Box
-                  component="span"
-                  sx={{
-                    fontSize: 40,
-                    lineHeight: 1,
-                    color: star <= displayRating ? "#f59e0b" : "#cfcfcf",
-                    cursor: "pointer",
-                    transition: "color 0.15s",
-                  }}
-                >
-                  {star <= displayRating ? "\u2605" : "\u2606"}
-                </Box>
-              </IconButton>
-            ))}
-          </Box>
-
-          <Box sx={{ width: "min(520px, 100%)", mt: 1, pb: isKeyboardOpen ? "320px" : 0 }} ref={textFieldRef}>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              placeholder="Tell us more (optional)"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onFocus={() => {
-                setKeyboardTarget("notes");
-                setIsKeyboardOpen(true);
-                setTimeout(() => { textFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
-              }}
-              onClick={() => {
-                setKeyboardTarget("notes");
-                setIsKeyboardOpen(true);
-                setTimeout(() => { textFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
-              }}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "12px",
-                  bgcolor: "#ffffff",
-                  fontSize: 24,
-                  "& textarea": { fontSize: 24 },
-                  "& textarea::placeholder": { fontSize: 24, opacity: 0.8 },
-                  "& fieldset": { borderColor: "#d1d5db" },
-                  "&:hover fieldset": { borderColor: "#9ca3af" },
-                  "&.Mui-focused fieldset": { borderColor: "#9ca3af" },
-                },
-              }}
-            />
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              sx={{
-                mt: 1.5,
-                bgcolor: "#1a3c34",
-                color: "#fff",
-                py: 1,
-                borderRadius: "12px",
-                fontSize: 24,
-                fontWeight: 700,
-                textTransform: "none",
-                "&:hover": { bgcolor: "#16362c" },
-                "&:disabled": { bgcolor: "#d1d5db", color: "#ffffff" },
-              }}
-            >
-              {isSubmitting ? "Submitting..." : "Submit Feedback"}
-            </Button>
-          </Box>
-        </Box>
+          onNotesClick={() => {
+            setKeyboardTarget("notes");
+            setIsKeyboardOpen(true);
+            setTimeout(() => { textFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
+          }}
+          onSubmit={handleSubmit}
+        />
 
         {/* -------- COMPUTER GENERATED INVOICE FOOTER -------- */}
         <Box sx={{ width: "min(860px, 100%)", mt: 3, mb: 2, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
