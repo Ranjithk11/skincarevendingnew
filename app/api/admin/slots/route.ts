@@ -186,6 +186,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (quantity > 10) {
+      return NextResponse.json(
+        { success: false, message: "Maximum quantity per slot is 10" },
+        { status: 400 }
+      );
+    }
+
     // Auto-fetch discount from API if not provided and product_id is given
     let finalDiscountValue = discount_value !== undefined && discount_value !== null && discount_value !== "" ? parseFloat(discount_value) : undefined;
 

@@ -123,7 +123,7 @@ export default function SlotAssignmentModal({
   const selectedProduct = products.find((p) => p.id === selectedProductId);
 
   const clampQuantity = (next: number) => {
-    let q = Number.isFinite(next) ? Math.max(0, Math.trunc(next)) : 0;
+    let q = Number.isFinite(next) ? Math.max(0, Math.min(10, Math.trunc(next))) : 0;
     return q;
   };
 
@@ -623,7 +623,7 @@ export default function SlotAssignmentModal({
                   fontWeight: 400,
                 }}
               >
-                (Must be less than or equal to product stock)
+                (Max 10 per slot)
               </Typography>
             </Typography>
 

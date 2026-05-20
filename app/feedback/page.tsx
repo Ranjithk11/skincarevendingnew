@@ -288,6 +288,8 @@ export default function FeedbackPage() {
           email: userEmail,
           name: (session?.user as any)?.name || "",
           phoneNumber: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || "",
+          countryCode: "91",
+          onBoardingQuestions: (session?.user as any)?.onBoardingQuestions || [],
         }),
       });
       const data = await res.json();
