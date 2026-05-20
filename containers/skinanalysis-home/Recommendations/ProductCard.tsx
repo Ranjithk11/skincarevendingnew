@@ -18,6 +18,7 @@ import { usePathname } from "next/navigation";
 import { url } from "inspector";
 import { useMediaQuery, useTheme } from "@mui/material";
 import BuyNowDialog from "./BuyNowDialog";
+import NewProductCard from "./NewProductCard";
 
 interface ProductCardProps {
   ribbenColor?: string;
@@ -504,18 +505,20 @@ const ProductCard = ({
         </Button>
       )}
 
-      <BuyNowDialog
+      <NewProductCard
         open={openBuyNow}
         onClose={() => setOpenBuyNow(false)}
         imageUrl={images?.[0]?.url}
         id={_id}
         name={name}
-        priceText={`INR.${calculateDiscount(retailPrice, discount?.value)}/-`}
+        retailPrice={retailPrice}
+        discountValue={discount?.value}
         matchLabel={matches?.[0]?.name?.replace("_", " ")}
         productUse={productUse}
         productBenefits={productBenefits}
-        retailPrice={retailPrice}
-        discountValue={discount?.value}
+        isAiRecommended={true}
+        skinType="all skin types"
+        quantity={quantity}
       />
 
       {!enabledMask && !shopifyUrl && (
