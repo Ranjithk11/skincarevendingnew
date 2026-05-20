@@ -14,7 +14,7 @@ type IdleVideoOverlayProps = {
 
 export default function IdleVideoOverlay({
   reIdleMs = 120_000,
-  src = "/videos/airport.mp4",
+  src = "/videos/NewTHub.mp4",
 }: IdleVideoOverlayProps) {
   const router = useRouter();
   const pathname = usePathname();

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/admin-db';
 
 // GET /api/admin/orders - List all orders
 export async function GET(request: NextRequest) {
   try {
+    const { adminDb } = await import('@/lib/admin-db');
     const { searchParams } = new URL(request.url);
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
     const offset = searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined;
@@ -34,6 +34,7 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/orders - Create a new order (called after payment success)
 export async function POST(request: NextRequest) {
   try {
+    const { adminDb } = await import('@/lib/admin-db');
     const body = await request.json();
     const { userId, items, totalAmount, paymentId, razorpayOrderId, paymentMode } = body;
 

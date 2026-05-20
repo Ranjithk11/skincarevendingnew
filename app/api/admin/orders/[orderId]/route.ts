@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminDb } from '@/lib/admin-db';
 
 // GET /api/admin/orders/[orderId] - Get a specific order
 export async function GET(
@@ -7,6 +6,7 @@ export async function GET(
   { params }: { params: { orderId: string } }
 ) {
   try {
+    const { adminDb } = await import('@/lib/admin-db');
     const order = adminDb.getOrder(params.orderId);
 
     if (!order) {
@@ -35,6 +35,7 @@ export async function PATCH(
   { params }: { params: { orderId: string } }
 ) {
   try {
+    const { adminDb } = await import('@/lib/admin-db');
     const body = await request.json();
     const { status, productId, dispensed, dispenseError } = body;
 

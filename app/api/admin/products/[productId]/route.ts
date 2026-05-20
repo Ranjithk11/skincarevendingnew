@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/admin-db";
 
 // Send webhook for product modifications
 async function sendProductUpdateWebhook(productId: string, updatedProduct: any) {
@@ -11,6 +10,7 @@ async function sendProductUpdateWebhook(productId: string, updatedProduct: any) 
     const machineName = sqliteDb.getMachineName() || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine";
 
     // Get all slots
+    const { adminDb } = await import("@/lib/admin-db");
     const allSlots = adminDb.getAllSlots();
 
     // Find slots that have this product
@@ -61,6 +61,7 @@ export async function PUT(
   { params }: { params: { productId: string } }
 ) {
   try {
+    const { adminDb } = await import("@/lib/admin-db");
     const productId = params.productId;
     const body = await request.json();
 
@@ -115,6 +116,7 @@ export async function GET(
   { params }: { params: { productId: string } }
 ) {
   try {
+    const { adminDb } = await import("@/lib/admin-db");
     const productId = params.productId;
     const numericId = parseInt(productId);
     
