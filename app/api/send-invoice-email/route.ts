@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
     const hsnBreakdown = (invoice.hsnBreakdown || []).map((h: any) => ({
       hsn_sac: h.hsnSac || "3304",
       taxable_value: Number(h.taxableValue || 0).toFixed(2),
-      cgst_rate: `${Number(h.cgstRate || 2.5).toFixed(2)}%`,
+      cgst_rate: `${Number(h.cgstRate || 18).toFixed(2)}%`,
       cgst_amount: Number(h.cgstAmount || 0).toFixed(2),
-      sgst_rate: `${Number(h.sgstRate || 2.5).toFixed(2)}%`,
+      sgst_rate: `${Number(h.sgstRate || 18).toFixed(2)}%`,
       sgst_amount: Number(h.sgstAmount || 0).toFixed(2),
       total_tax_amount: Number(h.totalTaxAmount || 0).toFixed(2),
     }));

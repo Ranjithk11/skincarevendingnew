@@ -484,9 +484,9 @@ export default function FeedbackPage() {
     const now = new Date();
     const orderId = checkoutSummary?.payment?.orderId || "";
     const subtotal = Number(checkoutSummary?.payableTotal || 0);
-    const baseForTax = subtotal / 1.05;
-    const cgst = baseForTax * 0.025;
-    const sgst = baseForTax * 0.025;
+    const baseForTax = subtotal / 1.36;
+    const cgst = baseForTax * 0.18;
+    const sgst = baseForTax * 0.18;
     const beforeRound = baseForTax + cgst + sgst;
     const roundOff = subtotal - beforeRound;
 

@@ -106,8 +106,8 @@ export default function TaxInvoice({ invoiceData, invoiceExpanded, onToggleExpan
               <Box sx={{ flex: 1 }}>
                 {[
                   { label: "Subtotal", value: invoiceData.subtotal },
-                  { label: "CGST @ 2.50%", value: invoiceData.cgst },
-                  { label: "SGST @ 2.50%", value: invoiceData.sgst },
+                  { label: "CGST @ 18.00%", value: invoiceData.cgst },
+                  { label: "SGST @ 18.00%", value: invoiceData.sgst },
                   { label: "Round Off", value: invoiceData.roundOff },
                 ].map((row, idx) => (
                   <Box key={idx} sx={{ display: "flex", justifyContent: "space-between", py: 0.25 }}>
