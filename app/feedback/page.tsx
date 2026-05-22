@@ -738,6 +738,9 @@ export default function FeedbackPage() {
             emailFieldRef={emailFieldRef}
             onEditStart={() => {
               setIsEditingEmail(true);
+              setKeyboardTarget("email");
+              setIsKeyboardOpen(true);
+              setTimeout(() => { emailFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);
             }}
             onEditConfirm={handleEmailEditConfirm}
             onSendEmail={handleSendEmail}
