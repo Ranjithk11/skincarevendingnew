@@ -507,9 +507,13 @@ export default function FeedbackPage() {
           amount: price * qty,
         };
       }),
+      totalQty: checkoutItems.reduce((sum: number, item: any) => sum + (Number(item?.quantity) || 1), 0),
+      itemsTotal: baseForTax.toFixed(2),
       subtotal,
       cgst,
       sgst,
+      cgstPayable: cgst,
+      sgstPayable: sgst,
       roundOff,
       grandTotal: subtotal,
       amountInWords: numberToWords(subtotal),
