@@ -26,6 +26,7 @@ import { SOCIAL_LINKS } from "@/utils/constants";
 import { AiFillFacebook, AiFillInstagram, AiFillYoutube } from "react-icons/ai";
 import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
 import IdleRedirect from "@/components/ui/IdleRedirect";
+import StartupSync from "@/components/StartupSync";
 
 interface DefaultLayoutProps {
   children?: React.ReactNode;
@@ -52,6 +53,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
   };
   return (
     <Fragment>
+      <StartupSync />
       {/* <AppBar color="primary" position="fixed">
         <Toolbar>
           <Grid container alignItems="center" justifyContent="space-between">

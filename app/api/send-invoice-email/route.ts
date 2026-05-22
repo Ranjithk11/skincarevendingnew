@@ -90,6 +90,11 @@ export async function POST(request: NextRequest) {
       buyer_email: invoice.buyerEmail || "",
       buyer_phone: invoice.buyerPhone || "",
 
+      // Machine info
+      machine_id: invoice.machineId || "",
+      machine_name: invoice.machineName || "",
+      machine_location: invoice.machineLocation || "",
+
       // Line items
       items,
       total_qty: `${Number(invoice.totalQty || 0).toFixed(2)} qty`,

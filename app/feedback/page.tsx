@@ -124,6 +124,24 @@ export default function FeedbackPage() {
   const [notification, setNotification] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const emailFieldRef = useRef<HTMLDivElement>(null);
 
+  // Machine info (fallback when no user session, e.g. direct purchase from /products or /slots)
+  const [machineInfo, setMachineInfo] = useState<{ machineId: string; machineName: string; machineLocation: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/machine-name")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setMachineInfo({
+            machineId: data.machineId || "",
+            machineName: data.machineName || "",
+            machineLocation: data.machineLocation || "",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   // Tax Invoice accordion
   const [invoiceExpanded, setInvoiceExpanded] = useState(false);
 
@@ -517,11 +535,14 @@ export default function FeedbackPage() {
       roundOff,
       grandTotal: subtotal,
       amountInWords: numberToWords(subtotal),
-      buyerName: (session?.user as any)?.name || "",
+      buyerName: (session?.user as any)?.name || `Walk-in Customer – ${machineInfo?.machineName || "Vending Machine"}`,
       buyerEmail: (session?.user as any)?.email || "",
       buyerPhone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || "",
+      machineId: machineInfo?.machineId || "",
+      machineName: machineInfo?.machineName || "",
+      machineLocation: machineInfo?.machineLocation || "",
     };
-  }, [checkoutSummary, checkoutItems, session]);
+  }, [checkoutSummary, checkoutItems, session, machineInfo]);
 
   const handleSendEmail = async () => {
     if (!userEmail || !userEmail.includes("@") || !invoiceData) return;
@@ -532,7 +553,7 @@ export default function FeedbackPage() {
       const invoiceWithUser = {
         ...invoiceData,
         buyerEmail: userEmail,
-        buyerName: (session?.user as any)?.name || invoiceData.buyerName || "",
+        buyerName: (session?.user as any)?.name || invoiceData.buyerName || `Walk-in Customer – ${machineInfo?.machineName || "Vending Machine"}`,
         buyerPhone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone || invoiceData.buyerPhone || "",
       };
 
@@ -660,10 +681,10 @@ export default function FeedbackPage() {
                 <DispenseReporter
                   active
                   user={{
-                    userId: (session?.user as any)?.id,
-                    name: (session?.user as any)?.name,
-                    email: (session?.user as any)?.email,
-                    phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone,
+                    userId: (session?.user as any)?.id || machineInfo?.machineId || "",
+                    name: (session?.user as any)?.name || `Walk-in – ${machineInfo?.machineName || "Vending Machine"}`,
+                    email: (session?.user as any)?.email || "",
+                    phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone || "",
                   }}
                   products={checkoutItems.map((item: any) => ({
                     id: item?.id, name: item?.name, quantity: item?.quantity,
@@ -696,10 +717,10 @@ export default function FeedbackPage() {
                   active
                   errorMessage={dispenseState.message}
                   user={{
-                    userId: (session?.user as any)?.id,
-                    name: (session?.user as any)?.name,
-                    email: (session?.user as any)?.email,
-                    phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone,
+                    userId: (session?.user as any)?.id || machineInfo?.machineId || "",
+                    name: (session?.user as any)?.name || `Walk-in – ${machineInfo?.machineName || "Vending Machine"}`,
+                    email: (session?.user as any)?.email || "",
+                    phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone || "",
                   }}
                   products={checkoutItems.map((item: any) => ({
                     id: item?.id, name: item?.name, quantity: item?.quantity,
