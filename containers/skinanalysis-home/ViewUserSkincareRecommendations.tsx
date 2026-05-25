@@ -34,6 +34,8 @@ import TopLogo from "./Recommendations/TopLogo";
 import { APP_ROUTES } from "@/utils/routes";
 import { useTheme } from "@mui/material/styles";
 import { sendScanCompletedWebhook } from "@/utils/webhook";
+import { useCart } from "./Recommendations/CartContext";
+import CartProduct from "./Recommendations/cartProduct";
 
 const StyledViewAdminSkincareReport = styled(Container)(({ theme }) => ({
   minHeight: "100vh",
@@ -119,7 +121,7 @@ const ViewAdminSkincareReport = () => {
   const theme = useTheme();
   const isKiosk = useMediaQuery(theme.breakpoints.up("md"));
   const [openCart, setOpenCart] = useState(false);
-  const cartCount = 0;
+  const { count: cartCount } = useCart();
   const whatsappNumber = "918977016605";
   const whatsappMessage = "Hello, I need help with my skin analysis!";
   const [fetchAdminRecommendationsById, { isLoading, isError, data }] =
@@ -319,6 +321,7 @@ const ViewAdminSkincareReport = () => {
           </Box>
         </Box>
       )}
+      <CartProduct open={openCart} onClose={() => setOpenCart(false)} />
       <Paper
         onClick={handleWhatsAppClick}
         component="div"

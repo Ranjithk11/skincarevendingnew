@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Dialog, IconButton, Typography, Button } from "@mui/material";
+import { Box, Dialog, IconButton, Typography, Button, useMediaQuery, useTheme } from "@mui/material";
 import { Icon } from "@iconify/react";
 import { capitalizeWords } from "@/utils/func";
 import { useCart } from "./CartContext";
@@ -23,6 +23,7 @@ interface NewProductCardProps {
   isAiRecommended?: boolean;
   skinType?: string;
   quantity?: number;
+  shopifyUrl?: string;
 }
 
 const NewProductCard = ({
@@ -40,9 +41,12 @@ const NewProductCard = ({
   isAiRecommended = true,
   skinType,
   quantity,
+  shopifyUrl,
 }: NewProductCardProps) => {
   const { addItem } = useCart();
   const { speakMessage } = useVoiceMessages();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [showSuccess, setShowSuccess] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [priceComparison, setPriceComparison] = useState<{
@@ -81,6 +85,13 @@ const NewProductCard = ({
   const beautyPodPrice = discountedPrice;
 
   const handleAddToCart = () => {
+    // On mobile, redirect to Shopify instead of local cart
+    if (isMobile && shopifyUrl) {
+      window.open(shopifyUrl, "_blank");
+      onClose();
+      return;
+    }
+
     setIsAdding(true);
     addItem({
       id,
@@ -109,13 +120,15 @@ const NewProductCard = ({
     <Dialog
       open={open}
       onClose={onClose}
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
-          width: "75%",
-          maxWidth: 700,
-          borderRadius: "16px",
+          width: isMobile ? "100%" : "75%",
+          maxWidth: isMobile ? "100%" : 700,
+          borderRadius: isMobile ? 0 : "16px",
           overflow: "hidden",
-          maxHeight: "90vh",
+          maxHeight: isMobile ? "100vh" : "90vh",
+          m: isMobile ? 0 : undefined,
         },
       }}
     >
@@ -144,15 +157,15 @@ const NewProductCard = ({
         />
 
         {/* Top Section: Image + Product Info */}
-        <Box sx={{ display: "flex", gap: 2.5, p: 3, pb: 1.5, alignItems: "flex-start" }}>
+        <Box sx={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 1.5 : 2.5, p: isMobile ? 2 : 3, pb: 1.5, alignItems: isMobile ? "center" : "flex-start" }}>
           {/* Product Image */}
           <Box
             component="img"
             src={imageUrl}
             alt={name}
             sx={{
-              width: 140,
-              height: 180,
+              width: isMobile ? 100 : 140,
+              height: isMobile ? 130 : 180,
               objectFit: "contain",
               flexShrink: 0,
               opacity: showSuccess ? 0.3 : 1,
@@ -177,8 +190,8 @@ const NewProductCard = ({
                   mb: 1,
                 }}
               >
-                <Icon icon="mdi:star" width={16} color="#f5a623" />
-                <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#b8860b" }}>
+                <Icon icon="mdi:star" width={isMobile ? 14 : 16} color="#f5a623" />
+                <Typography sx={{ fontSize: isMobile ? 12 : 20, fontWeight: 600, color: "#b8860b" }}>
                   AI RECOMMENDED
                 </Typography>
               </Box>
@@ -187,11 +200,12 @@ const NewProductCard = ({
             {/* Product Name */}
             <Typography
               sx={{
-                fontSize: 28,
+                fontSize: isMobile ? 16 : 28,
                 fontWeight: 700,
                 color: "#111827",
                 lineHeight: 1.2,
                 mb: 0.5,
+                textAlign: isMobile ? "center" : "left",
               }}
             >
               {capitalizeWords(name)}
@@ -201,7 +215,7 @@ const NewProductCard = ({
             {productUse && (
               <Typography
                 sx={{
-                  fontSize: 22,
+                  fontSize: isMobile ? 13 : 22,
                   color: "#6b7280",
                   lineHeight: 1.3,
                   mb: 1,
@@ -210,6 +224,7 @@ const NewProductCard = ({
                   display: "-webkit-box",
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: "vertical",
+                  textAlign: isMobile ? "center" : "left",
                 }}
               >
                 {productUse
@@ -221,9 +236,9 @@ const NewProductCard = ({
 
             {/* Suitable for skin type */}
             {skinType && (
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, border: "1px solid #d1d5db", borderRadius: "20px", px: 1.5, py: 0.4 }}>
-                <Icon icon="mdi:check-circle" width={18} color="#16a34a" />
-                <Typography sx={{ fontSize: 20, color: "#374151" }}>
+              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, border: "1px solid #d1d5db", borderRadius: "20px", px: 1.5, py: 0.4, justifyContent: isMobile ? "center" : "flex-start" }}>
+                <Icon icon="mdi:check-circle" width={isMobile ? 14 : 18} color="#16a34a" />
+                <Typography sx={{ fontSize: isMobile ? 12 : 20, color: "#374151" }}>
                   Suitable for {skinType} skin
                 </Typography>
               </Box>
@@ -232,19 +247,19 @@ const NewProductCard = ({
         </Box>
 
         {/* Price + Comparison Section */}
-        <Box sx={{ mx: 3, mb: 2, border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
-          <Box sx={{ display: "flex" }}>
+        <Box sx={{ mx: isMobile ? 1.5 : 3, mb: 2, border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden" }}>
+          <Box sx={{ display: "flex", flexDirection: isMobile ? "column" : "row" }}>
             {/* BeautyPOD Price */}
-            <Box sx={{ flex: 1, p: 2, borderRight: "1px solid #e5e7eb" }}>
-              <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#1a3c34", mb: 0.5 }}>
+            <Box sx={{ flex: 1, p: isMobile ? 1.5 : 2, borderRight: isMobile ? "none" : "1px solid #e5e7eb", borderBottom: isMobile ? "1px solid #e5e7eb" : "none" }}>
+              <Typography sx={{ fontSize: isMobile ? 14 : 20, fontWeight: 700, color: "#1a3c34", mb: 0.5 }}>
                 BeautyPOD Price
               </Typography>
-              <Typography sx={{ fontSize: 48, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
+              <Typography sx={{ fontSize: isMobile ? 32 : 48, fontWeight: 800, color: "#111827", lineHeight: 1 }}>
                 ₹{beautyPodPrice}
               </Typography>
               {savings > 0 && (
                 <>
-                  <Typography sx={{ fontSize: 20, color: "#9ca3af", mt: 0.5 }}>
+                  <Typography sx={{ fontSize: isMobile ? 13 : 20, color: "#9ca3af", mt: 0.5 }}>
                     MRP <span style={{ textDecoration: "line-through" }}>₹{retailPrice}</span>
                   </Typography>
                   <Box
@@ -260,8 +275,8 @@ const NewProductCard = ({
                       mt: 0.75,
                     }}
                   >
-                    <Icon icon="mdi:tag" width={18} color="#16a34a" />
-                    <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#16a34a" }}>
+                    <Icon icon="mdi:tag" width={isMobile ? 14 : 18} color="#16a34a" />
+                    <Typography sx={{ fontSize: isMobile ? 12 : 20, fontWeight: 600, color: "#16a34a" }}>
                       You Save ₹{savings} Discount({savingsPercent}%)
                     </Typography>
                   </Box>
@@ -270,8 +285,8 @@ const NewProductCard = ({
             </Box>
 
             {/* Price Comparison */}
-            <Box sx={{ flex: 1, p: 2 }}>
-              <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#6b7280", letterSpacing: 0.5, mb: 1.5 }}>
+            <Box sx={{ flex: 1, p: isMobile ? 1.5 : 2 }}>
+              <Typography sx={{ fontSize: isMobile ? 13 : 18, fontWeight: 700, color: "#6b7280", letterSpacing: 0.5, mb: 1.5 }}>
                 PRICE COMPARISON
               </Typography>
 
@@ -281,11 +296,11 @@ const NewProductCard = ({
                   <Box sx={{ width: 28, height: 28, borderRadius: "50%", bgcolor: "#1a3c34", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Icon icon="mdi:check" width={16} color="#fff" />
                   </Box>
-                  <Typography sx={{ fontSize: 22, fontWeight: 600, color: "#1a3c34" }}>
+                  <Typography sx={{ fontSize: isMobile ? 14 : 22, fontWeight: 600, color: "#1a3c34" }}>
                     BeautyPOD 
                   </Typography>
                 </Box>
-                <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#111827" }}>
+                <Typography sx={{ fontSize: isMobile ? 14 : 22, fontWeight: 700, color: "#111827" }}>
                   ₹{beautyPodPrice}
                 </Typography>
               </Box>
@@ -297,11 +312,11 @@ const NewProductCard = ({
                     <Typography sx={{ fontSize: 26, fontWeight: 800, color: "#111827", fontFamily: "serif", lineHeight: 1 }}>
                       a
                     </Typography>
-                    <Typography sx={{ fontSize: 22, color: "#374151" }}>
+                    <Typography sx={{ fontSize: isMobile ? 14 : 22, color: "#374151" }}>
                       Amazon
                     </Typography>
                   </Box>
-                  <Typography sx={{ fontSize: 22, fontWeight: 600, color: "#374151" }}>
+                  <Typography sx={{ fontSize: isMobile ? 14 : 22, fontWeight: 600, color: "#374151" }}>
                     ₹{priceComparison.amazonPrice}
                   </Typography>
                 </Box>
@@ -314,17 +329,17 @@ const NewProductCard = ({
                     <Typography sx={{ fontSize: 18, fontWeight: 800, color: "#e91e63", fontStyle: "italic", lineHeight: 1 }}>
                       nykaa
                     </Typography>
-                    <Typography sx={{ fontSize: 22, color: "#374151" }}>
+                    <Typography sx={{ fontSize: isMobile ? 14 : 22, color: "#374151" }}>
                       Nykaa
                     </Typography>
                   </Box>
-                  <Typography sx={{ fontSize: 22, fontWeight: 600, color: "#374151" }}>
+                  <Typography sx={{ fontSize: isMobile ? 14 : 22, fontWeight: 600, color: "#374151" }}>
                     ₹{priceComparison.nykaaPrice}
                   </Typography>
                 </Box>
               )}
 
-              <Typography sx={{ fontSize: 16, color: "#9ca3af", fontStyle: "italic", mt: 0.5 }}>
+              <Typography sx={{ fontSize: isMobile ? 11 : 16, color: "#9ca3af", fontStyle: "italic", mt: 0.5 }}>
                 Prices may vary by platform
               </Typography>
             </Box>
@@ -335,11 +350,11 @@ const NewProductCard = ({
         {concerns.length > 0 && (
           <Box
             sx={{
-              mx: 3,
+              mx: isMobile ? 1.5 : 3,
               mb: 2,
               bgcolor: "#f0fdf4",
               borderRadius: "12px",
-              p: 2,
+              p: isMobile ? 1.5 : 2,
               display: "flex",
               alignItems: "center",
               gap: 1.5,
@@ -347,8 +362,8 @@ const NewProductCard = ({
           >
             <Box
               sx={{
-                width: 48,
-                height: 48,
+                width: isMobile ? 36 : 48,
+                height: isMobile ? 36 : 48,
                 borderRadius: "50%",
                 bgcolor: "#dcfce7",
                 display: "flex",
@@ -357,13 +372,13 @@ const NewProductCard = ({
                 flexShrink: 0,
               }}
             >
-              <Icon icon="mdi:leaf" width={26} color="#16a34a" />
+              <Icon icon="mdi:leaf" width={isMobile ? 20 : 26} color="#16a34a" />
             </Box>
             <Box>
-              <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#16a34a" }}>
+              <Typography sx={{ fontSize: isMobile ? 13 : 22, fontWeight: 700, color: "#16a34a" }}>
                 Recommended for your skin concerns
               </Typography>
-              <Typography sx={{ fontSize: 20, color: "#4b5563" }}>
+              <Typography sx={{ fontSize: isMobile ? 12 : 20, color: "#4b5563" }}>
                 {concerns.join(" · ")}
               </Typography>
             </Box>
@@ -371,11 +386,11 @@ const NewProductCard = ({
         )}
 
         {/* WHY BUY FROM BEAUTYPOD */}
-        <Box sx={{ mx: 3, mb: 2, border: "1px solid #e5e7eb", borderRadius: "12px", p: 2 }}>
-          <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#1a3c34", letterSpacing: 0.5, mb: 1.5 }}>
+        <Box sx={{ mx: isMobile ? 1.5 : 3, mb: 2, border: "1px solid #e5e7eb", borderRadius: "12px", p: isMobile ? 1.5 : 2 }}>
+          <Typography sx={{ fontSize: isMobile ? 14 : 24, fontWeight: 700, color: "#1a3c34", letterSpacing: 0.5, mb: 1.5 }}>
             WHY <span style={{ color: "#16a34a" }}>BUY</span> FROM <span style={{ color: "#e54810" }}>BEAUTYPOD</span>?
           </Typography>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+          <Box sx={{ display: "flex", flexWrap: isMobile ? "wrap" : "nowrap", justifyContent: isMobile ? "center" : "space-between", gap: isMobile ? 1 : 0 }}>
             {[
               { icon: "mdi:clock-fast", label: "Instant\nProduct Pickup" },
               { icon: "mdi:brain", label: "AI-Recommended\nfor Your Skin" },
@@ -390,13 +405,13 @@ const NewProductCard = ({
                   flexDirection: "column",
                   alignItems: "center",
                   textAlign: "center",
-                  flex: 1,
-                  borderRight: idx < 4 ? "1px solid #e5e7eb" : "none",
+                  flex: isMobile ? "0 0 30%" : 1,
+                  borderRight: isMobile ? "none" : (idx < 4 ? "1px solid #e5e7eb" : "none"),
                   px: 0.5,
                 }}
               >
-                <Icon icon={item.icon} width={32} color="#1a3c34" />
-                <Typography sx={{ fontSize: 16, color: "#374151", mt: 0.5, whiteSpace: "pre-line", lineHeight: 1.2 }}>
+                <Icon icon={item.icon} width={isMobile ? 24 : 32} color="#1a3c34" />
+                <Typography sx={{ fontSize: isMobile ? 11 : 16, color: "#374151", mt: 0.5, whiteSpace: "pre-line", lineHeight: 1.2 }}>
                   {item.label}
                 </Typography>
               </Box>
@@ -408,7 +423,7 @@ const NewProductCard = ({
         {typeof quantity === "number" && quantity > 0 && quantity <= 5 && (
           <Box
             sx={{
-              mx: 3,
+              mx: isMobile ? 1.5 : 3,
               mb: 1.5,
               bgcolor: "#fff7ed",
               borderRadius: "10px",
@@ -419,15 +434,15 @@ const NewProductCard = ({
               gap: 0.75,
             }}
           >
-            <Icon icon="mdi:fire" width={22} color="#ea580c" />
-            <Typography sx={{ fontSize: 22, fontWeight: 600, color: "#ea580c" }}>
+            <Icon icon="mdi:fire" width={isMobile ? 18 : 22} color="#ea580c" />
+            <Typography sx={{ fontSize: isMobile ? 14 : 22, fontWeight: 600, color: "#ea580c" }}>
               Only {quantity} left in this machine!
             </Typography>
           </Box>
         )}
 
         {/* ADD TO CART Button */}
-        <Box sx={{ mx: 3, mb: 1 }}>
+        <Box sx={{ mx: isMobile ? 1.5 : 3, mb: 1 }}>
           <Button
             variant="contained"
             fullWidth
@@ -445,8 +460,8 @@ const NewProductCard = ({
               bgcolor: "#1a3c34",
               color: "#fff",
               borderRadius: "12px",
-              py: 1.5,
-              fontSize: 26,
+              py: isMobile ? 1 : 1.5,
+              fontSize: isMobile ? 16 : 26,
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: 1,
@@ -454,25 +469,25 @@ const NewProductCard = ({
               "&:disabled": { bgcolor: "#9ca3af", color: "#fff" },
             }}
           >
-            {isAdding ? "Adding..." : `ADD TO CART – ₹${beautyPodPrice}`}
+            {isAdding ? "Adding..." : isMobile && shopifyUrl ? `BUY ON SHOPIFY – ₹${beautyPodPrice}` : `ADD TO CART – ₹${beautyPodPrice}`}
           </Button>
         </Box>
 
         {/* Secure payment */}
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5, mb: 1 }}>
-          <Icon icon="mdi:lock" width={16} color="#9ca3af" />
-          <Typography sx={{ fontSize: 18, color: "#9ca3af" }}>
+          <Icon icon="mdi:lock" width={isMobile ? 14 : 16} color="#9ca3af" />
+          <Typography sx={{ fontSize: isMobile ? 12 : 18, color: "#9ca3af" }}>
             100% Secure Payment
           </Typography>
         </Box>
 
         {/* Product Benefits - Expandable */}
         {productBenefits && (
-          <Box sx={{ mx: 3, mt: 1, borderTop: "1px solid #e5e7eb", pt: 2 }}>
-            <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#111827", mb: 0.5 }}>
+          <Box sx={{ mx: isMobile ? 1.5 : 3, mt: 1, borderTop: "1px solid #e5e7eb", pt: 2 }}>
+            <Typography sx={{ fontSize: isMobile ? 16 : 24, fontWeight: 700, color: "#111827", mb: 0.5 }}>
               {capitalizeWords(name.split(" ").slice(-2).join(" "))}
             </Typography>
-            <Typography sx={{ fontSize: 20, color: "#6b7280", lineHeight: 1.4 }}>
+            <Typography sx={{ fontSize: isMobile ? 13 : 20, color: "#6b7280", lineHeight: 1.4 }}>
               {productBenefits
                 .split(" ")
                 .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())

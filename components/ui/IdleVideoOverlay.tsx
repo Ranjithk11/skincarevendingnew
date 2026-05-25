@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { useRouter, usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { APP_ROUTES } from "@/utils/routes";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
@@ -51,7 +52,11 @@ export default function IdleVideoOverlay({
   // show it again after reIdleMs of inactivity.
   const arm = useCallback(() => {
     clearTimer();
-    timerRef.current = window.setTimeout(() => {
+    timerRef.current = window.setTimeout(async () => {
+      // Clear any stale session before showing idle screen
+      try {
+        await signOut({ redirect: false });
+      } catch {}
       setOpen(true);
     }, reIdleMs);
   }, [clearTimer, reIdleMs]);

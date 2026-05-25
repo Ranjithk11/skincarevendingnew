@@ -2,6 +2,7 @@ import { Badge, Box, Button, IconButton } from "@mui/material";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import React from "react";
 import { APP_ROUTES } from "@/utils/routes";
 
@@ -30,7 +31,10 @@ const TopLogo: React.FC<TopLogoProps> = ({
 }) => {
   const router = useRouter();
 
-  const handleLogoClick = () => {
+  const handleLogoClick = async () => {
+    try {
+      await signOut({ redirect: false });
+    } catch {}
     router.push(APP_ROUTES.HOME);
   };
 

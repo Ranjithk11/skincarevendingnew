@@ -519,6 +519,7 @@ const ProductCard = ({
         isAiRecommended={true}
         skinType="all skin types"
         quantity={quantity}
+        shopifyUrl={shopifyUrl}
       />
 
       {!enabledMask && !shopifyUrl && (

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { APP_ROUTES } from "@/utils/routes";
 
 interface IdleRedirectProps {
@@ -40,7 +41,10 @@ export default function IdleRedirect({
   const startTimer = useCallback(() => {
     clearTimer();
     const ms = getIdleMs();
-    timerRef.current = window.setTimeout(() => {
+    timerRef.current = window.setTimeout(async () => {
+      try {
+        await signOut({ redirect: false });
+      } catch {}
       router.push(APP_ROUTES.HOME);
     }, ms);
   }, [clearTimer, getIdleMs, router]);
