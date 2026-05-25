@@ -3,6 +3,8 @@ import { adminDb } from "@/lib/admin-db";
 import { transformOrderToPosifly, LeafwaterOrder, getPosiflyConfig } from "@/lib/posifly";
 import { localBillToAnalyticsSyncPayload, pushPosSyncToAnalytics, pushSaleToVendingSync } from "@/lib/analytics-sync";
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/posifly/bills - Read-only access to POSIFLY bill data
  * 
