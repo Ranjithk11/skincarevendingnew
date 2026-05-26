@@ -237,7 +237,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
       >
         <SideMenuComponent />
       </Drawer> */}
-      <IdleVideoOverlay reIdleMs={120_000} src="/videos/NewTHub.mp4" />
+      <IdleVideoOverlay reIdleMs={120_000} />
       <IdleRedirect defaultIdleMs={120_000} feedbackIdleMs={180_000} excludePaths={["/", "/admin"]} />
     </Fragment>
   );
