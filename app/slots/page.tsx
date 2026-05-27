@@ -7,7 +7,8 @@ import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import { useCart } from "@/containers/skinanalysis-home/Recommendations/CartContext";
 import CartProduct from "@/containers/skinanalysis-home/Recommendations/cartProduct";
 import SlotsGrid, { SlotsGridSlot } from "@/components/slots/SlotsGrid";
-import SlotAddToCartDialog, { SlotProduct } from "@/components/slots/SlotAddToCartDialog";
+import NewProductCard from "@/containers/skinanalysis-home/Recommendations/NewProductCard";
+import { SlotProduct } from "@/components/slots/SlotAddToCartDialog";
 import ProductPrice from "@/containers/skinanalysis-home/Recommendations/components/ProductPrice";
 import ActionButton from "@/components/ui/ActionButton";
 import PageBackground from "@/components/ui/PageBackground";
@@ -497,10 +498,17 @@ export default function SlotsPage() {
           </Box>
         </Box>
 
-        <SlotAddToCartDialog
+        <NewProductCard
           open={addDialogOpen}
           onClose={() => setAddDialogOpen(false)}
-          product={selectedProduct}
+          id={selectedProduct?.id}
+          name={selectedProduct?.name || ""}
+          imageUrl={selectedProduct?.imageUrl}
+          retailPrice={selectedProduct?.retailPrice || 0}
+          discountValue={selectedProduct?.discountValue}
+          quantity={selectedProduct?.quantityAvailable}
+          slotId={selectedProduct?.slotId}
+          shopifyUrl={undefined}
         />
 
         <CartProduct open={openCart} onClose={() => setOpenCart(false)} />

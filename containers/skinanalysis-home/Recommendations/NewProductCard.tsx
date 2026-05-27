@@ -24,6 +24,7 @@ interface NewProductCardProps {
   skinType?: string;
   quantity?: number;
   shopifyUrl?: string;
+  slotId?: number;
 }
 
 const NewProductCard = ({
@@ -42,6 +43,7 @@ const NewProductCard = ({
   skinType,
   quantity,
   shopifyUrl,
+  slotId,
 }: NewProductCardProps) => {
   const { addItem } = useCart();
   const { speakMessage } = useVoiceMessages();
@@ -101,6 +103,7 @@ const NewProductCard = ({
       originalPrice: retailPrice,
       discountValue,
       quantity: 1,
+      slotId,
     });
     speakMessage("addToCart");
     setShowSuccess(true);
