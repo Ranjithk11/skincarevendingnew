@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
 const SHEET_CSV_URL =
-  "https://docs.google.com/spreadsheets/d/17fXVFiywu4XM8_aR9Fpz0L_csq1S9ZSivUx8cY_hPmw/gviz/tq?tqx=out:csv&gid=2129493116";
+  "https://docs.google.com/spreadsheets/d/17fXVFiywu4XM8_aR9Fpz0L_csq1S9ZSivUx8cY_hPmw/gviz/tq?tqx=out:csv&gid=148173948";
 
 interface PriceRow {
   brand: string;
+  productId: string;
   productName: string;
   leafwaterPrice: number | null;
   amazonPrice: number | null;
@@ -63,19 +64,20 @@ async function fetchSheetData(): Promise<PriceRow[]> {
   const lines = text.split("\n").filter((l) => l.trim().length > 0);
 
   // Skip header row (first line)
+  // Columns: 0=Brand, 1=Product Id's, 2=Product Name, 3=Leafwater Price, 4=Amazon price, 5=Amazon Link, 6=Nykaa price
   const rows: PriceRow[] = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = parseCSVLine(lines[i]);
-    // Columns: 0=Brand, 1=Product Name, 6=Leafwater Price, 7=Amazon Price, 9=Nykaa Price
     const brand = cols[0] || "";
-    const productName = cols[1] || "";
-    if (!brand || !productName) continue;
+    const productId = (cols[1] || "").trim();
+    const productName = cols[2] || "";
+    if (!productName) continue;
 
-    const leafwaterPrice = parseNumber(cols[6] || "");
-    const amazonPrice = parseNumber(cols[7] || "");
-    const nykaaPrice = parseNumber(cols[9] || "");
+    const leafwaterPrice = parseNumber(cols[3] || "");
+    const amazonPrice = parseNumber(cols[4] || "");
+    const nykaaPrice = parseNumber(cols[6] || "");
 
-    rows.push({ brand, productName, leafwaterPrice, amazonPrice, nykaaPrice });
+    rows.push({ brand, productId, productName, leafwaterPrice, amazonPrice, nykaaPrice });
   }
 
   cachedData = rows;
@@ -87,12 +89,13 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const productName = searchParams.get("product") || "";
+    const productId = searchParams.get("productId") || "";
 
     const data = await fetchSheetData();
 
-    // If a product name is provided, find the best match
-    if (productName) {
-      const match = findBestMatch(productName, data);
+    // Only match by exact product ID
+    if (productId) {
+      const match = findByProductId(productId, data);
       return NextResponse.json({ success: true, match });
     }
 
@@ -107,55 +110,17 @@ export async function GET(request: Request) {
   }
 }
 
-function findBestMatch(
-  input: string,
+function findByProductId(
+  productId: string,
   data: PriceRow[]
 ): PriceRow | null {
-  const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9 ]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+  if (!productId) return null;
+  const normalizedId = productId.replace(/^products\//, "").trim();
+  if (!normalizedId) return null;
 
-  const n = normalize(input);
-
-  // 1. Exact match
-  const exact = data.find(
-    (e) =>
-      normalize(e.productName) === n ||
-      normalize(`${e.brand} ${e.productName}`) === n
-  );
-  if (exact) return exact;
-
-  // 2. Includes match
-  const includes = data.find((e) => {
-    const name = normalize(e.productName);
-    const fullName = normalize(`${e.brand} ${e.productName}`);
-    return (
-      n.includes(name) ||
-      name.includes(n) ||
-      n.includes(fullName) ||
-      fullName.includes(n)
-    );
-  });
-  if (includes) return includes;
-
-  // 3. Word overlap scoring
-  const inputWords = n.split(" ").filter((w) => w.length > 2);
-  let bestMatch: PriceRow | null = null;
-  let bestScore = 0;
-
-  for (const entry of data) {
-    const entryName = normalize(`${entry.brand} ${entry.productName}`);
-    const entryWords = entryName.split(" ").filter((w) => w.length > 2);
-    const overlap = inputWords.filter((w) => entryWords.includes(w)).length;
-    const score = overlap / Math.max(inputWords.length, entryWords.length);
-    if (score > bestScore && score >= 0.4) {
-      bestScore = score;
-      bestMatch = entry;
-    }
-  }
-
-  return bestMatch;
+  return data.find((e) => {
+    const sheetId = e.productId.trim();
+    if (!sheetId) return false;
+    return sheetId === normalizedId;
+  }) || null;
 }

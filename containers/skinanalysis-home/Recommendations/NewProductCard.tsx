@@ -62,7 +62,9 @@ const NewProductCard = ({
       setIsAdding(false);
       // Fetch price comparison from Google Sheet via API
       setPriceComparison(null);
-      fetch(`/api/price-comparison?product=${encodeURIComponent(name)}`)
+      const params = new URLSearchParams({ product: name });
+      if (id) params.set("productId", String(id).replace(/^products\//, ""));
+      fetch(`/api/price-comparison?${params.toString()}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success && data.match) {
@@ -74,7 +76,7 @@ const NewProductCard = ({
         })
         .catch(() => {});
     }
-  }, [open, name]);
+  }, [open, name, id]);
 
   const discountedPrice = useMemo(() => {
     if (!discountValue || isNaN(discountValue)) return retailPrice;
