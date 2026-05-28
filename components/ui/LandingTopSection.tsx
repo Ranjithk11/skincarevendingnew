@@ -71,7 +71,7 @@ export default function LandingTopSection({
             borderRadius: 1,
           }}
         >
-          Ready to transform your skin with <span style={{ color: "rgb(202, 250, 12)" }}>AI</span>? Scan Now.
+          Ready to transform your skin with AI? Scan Now.
         </Typography>
         <Typography
           sx={{
