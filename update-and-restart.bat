@@ -1,12 +1,12 @@
 @echo off
-title Vending Machine - Update & Restart
+title Vending Machine Update
 color 0A
 
 :: Use the folder where this .bat file is located
 cd /d "%~dp0"
 
 echo ============================================
-echo   VENDING MACHINE - UPDATE ^& RESTART
+echo   VENDING MACHINE - UPDATE
 echo ============================================
 echo.
 echo Project folder: %cd%
@@ -17,16 +17,21 @@ echo [1/5] Stopping running app...
 taskkill /f /im node.exe >nul 2>&1
 timeout /t 2 /nobreak >nul
 
-:: Step 2: Pull latest code
-echo [2/5] Pulling latest code from git...
-git pull origin main
+:: Step 2: Save local changes then force-update to latest code
+echo [2/5] Saving local changes...
+git add -A
+git commit -m "local changes before update %date% %time%" --allow-empty
+echo    Fetching latest code from git...
+git fetch origin main
 if %errorlevel% neq 0 (
     echo.
-    echo ERROR: Git pull failed! Check your internet or git config.
+    echo ERROR: Git fetch failed! Check your internet or git config.
     echo.
     pause
     exit /b 1
 )
+git reset --hard origin/main
+echo    Code updated successfully!
 
 :: Step 3: Install any new dependencies
 echo [3/5] Installing dependencies...
@@ -43,11 +48,12 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Step 5: Start the app
+:: Step 5: Start the app and open browser
 echo [5/5] Starting the app...
 echo.
 echo ============================================
-echo   UPDATE COMPLETE - App is starting...
+echo   UPDATE COMPLETE - Opening browser...
 echo ============================================
 echo.
+start "" http://localhost:3000
 call npm start
