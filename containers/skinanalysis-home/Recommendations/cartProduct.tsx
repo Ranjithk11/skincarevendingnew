@@ -554,7 +554,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         <Typography sx={{ fontWeight: 700, fontSize: 24 }}>Rs.{Math.round(total)}/-</Typography>
                                     </Box>
                                 </Box>
-{/* 
+
                                 <Box sx={{ mt: 2, bgcolor: "#fff", borderRadius: 2, p: 2, border: "2px solid #316D52" }}>
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
                                         <Box sx={{ color: "#316D52", display: "flex", alignItems: "center" }}>
@@ -617,7 +617,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             <CloseIcon sx={{ fontSize: 20 }} />
                                         </IconButton>
                                     </Box>
-                                )} */}
+                                )}
                             </>
                         ) : items.length === 0 ? (
                             <Box sx={{ py: 2, textAlign: "center" }}>

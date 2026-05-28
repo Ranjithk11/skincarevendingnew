@@ -15,7 +15,11 @@ echo.
 :: Step 1: Kill any running node/next processes
 echo [1/5] Stopping running app...
 taskkill /f /im node.exe >nul 2>&1
-timeout /t 2 /nobreak >nul
+taskkill /f /im npm.cmd >nul 2>&1
+timeout /t 5 /nobreak >nul
+:: Remove lock-prone log files
+del /f /q service-out.log >nul 2>&1
+del /f /q service-err.log >nul 2>&1
 
 :: Step 2: Save local changes then force-update to latest code
 echo [2/5] Saving local changes...

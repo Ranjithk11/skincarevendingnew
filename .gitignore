@@ -97,3 +97,5 @@ next-env.d.ts
 
 # Log files
 logs/
+service-out.log
+service-err.log
