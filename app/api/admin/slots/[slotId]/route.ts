@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/admin-db";
 
+export const dynamic = "force-dynamic";
+
 // GET slot info by ID
 export async function GET(
   request: NextRequest,

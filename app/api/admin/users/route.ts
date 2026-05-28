@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/admin-db';
 
+export const dynamic = "force-dynamic";
+
 // GET - Get all users or user count
 export async function GET(request: NextRequest) {
   try {

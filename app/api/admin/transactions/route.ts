@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/admin-db';
 
+export const dynamic = "force-dynamic";
+
 // POST - Create a transaction record
 export async function POST(request: NextRequest) {
   try {

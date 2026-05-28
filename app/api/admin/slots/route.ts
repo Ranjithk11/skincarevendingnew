@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 // Check if we're running on Vercel (serverless) or locally
 const IS_VERCEL = process.env.VERCEL === "1";
 

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/admin-db";
 
+export const dynamic = "force-dynamic";
+
 // POST to sync product quantities
 export async function POST() {
   try {

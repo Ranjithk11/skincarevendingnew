@@ -41,8 +41,9 @@ echo    Code updated successfully!
 echo [3/5] Installing dependencies...
 call npm install
 
-:: Step 4: Build the app
+:: Step 4: Clean old build and rebuild
 echo [4/5] Building the app...
+if exist .next rmdir /s /q .next
 call npm run build
 if %errorlevel% neq 0 (
     echo.
