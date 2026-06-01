@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Typography, TextField } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { MuiTelInput, matchIsValidTel } from "mui-tel-input";
 import PageBackground from "@/components/ui/PageBackground";
 import { VirtualKeyboard } from "@/components/ui";
@@ -25,6 +25,54 @@ interface Slide1Props {
   handleNext: () => void;
   currentSlide: number;
   validationError?: string;
+}
+
+// Phone pattern validation helper function
+function validatePhonePattern(digits: string): string | null {
+  if (!digits) {
+    return "Please enter a phone number";
+  }
+
+  // Only validate complex patterns if it looks like a complete entry (e.g., 7+ digits)
+  if (digits.length >= 7) {
+    // All identical digits (e.g., 9999999)
+    if (/^(\d)\1+$/.test(digits)) {
+      return "Phone number cannot contain all identical digits";
+    }
+  }
+
+  if (digits.length >= 10) {
+    // Alternating patterns (e.g., 1212121212)
+    if (/^(\d\d)\1{4,}$/.test(digits)) {
+      return "Phone number pattern is invalid";
+    }
+
+    // Sequential patterns
+    const invalidPatterns = [
+      "0123456789",
+      "1234567890",
+      "9876543210",
+      "0987654321",
+    ];
+    if (invalidPatterns.some(pattern => digits.includes(pattern))) {
+      return "Sequential phone numbers are not allowed";
+    }
+
+    // Heavy repetition: Check if any single digit appears 8 or more times
+    const digitCounts: Record<string, number> = {};
+    let maxCount = 0;
+    for (const char of digits) {
+      digitCounts[char] = (digitCounts[char] || 0) + 1;
+      if (digitCounts[char] > maxCount) {
+        maxCount = digitCounts[char];
+      }
+    }
+    if (maxCount >= 8) {
+      return "Phone number contains too many repeated digits";
+    }
+  }
+
+  return null;
 }
 
 export default function Slide1({
@@ -109,7 +157,7 @@ export default function Slide1({
               onClick={() => {
                 setActiveField("name");
                 setIsNumeric(false);
-                setCursorPosition(null); // Set cursor to end when clicking
+                setCursorPosition(null);
               }}
               sx={{
                 display: "flex",
@@ -161,9 +209,6 @@ export default function Slide1({
               key={country}
               value={phone}
               onChange={(value, info) => {
-                // Use country-specific validation
-                // Different countries have different phone number lengths
-                // India: 10 digits, US: 10 digits, UK: 10-11 digits, etc.
                 const nationalNumber = info.nationalNumber || '';
                 const countryCode = info.countryCallingCode || '';
                 const iso2 = (info as any)?.countryCode;
@@ -179,20 +224,15 @@ export default function Slide1({
                   setCallingCode(countryCode);
                 }
 
-                // If the user just switched countries and hasn't entered a national number yet,
-                // force the value to the selected calling code to avoid showing the previous country flag/calling code.
                 if (didCountryChange) {
                   if (!nationalNumber) {
                     setPhone(countryCode ? `+${countryCode}` : value);
                     return;
                   }
-
-                  // Country changed with existing digits; always accept the new formatted value.
                   setPhone(value);
                   return;
                 }
                 
-                // Define max lengths per country code
                 const maxLengthByCountry: { [key: string]: number } = {
                   '91': 10,  // India
                   '1': 10,   // US/Canada
@@ -201,11 +241,13 @@ export default function Slide1({
                   '86': 11,  // China
                 };
                 
-                const maxLength = maxLengthByCountry[countryCode] || 15; // Default to 15 for unknown countries
+                const maxLength = maxLengthByCountry[countryCode] || 15;
                 
                 if (nationalNumber.length <= maxLength) {
                   setPhone(value);
                 }
+                // Reset custom error dynamically on type
+                setPhoneError("");
               }}
               defaultCountry={country as any}
               focusOnSelectCountry
@@ -256,7 +298,7 @@ export default function Slide1({
               onClick={() => {
                 setActiveField("email");
                 setIsNumeric(false);
-                setCursorPosition(null); // Set cursor to end when clicking
+                setCursorPosition(null);
               }}
               sx={{
                 display: "flex",
@@ -325,8 +367,23 @@ export default function Slide1({
             marginTop: "auto",
           }}
           onClick={() => {
+            // 1. Basic MuiTelInput framework check
             if (!matchIsValidTel(phone)) {
               setPhoneError("Please enter a valid phone number");
+              return;
+            }
+
+            // 2. Extract national digits by discarding the country code prefix
+            // phone looks like "+91 99999 99999" -> we remove +91 to test just the rest
+            const rawDigits = phone.replace(/\D/g, ""); // e.g., "919999999999"
+            const nationalDigits = rawDigits.startsWith(callingCode) 
+              ? rawDigits.slice(callingCode.length) 
+              : rawDigits;
+
+            // 3. Complex pattern check
+            const patternError = validatePhonePattern(nationalDigits);
+            if (patternError) {
+              setPhoneError(patternError);
               return;
             }
 
