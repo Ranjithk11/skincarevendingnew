@@ -41,6 +41,12 @@ if %errorlevel% neq 0 (
 git reset --hard origin/main
 echo     Code updated successfully!
 
+:: Send Slack notification (if SLACK_WEBHOOK_URL environment variable is set)
+if defined SLACK_WEBHOOK_URL (
+    echo     Sending Slack notification...
+    powershell -Command "& { $body = @{ text = '✅ Vending machine code updated successfully on %COMPUTERNAME%' }; Invoke-RestMethod -Uri '%SLACK_WEBHOOK_URL%' -Method Post -Body ($body | ConvertTo-Json) }"
+)
+
 :: Step 3: Install any new dependencies
 echo [3/5] Installing dependencies...
 call npm install
