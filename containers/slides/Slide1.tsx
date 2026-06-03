@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Box, Typography } from "@mui/material";
+import { useState, useRef, useLayoutEffect } from "react";
+import { Box, Typography, IconButton, InputAdornment } from "@mui/material";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { MuiTelInput, matchIsValidTel } from "mui-tel-input";
 import PageBackground from "@/components/ui/PageBackground";
 import { VirtualKeyboard } from "@/components/ui";
@@ -75,6 +77,16 @@ function validatePhonePattern(digits: string): string | null {
   return null;
 }
 
+function getNationalDisplayPart(phone: string, callingCode: string): string {
+  const code = callingCode.replace(/\D/g, "");
+  if (!code) return phone.replace(/^\+\d+\s*/, "");
+  return phone.replace(new RegExp(`^\\+${code}\\s*`), "");
+}
+
+function maskPhoneDigits(text: string): string {
+  return text.replace(/\d/g, "X");
+}
+
 export default function Slide1({
   name,
   phone,
@@ -96,6 +108,26 @@ export default function Slide1({
   validationError,
 }: Slide1Props) {
   const [phoneError, setPhoneError] = useState<string>("");
+  const [showPhone, setShowPhone] = useState(false);
+  const phoneFieldRef = useRef<HTMLDivElement>(null);
+  const [maskOverlay, setMaskOverlay] = useState({ left: 0, top: 0, height: 0 });
+
+  useLayoutEffect(() => {
+    if (showPhone) return;
+    const container = phoneFieldRef.current;
+    const input = container?.querySelector<HTMLInputElement>(".MuiOutlinedInput-input");
+    if (!container || !input) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const inputRect = input.getBoundingClientRect();
+    setMaskOverlay({
+      left: inputRect.left - containerRect.left,
+      top: inputRect.top - containerRect.top,
+      height: inputRect.height,
+    });
+  }, [showPhone, phone, country, callingCode]);
+
+  const maskedNational = maskPhoneDigits(getNationalDisplayPart(phone, callingCode));
 
   return (
     <Box
@@ -205,9 +237,30 @@ export default function Slide1({
 
             {/* Phone Number Field */}
             <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Phone Number</Typography>
+            <Box ref={phoneFieldRef} sx={{ position: "relative", width: "100%" }}>
             <MuiTelInput
               key={country}
+              fullWidth
               value={phone}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      aria-label={showPhone ? "Hide phone number" : "Show phone number"}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setShowPhone((prev) => !prev)}
+                      edge="end"
+                      sx={{ color: "#6b7280", p: 1 }}
+                    >
+                      {showPhone ? (
+                        <VisibilityOffOutlinedIcon sx={{ fontSize: 32 }} />
+                      ) : (
+                        <VisibilityOutlinedIcon sx={{ fontSize: 32 }} />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
               onChange={(value, info) => {
                 const nationalNumber = info.nationalNumber || '';
                 const countryCode = info.countryCallingCode || '';
@@ -257,7 +310,9 @@ export default function Slide1({
                 setIsNumeric(true);
               }}
               sx={{
+                width: "100%",
                 "& .MuiOutlinedInput-root": {
+                  width: "100%",
                   borderRadius: 2,
                   bgcolor: "white",
                   minHeight: "80px",
@@ -276,6 +331,11 @@ export default function Slide1({
                 "& .MuiOutlinedInput-input": {
                   py: "20px",
                   fontSize: "28px",
+                  ...(!showPhone && {
+                    color: "transparent",
+                    WebkitTextFillColor: "transparent",
+                    caretColor: "#2d5a3d",
+                  }),
                 },
                 "& .MuiTelInput-Flag": {
                   width: "36px",
@@ -291,6 +351,30 @@ export default function Slide1({
                 },
               }}
             />
+            {!showPhone && maskedNational && (
+              <Box
+                aria-hidden
+                sx={{
+                  position: "absolute",
+                  left: maskOverlay.left,
+                  top: maskOverlay.top,
+                  height: maskOverlay.height,
+                  display: "flex",
+                  alignItems: "center",
+                  pointerEvents: "none",
+                  zIndex: 2,
+                  fontSize: "28px",
+                  color: "#1a1a1a",
+                  lineHeight: 1,
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  maxWidth: `calc(100% - ${maskOverlay.left}px - 72px)`,
+                }}
+              >
+                {maskedNational}
+              </Box>
+            )}
+            </Box>
 
             {/* Email Field */}
             <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Email (Optional) </Typography>
