@@ -18,6 +18,18 @@ if (!fs.existsSync(DB_DIR)) {
 const db = new Database(DB_FILE);
 db.pragma('journal_mode = WAL'); // Better performance for concurrent reads
 
+function dropRelationIfExists(name: string) {
+  const row = db
+    .prepare(`SELECT type FROM sqlite_master WHERE name = ?`)
+    .get(name) as { type: string } | undefined;
+  if (!row) return;
+  if (row.type === "view") {
+    db.exec(`DROP VIEW IF EXISTS "${name}"`);
+  } else {
+    db.exec(`DROP TABLE IF EXISTS "${name}"`);
+  }
+}
+
 // Initialize database tables
 function initDb() {
   // Orders table - main sales records
@@ -325,14 +337,9 @@ function initDb() {
   db.exec(`DROP VIEW IF EXISTS item_details_view`);
   db.exec(`DROP VIEW IF EXISTS payment_details_view`);
   db.exec(`DROP VIEW IF EXISTS charges_details_view`);
-  db.exec(`DROP VIEW IF EXISTS bill_details`);
-  db.exec(`DROP VIEW IF EXISTS item_details`);
-  db.exec(`DROP VIEW IF EXISTS payment_details`);
-  db.exec(`DROP VIEW IF EXISTS charges_details`);
-  db.exec(`DROP TABLE IF EXISTS charges_details`);
-  db.exec(`DROP TABLE IF EXISTS payment_details`);
-  db.exec(`DROP TABLE IF EXISTS item_details`);
-  db.exec(`DROP TABLE IF EXISTS bill_details`);
+  for (const relation of ["bill_details", "item_details", "payment_details", "charges_details"]) {
+    dropRelationIfExists(relation);
+  }
   db.exec(`PRAGMA foreign_keys = ON`);
 
   // View: bill_details (spec C.2.1)

@@ -32,6 +32,10 @@ export default function AdminDashboardPage() {
   const [dispenseStatus, setDispenseStatus] = useState<boolean | null>(null);
   const [dispenseLoading, setDispenseLoading] = useState(false);
 
+  const [trayDoorModalOpen, setTrayDoorModalOpen] = useState(false);
+  const [trayDoorStatus, setTrayDoorStatus] = useState<boolean | null>(null);
+  const [trayDoorLoading, setTrayDoorLoading] = useState(false);
+
   // Edit product modal state
   const [editProductModalOpen, setEditProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<{
@@ -259,6 +263,22 @@ export default function AdminDashboardPage() {
       setDispenseStatus(false);
     } finally {
       setDispenseLoading(false);
+    }
+  };
+
+  const handleTrayDoorClick = async () => {
+    setTrayDoorModalOpen(true);
+    setTrayDoorLoading(true);
+    setTrayDoorStatus(null);
+
+    try {
+      const result = await motorControl({ command: "REOPEN" }).unwrap();
+      setTrayDoorStatus(result.success);
+    } catch (error) {
+      console.error("Tray door error:", error);
+      setTrayDoorStatus(false);
+    } finally {
+      setTrayDoorLoading(false);
     }
   };
 
@@ -548,6 +568,7 @@ export default function AdminDashboardPage() {
         onDashboardClick={handleDashboardClick}
         onHomeMachineClick={handleHomeMachineClick}
         onDispenseClick={handleDispenseClick}
+        onTrayDoorClick={handleTrayDoorClick}
         onVoiceClick={handleVoiceClick}
         onTestClick={handleTestClick}
         onHideClick={handleHideClick}
@@ -603,6 +624,18 @@ export default function AdminDashboardPage() {
         successMessage="Dispense command sent successfully"
         errorMessage="Error Sending dispense command"
         successSubMessage="Connected to machine"
+        errorSubMessage="Failed to connect to the machine"
+      />
+
+      <MachineStatusModal
+        open={trayDoorModalOpen}
+        onClose={() => setTrayDoorModalOpen(false)}
+        title="Tray Door Status"
+        isSuccess={trayDoorStatus}
+        isLoading={trayDoorLoading}
+        successMessage="Tray door reopened successfully"
+        errorMessage="Failed to reopen tray door"
+        successSubMessage="The tray door has been reopened"
         errorSubMessage="Failed to connect to the machine"
       />
 

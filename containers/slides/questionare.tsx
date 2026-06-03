@@ -15,6 +15,10 @@ import { useAppDispatch } from "@/redux/store/store";
 import { setSkinType } from "@/redux/reducers/analysisSlice";
 import { clearCart } from "@/redux/reducers/cartSlice";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
+import {
+  validatePhone,
+  wouldNationalDigitsBeTooLong,
+} from "@/utils/phoneValidation";
 
 // Email validation - same as Skincare project
 const isValidateEmail = (input: string): boolean | string => {
@@ -23,21 +27,6 @@ const isValidateEmail = (input: string): boolean | string => {
     return true;
   }
   return "Please enter a valid email address";
-};
-
-// Phone validation - validates phone numbers from MuiTelInput (includes country code)
-const isValidatePhone = (input: string): boolean | string => {
-  // MuiTelInput format: "+91 98765 43210" or "+1 555 123 4567"
-  // Remove spaces for validation
-  const cleanPhone = input.replace(/\s/g, '');
-  // Extract digits only (without the +)
-  const digitsOnly = cleanPhone.replace(/\D/g, '');
-  // Must have at least 10 digits (country code + phone number)
-  // e.g., +91 9876543210 = 12 digits, +1 5551234567 = 11 digits
-  if (digitsOnly.length >= 10) {
-    return true;
-  }
-  return "Please enter a valid phone number";
 };
 
 const skinTypeOptions = [
@@ -195,19 +184,10 @@ export default function Questionnaire() {
         if (!/^[0-9]$/.test(key)) return;
 
         const code = String(callingCode || "91").replace(/\D/g, "") || "91";
+        if (wouldNationalDigitsBeTooLong(phone, country, code, key)) return;
+
         const digitsOnly = String(phone).replace(/\D/g, "");
         const nationalDigits = digitsOnly.slice(code.length);
-
-        // Determine max national number length based on calling code
-        const maxLengthByCountry: { [key: string]: number } = {
-          "91": 10,
-          "1": 10,
-          "44": 11,
-          "61": 9,
-          "86": 11,
-        };
-        const maxNationalLength = maxLengthByCountry[code] || 15;
-        if (nationalDigits.length >= maxNationalLength) return;
 
         // Keep an explicit separator after calling code so partial values don't become ambiguous
         // (e.g. '+1 9' instead of '+19'), which can cause MuiTelInput to switch countries.
@@ -222,7 +202,7 @@ export default function Questionnaire() {
         if (isShift && !isNumeric) setIsShift(false);
       }
     }
-  }, [activeField, name, phone, email, isShift, isNumeric, cursorPosition, callingCode]);
+  }, [activeField, name, phone, email, isShift, isNumeric, cursorPosition, callingCode, country]);
 
   // Physical keyboard support
   useEffect(() => {
@@ -280,10 +260,9 @@ export default function Questionnaire() {
         setTimeout(() => setValidationError(""), 3000);
         return;
       }
-      // Phone validation using isValidatePhone
-      const phoneValidation = isValidatePhone(phone);
-      if (phoneValidation !== true) {
-        setValidationError(phoneValidation as string);
+      const phoneValidation = validatePhone(phone, country, callingCode);
+      if (phoneValidation) {
+        setValidationError(phoneValidation);
         speakMessage('invalidInput');
         setTimeout(() => setValidationError(""), 3000);
         return;
@@ -323,9 +302,9 @@ export default function Questionnaire() {
       return;
     }
 
-    const phoneValidation = isValidatePhone(phone);
-    if (phoneValidation !== true) {
-      setValidationError(phoneValidation as string);
+    const phoneValidation = validatePhone(phone, country, callingCode);
+    if (phoneValidation) {
+      setValidationError(phoneValidation);
       setTimeout(() => setValidationError(""), 3000);
       return;
     }

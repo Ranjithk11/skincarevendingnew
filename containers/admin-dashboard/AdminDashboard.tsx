@@ -31,6 +31,7 @@ interface AdminDashboardProps {
   onDashboardClick?: () => void;
   onHomeMachineClick?: () => void;
   onDispenseClick?: () => void;
+  onTrayDoorClick?: () => void;
   onVoiceClick?: () => void;
   onTestClick?: () => void;
   onHideClick?: () => void;
@@ -54,6 +55,7 @@ export default function AdminDashboard({
   onDashboardClick,
   onHomeMachineClick,
   onDispenseClick,
+  onTrayDoorClick,
   onVoiceClick,
   onTestClick,
   onHideClick,
@@ -147,6 +149,7 @@ export default function AdminDashboard({
           onDashboardClick={onDashboardClick}
           onHomeMachineClick={onHomeMachineClick}
           onDispenseClick={onDispenseClick}
+          onTrayDoorClick={onTrayDoorClick}
           onVoiceClick={onVoiceClick}
           onTestClick={onTestClick}
           onHideClick={onHideClick}

@@ -4,9 +4,14 @@ import { useState, useRef, useLayoutEffect } from "react";
 import { Box, Typography, IconButton, InputAdornment } from "@mui/material";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import { MuiTelInput, matchIsValidTel } from "mui-tel-input";
+import { MuiTelInput } from "mui-tel-input";
 import PageBackground from "@/components/ui/PageBackground";
 import { VirtualKeyboard } from "@/components/ui";
+import {
+  maskPhoneDigits,
+  shouldAcceptPhoneValue,
+  validatePhone,
+} from "@/utils/phoneValidation";
 
 interface Slide1Props {
   name: string;
@@ -27,64 +32,6 @@ interface Slide1Props {
   handleNext: () => void;
   currentSlide: number;
   validationError?: string;
-}
-
-// Phone pattern validation helper function
-function validatePhonePattern(digits: string): string | null {
-  if (!digits) {
-    return "Please enter a phone number";
-  }
-
-  // Only validate complex patterns if it looks like a complete entry (e.g., 7+ digits)
-  if (digits.length >= 7) {
-    // All identical digits (e.g., 9999999)
-    if (/^(\d)\1+$/.test(digits)) {
-      return "Phone number cannot contain all identical digits";
-    }
-  }
-
-  if (digits.length >= 10) {
-    // Alternating patterns (e.g., 1212121212)
-    if (/^(\d\d)\1{4,}$/.test(digits)) {
-      return "Phone number pattern is invalid";
-    }
-
-    // Sequential patterns
-    const invalidPatterns = [
-      "0123456789",
-      "1234567890",
-      "9876543210",
-      "0987654321",
-    ];
-    if (invalidPatterns.some(pattern => digits.includes(pattern))) {
-      return "Sequential phone numbers are not allowed";
-    }
-
-    // Heavy repetition: Check if any single digit appears 8 or more times
-    const digitCounts: Record<string, number> = {};
-    let maxCount = 0;
-    for (const char of digits) {
-      digitCounts[char] = (digitCounts[char] || 0) + 1;
-      if (digitCounts[char] > maxCount) {
-        maxCount = digitCounts[char];
-      }
-    }
-    if (maxCount >= 8) {
-      return "Phone number contains too many repeated digits";
-    }
-  }
-
-  return null;
-}
-
-function getNationalDisplayPart(phone: string, callingCode: string): string {
-  const code = callingCode.replace(/\D/g, "");
-  if (!code) return phone.replace(/^\+\d+\s*/, "");
-  return phone.replace(new RegExp(`^\\+${code}\\s*`), "");
-}
-
-function maskPhoneDigits(text: string): string {
-  return text.replace(/\d/g, "X");
 }
 
 export default function Slide1({
@@ -111,6 +58,7 @@ export default function Slide1({
   const [showPhone, setShowPhone] = useState(false);
   const phoneFieldRef = useRef<HTMLDivElement>(null);
   const [maskOverlay, setMaskOverlay] = useState({ left: 0, top: 0, height: 0 });
+  const [maskedOverlayText, setMaskedOverlayText] = useState("");
 
   useLayoutEffect(() => {
     if (showPhone) return;
@@ -125,9 +73,17 @@ export default function Slide1({
       top: inputRect.top - containerRect.top,
       height: inputRect.height,
     });
-  }, [showPhone, phone, country, callingCode]);
 
-  const maskedNational = maskPhoneDigits(getNationalDisplayPart(phone, callingCode));
+    // Match overlay to formatted input text (spaces included) so caret aligns
+    setMaskedOverlayText(maskPhoneDigits(input.value));
+
+    const end = input.value.length;
+    try {
+      input.setSelectionRange(end, end);
+    } catch {
+      // ignore if input not focusable
+    }
+  }, [showPhone, phone, country, callingCode, activeField]);
 
   return (
     <Box
@@ -282,32 +238,36 @@ export default function Slide1({
                     setPhone(countryCode ? `+${countryCode}` : value);
                     return;
                   }
-                  setPhone(value);
+                  if (shouldAcceptPhoneValue(nationalNumber, nextCountry)) {
+                    setPhone(value);
+                  }
                   return;
                 }
-                
-                const maxLengthByCountry: { [key: string]: number } = {
-                  '91': 10,  // India
-                  '1': 10,   // US/Canada
-                  '44': 11,  // UK
-                  '61': 9,   // Australia
-                  '86': 11,  // China
-                };
-                
-                const maxLength = maxLengthByCountry[countryCode] || 15;
-                
-                if (nationalNumber.length <= maxLength) {
-                  setPhone(value);
+
+                if (!shouldAcceptPhoneValue(nationalNumber, nextCountry)) {
+                  return;
                 }
-                // Reset custom error dynamically on type
+
+                setPhone(value);
                 setPhoneError("");
               }}
               defaultCountry={country as any}
               focusOnSelectCountry
               forceCallingCode
-              onFocus={() => {
+              onFocus={(e) => {
                 setActiveField("phone");
                 setIsNumeric(true);
+                if (!showPhone) {
+                  const input = e.target as HTMLInputElement;
+                  const end = input.value.length;
+                  requestAnimationFrame(() => {
+                    try {
+                      input.setSelectionRange(end, end);
+                    } catch {
+                      /* ignore */
+                    }
+                  });
+                }
               }}
               sx={{
                 width: "100%",
@@ -334,7 +294,7 @@ export default function Slide1({
                   ...(!showPhone && {
                     color: "transparent",
                     WebkitTextFillColor: "transparent",
-                    caretColor: "#2d5a3d",
+                    caretColor: "transparent",
                   }),
                 },
                 "& .MuiTelInput-Flag": {
@@ -351,7 +311,7 @@ export default function Slide1({
                 },
               }}
             />
-            {!showPhone && maskedNational && (
+            {!showPhone && maskedOverlayText && (
               <Box
                 aria-hidden
                 sx={{
@@ -371,7 +331,25 @@ export default function Slide1({
                   maxWidth: `calc(100% - ${maskOverlay.left}px - 72px)`,
                 }}
               >
-                {maskedNational}
+                <Box component="span">{maskedOverlayText}</Box>
+                {activeField === "phone" && (
+                  <Box
+                    component="span"
+                    sx={{
+                      display: "inline-block",
+                      width: "2px",
+                      height: "28px",
+                      bgcolor: "#2d5a3d",
+                      ml: 0.25,
+                      flexShrink: 0,
+                      animation: "phoneMaskBlink 1s step-end infinite",
+                      "@keyframes phoneMaskBlink": {
+                        "0%, 100%": { opacity: 1 },
+                        "50%": { opacity: 0 },
+                      },
+                    }}
+                  />
+                )}
               </Box>
             )}
             </Box>
@@ -451,23 +429,9 @@ export default function Slide1({
             marginTop: "auto",
           }}
           onClick={() => {
-            // 1. Basic MuiTelInput framework check
-            if (!matchIsValidTel(phone)) {
-              setPhoneError("Please enter a valid phone number");
-              return;
-            }
-
-            // 2. Extract national digits by discarding the country code prefix
-            // phone looks like "+91 99999 99999" -> we remove +91 to test just the rest
-            const rawDigits = phone.replace(/\D/g, ""); // e.g., "919999999999"
-            const nationalDigits = rawDigits.startsWith(callingCode) 
-              ? rawDigits.slice(callingCode.length) 
-              : rawDigits;
-
-            // 3. Complex pattern check
-            const patternError = validatePhonePattern(nationalDigits);
-            if (patternError) {
-              setPhoneError(patternError);
+            const error = validatePhone(phone, country, callingCode);
+            if (error) {
+              setPhoneError(error);
               return;
             }
 
