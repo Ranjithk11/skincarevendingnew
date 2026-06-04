@@ -1,13 +1,19 @@
 "use client";
 import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = {
+export interface AnalysisState {
+  questions: unknown | null;
+  visitCount: number | null;
+  skinType: string;
+}
+
+const initialState: AnalysisState = {
   questions: null,
   visitCount: null,
   skinType: "NORMAL_SKIN",
 };
 
-export const analysisSlice: any = createSlice({
+export const analysisSlice = createSlice({
   name: "analysisSlice",
   initialState,
   reducers: {
