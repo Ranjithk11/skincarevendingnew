@@ -1,5 +1,6 @@
 "use client";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { MAX_CART_QUANTITY_PER_PRODUCT } from "@/utils/cartQuantityLimits";
 
 export type CartItem = {
   id?: string;
@@ -30,14 +31,21 @@ export const cartSlice = createSlice({
       const index = state.items.findIndex((p) => (item.id ? p.id === item.id : p.name === item.name));
       
       if (index === -1) {
-        state.items.push({ ...item, quantity: qty });
+        state.items.push({
+          ...item,
+          quantity: Math.min(MAX_CART_QUANTITY_PER_PRODUCT, qty),
+        });
       } else {
-        state.items[index].quantity += qty;
+        state.items[index].quantity = Math.min(
+          MAX_CART_QUANTITY_PER_PRODUCT,
+          state.items[index].quantity + qty
+        );
       }
     },
     setCartItemQuantity: (state, action: PayloadAction<{ key: { id?: string; name: string }; quantity: number }>) => {
       const { key, quantity } = action.payload;
-      const nextQty = Math.max(0, Math.floor(Number.isFinite(quantity) ? quantity : 0));
+      const rawQty = Math.max(0, Math.floor(Number.isFinite(quantity) ? quantity : 0));
+      const nextQty = Math.min(MAX_CART_QUANTITY_PER_PRODUCT, rawQty);
       const index = state.items.findIndex((p) => (key.id ? p.id === key.id : p.name === key.name));
       
       if (index === -1) return;

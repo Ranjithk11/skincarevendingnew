@@ -23,6 +23,11 @@ import { APP_ROUTES } from "@/utils/routes";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { useSession } from "next-auth/react";
 import PaymentReporter from "@/app/feedback/components/PaymentReporter";
+import {
+    clampCartQuantity,
+    fetchMachineStockForProduct,
+    getCartQuantityLimitMessage,
+} from "@/utils/cartQuantityLimits";
 
 type CartProductProps = {
     open: boolean;
@@ -55,6 +60,10 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [paymentPayload, setPaymentPayload] = useState<any>(null);
     const [machineLocation, setMachineLocation] = useState<string>("LeafWater Vending Machine");
     const [machineName, setMachineName] = useState<string>("Vending Machine");
+    const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
+    const [limitNotice, setLimitNotice] = useState({ open: false, message: "" });
+
+    const cartItemKey = (item: CartItem) => item.id || item.name;
 
     // Fetch machine location and name from database
     useEffect(() => {
@@ -76,6 +85,79 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     useEffect(() => {
         router.prefetch(APP_ROUTES.FEEDBACK);
     }, [router]);
+
+    useEffect(() => {
+        if (!open || items.length === 0) {
+            setStockByProduct({});
+            return;
+        }
+
+        let cancelled = false;
+
+        (async () => {
+            const nextStock: Record<string, number> = {};
+            await Promise.all(
+                items.map(async (item) => {
+                    const key = cartItemKey(item);
+                    nextStock[key] = await fetchMachineStockForProduct(item.id, item.name);
+                })
+            );
+
+            if (cancelled) return;
+
+            setStockByProduct(nextStock);
+
+            items.forEach((item) => {
+                const key = { id: item.id, name: item.name };
+                const machineStock = nextStock[cartItemKey(item)];
+                const { quantity, wasLimited, maxAllowed } = clampCartQuantity(
+                    item.quantity || 1,
+                    machineStock
+                );
+                if (wasLimited && quantity !== (item.quantity || 1)) {
+                    setQuantity(key, quantity);
+                    setLimitNotice({
+                        open: true,
+                        message: getCartQuantityLimitMessage(maxAllowed, machineStock),
+                    });
+                }
+            });
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [open, items, setQuantity]);
+
+    const applyQuantityChange = useCallback(
+        (item: CartItem, requestedQty: number) => {
+            const key = { id: item.id, name: item.name };
+            const stockKey = cartItemKey(item);
+            const machineStock =
+                stockKey in stockByProduct ? stockByProduct[stockKey] : null;
+            const { quantity: nextQty, wasLimited, maxAllowed } = clampCartQuantity(
+                requestedQty,
+                machineStock
+            );
+
+            if (nextQty <= 0) {
+                removeItem(key);
+                speakMessage("removeFromCart");
+                return;
+            }
+
+            if (wasLimited) {
+                const message = getCartQuantityLimitMessage(maxAllowed, machineStock);
+                setLimitNotice({ open: true, message });
+                toast.info(message);
+            } else if (nextQty > (item.quantity || 1)) {
+                speakMessage("addToCart");
+            }
+
+            setQuantity(key, nextQty);
+        },
+        [stockByProduct, setQuantity, removeItem, speakMessage]
+    );
 
     useEffect(() => {
         if (!open) return;
@@ -229,6 +311,40 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
 
     return (
         <>
+            <Dialog
+                open={limitNotice.open}
+                onClose={() => setLimitNotice({ open: false, message: "" })}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 2,
+                        p: 2,
+                        width: "min(420px, 92vw)",
+                    },
+                }}
+            >
+                <Typography sx={{ fontSize: 22, fontWeight: 700, color: "#111827", pr: 4 }}>
+                    Quantity limit
+                </Typography>
+                <Typography sx={{ fontSize: 18, color: "#4b5563", mt: 1.5, lineHeight: 1.5 }}>
+                    {limitNotice.message}
+                </Typography>
+                <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={() => setLimitNotice({ open: false, message: "" })}
+                    sx={{
+                        mt: 2.5,
+                        bgcolor: "#2d5a3d",
+                        textTransform: "none",
+                        fontSize: 18,
+                        fontWeight: 600,
+                        "&:hover": { bgcolor: "#1e3d2a" },
+                    }}
+                >
+                    OK
+                </Button>
+            </Dialog>
+
             <Dialog
                 fullScreen={isMobile}
                 open={open}
@@ -736,15 +852,12 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                     >
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => {
-                                                                const newQty = (item.quantity || 1) - 1;
-                                                                if (newQty <= 0) {
-                                                                    removeItem(key);
-                                                                    speakMessage('removeFromCart');
-                                                                } else {
-                                                                    setQuantity(key, newQty);
-                                                                }
-                                                            }}
+                                                            onClick={() =>
+                                                                applyQuantityChange(
+                                                                    item,
+                                                                    (item.quantity || 1) - 1
+                                                                )
+                                                            }
                                                             sx={{ borderRadius: 0, width: 30, height: 30 }}
                                                         >
                                                             <Icon icon="mdi:minus" />
@@ -754,7 +867,9 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                             value={item.quantity}
                                                             onChange={(e) => {
                                                                 const next = Number(e.target.value);
-                                                                if (Number.isFinite(next)) setQuantity(key, next);
+                                                                if (Number.isFinite(next)) {
+                                                                    applyQuantityChange(item, next);
+                                                                }
                                                             }}
                                                             inputMode="numeric"
                                                             style={{
@@ -769,10 +884,12 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                         />
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => {
-                                                                setQuantity(key, (item.quantity || 1) + 1);
-                                                                speakMessage('addToCart');
-                                                            }}
+                                                            onClick={() =>
+                                                                applyQuantityChange(
+                                                                    item,
+                                                                    (item.quantity || 1) + 1
+                                                                )
+                                                            }
                                                             sx={{ borderRadius: 0, width: 30, height: 30 }}
                                                         >
                                                             <Icon icon="mdi:plus" />

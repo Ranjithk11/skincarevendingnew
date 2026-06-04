@@ -7,6 +7,7 @@ import { capitalizeWords } from "@/utils/func";
 import { useCart } from "./CartContext";
 import { SuccessOverlay } from "./components";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
+import { normalizeProductId } from "@/utils/normalizeProductId";
 
 interface NewProductCardProps {
   open: boolean;
@@ -60,11 +61,11 @@ const NewProductCard = ({
     if (open) {
       setShowSuccess(false);
       setIsAdding(false);
-      // Fetch price comparison from Google Sheet via API
       setPriceComparison(null);
-      const params = new URLSearchParams({ product: name });
-      if (id) params.set("productId", String(id).replace(/^products\//, ""));
-      fetch(`/api/price-comparison?${params.toString()}`)
+      const sheetProductId = normalizeProductId(id);
+      if (!sheetProductId) return;
+
+      fetch(`/api/price-comparison?productId=${encodeURIComponent(sheetProductId)}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.success && data.match) {
@@ -76,7 +77,7 @@ const NewProductCard = ({
         })
         .catch(() => {});
     }
-  }, [open, name, id]);
+  }, [open, id]);
 
   const discountedPrice = useMemo(() => {
     if (!discountValue || isNaN(discountValue)) return retailPrice;
