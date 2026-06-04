@@ -18,7 +18,7 @@ interface CoverBottomHalfProps {
         salonServices: any[];
         cosmeticServices: any[];
     }>;
-    DietChart: React.ComponentType;
+    DietChart: React.ComponentType<{ skinType?: string | null }>;
     SkincareRoutine: React.ComponentType<{ recommendationData?: any }>;
 }
 
@@ -173,7 +173,7 @@ const CoverBottomHalf: React.FC<CoverBottomHalfProps> = ({
                                 cosmeticServices={reportSource?.recommendedCosmeticServices || []}
                             />
                         )}
-                        {recTab === "diet" && <DietChart />}
+                        {recTab === "diet" && <DietChart skinType={reportSource?.skinType} />}
                     </Box>
                 </>
             )}

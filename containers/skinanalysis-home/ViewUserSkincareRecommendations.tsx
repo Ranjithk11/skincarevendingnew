@@ -287,9 +287,7 @@ const ViewAdminSkincareReport = () => {
             }
           />
           {/* <Payment /> */}
-          {data?.data?.productRecommendation?.dietPlan && (
-            <DietChart dietPlan={data?.data?.productRecommendation?.dietPlan} />
-          )}
+          <DietChart skinType={data?.data?.user?.skinType} />
         </Fragment>
       )}
       {(isLoading || isLoadingImageInfo) &&

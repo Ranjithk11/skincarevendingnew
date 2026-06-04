@@ -14,6 +14,8 @@ import VendingProducts from "./vendingproducts";
 import VendingServices from "./vendingServices";
 import DietChart from "./DietChart";
 import SkincareRoutine from "./skincareRoutine";
+import { useSession } from "next-auth/react";
+import { useAppSelector } from "@/redux/store/store";
 import ReportQRCode from "./ReportQRCode";
 import ScoringMethodBar from "@/components/ScoringMethodBar";
 
@@ -117,6 +119,15 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
         analysisData?.productRecommendation ||
         analysisData ||
         null;
+
+    const { data: session } = useSession();
+    const reduxSkinType = useAppSelector((state) => state.analysisSlice?.skinType);
+    const dietSkinType =
+        reportSource?.skinType ??
+        analysisData?.data?.user?.skinType ??
+        analysisData?.user?.skinType ??
+        session?.user?.skinType ??
+        reduxSkinType;
 
     // Generate the public report URL for QR code
     const reportUserId = 
@@ -984,7 +995,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                                         />
                                     )}
                                     {recTab === "diet" && (
-                                        <DietChart dietPlan={reportSource?.dietPlan} />
+                                        <DietChart skinType={dietSkinType} />
                                     )}
                                 </Box>
                             </Box>
