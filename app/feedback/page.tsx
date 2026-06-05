@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -25,6 +25,7 @@ import SendInvoiceEmail from "./components/SendInvoiceEmail";
 import TaxInvoice from "./components/TaxInvoice";
 import FeedbackRating from "./components/FeedbackRating";
 import PaymentReporter from "./components/PaymentReporter";
+import { buildCheckoutInvoice } from "@/utils/checkoutInvoice";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,15 +70,6 @@ function formatDate(d: Date): string {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${day}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
-
-const parsePrice = (priceText?: string): number => {
-  if (!priceText) return 0;
-  const normalized = String(priceText).replace(/,/g, " ");
-  const match = normalized.match(/(\d+(?:\.\d+)?)/);
-  if (!match) return 0;
-  const num = Number(match[1]);
-  return Number.isFinite(num) ? num : 0;
-};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -501,77 +493,65 @@ export default function FeedbackPage() {
     if (email && !userEmail) setUserEmail(email);
   }, [session]);
 
-  // Compute invoice data
-  const invoiceData = useMemo(() => {
-    if (!checkoutSummary) return null;
-    const now = new Date();
-    const orderId = checkoutSummary?.payment?.orderId || "";
-    const subtotal = Number(checkoutSummary?.payableTotal || 0);
-    const baseForTax = subtotal / 1.18;
-    const totalGst = subtotal - baseForTax;
-    const cgst = totalGst / 2;
-    const sgst = totalGst / 2;
-    const beforeRound = baseForTax + cgst + sgst;
-    const roundOff = subtotal - beforeRound;
+  const buildInvoicePayload = useCallback(
+    (buyerEmailOverride?: string) => {
+      if (!checkoutSummary) return null;
+      const now = new Date();
+      const orderId = checkoutSummary?.payment?.orderId || "";
+      const buyerEmail = buyerEmailOverride ?? (session?.user as any)?.email ?? "";
 
-    return {
-      invoiceNo: generateInvoiceNo(orderId),
-      invoiceDate: formatDate(now),
-      orderReference: orderId ? `${orderId} dated ${formatDate(now)}` : formatDate(now),
-      gstin: process.env.NEXT_PUBLIC_GSTIN || "36AAKCL W1234A1ZC",
-      state: process.env.NEXT_PUBLIC_STATE || "Telangana, Code : 36",
-      placeOfSupply: process.env.NEXT_PUBLIC_STATE || "Telangana",
-      items: checkoutItems.map((item: any) => {
-        const price = Number(item?.retail_price || 0) || parsePrice(item?.priceText);
-        const qty = Number(item?.quantity) || 1;
-        return {
-          name: item?.name || "",
-          quantity: qty,
-          price,
-          amount: price * qty,
-        };
-      }),
-      totalQty: checkoutItems.reduce((sum: number, item: any) => sum + (Number(item?.quantity) || 1), 0),
-      itemsTotal: baseForTax.toFixed(2),
-      subtotal,
-      cgst,
-      sgst,
-      cgstPayable: cgst,
-      sgstPayable: sgst,
-      roundOff,
-      grandTotal: subtotal,
-      amountInWords: numberToWords(subtotal),
-      buyerName: (session?.user as any)?.name || `Walk-in Customer – ${machineInfo?.machineName || "Vending Machine"}`,
-      buyerEmail: (session?.user as any)?.email || "",
-      buyerPhone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || "",
-      machineId: machineInfo?.machineId || "",
-      machineName: machineInfo?.machineName || "",
-      machineLocation: machineInfo?.machineLocation || "",
-    };
-  }, [checkoutSummary, checkoutItems, session, machineInfo]);
+      return buildCheckoutInvoice({
+        checkoutSummary,
+        checkoutItems,
+        invoiceNo: generateInvoiceNo(orderId),
+        invoiceDate: formatDate(now),
+        orderReference: orderId ? `${orderId} dated ${formatDate(now)}` : formatDate(now),
+        amountInWords: numberToWords,
+        gstin: process.env.NEXT_PUBLIC_GSTIN,
+        state: process.env.NEXT_PUBLIC_STATE,
+        placeOfSupply: process.env.NEXT_PUBLIC_STATE,
+        buyerName:
+          (session?.user as any)?.name ||
+          `Walk-in Customer – ${machineInfo?.machineName || "Vending Machine"}`,
+        buyerEmail,
+        buyerPhone:
+          (session?.user as any)?.mobileNumber ||
+          (session?.user as any)?.phoneNumber ||
+          "",
+        machineId: machineInfo?.machineId || "",
+        machineName: machineInfo?.machineName || "",
+        machineLocation: machineInfo?.machineLocation || "",
+      });
+    },
+    [checkoutSummary, checkoutItems, session, machineInfo]
+  );
 
-  // Auto-send invoice data to webhook on page load (no email needed)
+  const invoiceData = useMemo(() => buildInvoicePayload(), [buildInvoicePayload]);
+
+  const postInvoiceEmail = useCallback(async (email: string, invoice: NonNullable<ReturnType<typeof buildInvoicePayload>>) => {
+    const response = await fetch("/api/send-invoice-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, invoice }),
+    });
+    return response.json();
+  }, []);
+
+  // Auto-send only when the user already has a valid email on session (skip noreply / empty).
   const invoiceWebhookFiredRef = useRef(false);
   useEffect(() => {
     if (!invoiceData || invoiceWebhookFiredRef.current) return;
+    const sessionEmail = ((session?.user as any)?.email || "").trim();
+    if (!sessionEmail.includes("@")) return;
+
     invoiceWebhookFiredRef.current = true;
+    const invoicePayload = buildInvoicePayload(sessionEmail);
+    if (!invoicePayload) return;
 
-    const invoicePayload = {
-      ...invoiceData,
-      buyerName: invoiceData.buyerName || `Walk-in Customer – ${machineInfo?.machineName || "Vending Machine"}`,
-      buyerPhone: invoiceData.buyerPhone || "",
-      buyerEmail: invoiceData.buyerEmail || "",
-    };
-
-    fetch("/api/send-invoice-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: invoicePayload.buyerEmail || "noreply@leafwater.in", invoice: invoicePayload }),
-    })
-      .then((res) => res.json())
+    postInvoiceEmail(sessionEmail, invoicePayload)
       .then((result) => {
         if (result.success) {
-          console.log("[FeedbackPage] Invoice webhook auto-sent successfully");
+          console.log("[FeedbackPage] Invoice webhook auto-sent to session email");
         } else {
           console.warn("[FeedbackPage] Invoice webhook failed:", result.error);
         }
@@ -579,27 +559,66 @@ export default function FeedbackPage() {
       .catch((err) => {
         console.warn("[FeedbackPage] Invoice webhook error:", err);
       });
-  }, [invoiceData, machineInfo]);
+  }, [invoiceData, session, buildInvoicePayload, postInvoiceEmail]);
 
   const handleSendEmail = async () => {
-    if (!userEmail || !userEmail.includes("@") || !invoiceData) return;
+    const nextEmail = userEmail.trim();
+    if (!nextEmail.includes("@") || !invoiceData) return;
+
+    setIsEditingEmail(false);
     setIsSendingEmail(true);
     setEmailError("");
-    try {
-      // Include updated user details in the invoice payload
-      const invoiceWithUser = {
-        ...invoiceData,
-        buyerEmail: userEmail,
-        buyerName: (session?.user as any)?.name || invoiceData.buyerName || `Walk-in Customer – ${machineInfo?.machineName || "Vending Machine"}`,
-        buyerPhone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone || invoiceData.buyerPhone || "",
-      };
 
-      const response = await fetch("/api/send-invoice-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, invoice: invoiceWithUser }),
-      });
-      const result = await response.json();
+    try {
+      const uid = (session?.user as any)?.id;
+      const sessionEmail = ((session?.user as any)?.email || "").trim().toLowerCase();
+      const emailChanged = nextEmail.toLowerCase() !== sessionEmail;
+
+      if (uid && emailChanged) {
+        try {
+          const res = await fetch("/api/user/update-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: uid,
+              email: nextEmail,
+              name: (session?.user as any)?.name || "",
+              phoneNumber:
+                (session?.user as any)?.mobileNumber ||
+                (session?.user as any)?.phoneNumber ||
+                "",
+              countryCode: "91",
+              onBoardingQuestions: (session?.user as any)?.onBoardingQuestions || [],
+            }),
+          });
+          const data = await res.json();
+          if (!data.success) {
+            console.warn("[FeedbackPage] Email profile update failed:", data.error);
+          }
+        } catch (updateErr) {
+          console.warn("[FeedbackPage] Email profile update error:", updateErr);
+        }
+      }
+
+      const invoiceWithUser = buildInvoicePayload(nextEmail);
+      if (!invoiceWithUser) {
+        setEmailError("Invoice data is not available");
+        return;
+      }
+
+      invoiceWithUser.buyerEmail = nextEmail;
+      invoiceWithUser.buyerName =
+        (session?.user as any)?.name ||
+        invoiceWithUser.buyerName ||
+        `Walk-in Customer – ${machineInfo?.machineName || "Vending Machine"}`;
+      invoiceWithUser.buyerPhone =
+        (session?.user as any)?.mobileNumber ||
+        (session?.user as any)?.phoneNumber ||
+        (session?.user as any)?.phone ||
+        invoiceWithUser.buyerPhone ||
+        "";
+
+      const result = await postInvoiceEmail(nextEmail, invoiceWithUser);
       if (result.success) {
         setEmailSent(true);
       } else {

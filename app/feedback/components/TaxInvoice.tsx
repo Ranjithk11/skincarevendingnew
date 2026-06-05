@@ -82,8 +82,9 @@ export default function TaxInvoice({ invoiceData, invoiceExpanded, onToggleExpan
                     <th style={{ width: "35%" }}>Description of Goods</th>
                     <th style={{ width: "15%", textAlign: "center" }}>HSN/SAC</th>
                     <th style={{ width: "10%", textAlign: "center" }}>Qty</th>
-                    <th style={{ width: "17%", textAlign: "right" }}>Rate (Incl. of Tax)</th>
-                    <th style={{ width: "18%", textAlign: "right" }}>Amount (₹)</th>
+                    <th style={{ width: "14%", textAlign: "right" }}>Rate (Incl. of Tax)</th>
+                    <th style={{ width: "10%", textAlign: "center" }}>Disc. %</th>
+                    <th style={{ width: "14%", textAlign: "right" }}>Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -91,9 +92,10 @@ export default function TaxInvoice({ invoiceData, invoiceExpanded, onToggleExpan
                     <tr key={idx}>
                       <td>{idx + 1}</td>
                       <td style={{ fontWeight: 600 }}>{item.name}</td>
-                      <td style={{ textAlign: "center" }}>3304</td>
+                      <td style={{ textAlign: "center" }}>{item.hsnSac || "3304"}</td>
                       <td style={{ textAlign: "center" }}>{item.quantity}</td>
-                      <td style={{ textAlign: "right" }}>{Number(item.price).toFixed(2)}</td>
+                      <td style={{ textAlign: "right" }}>{Number(item.rateInclTax ?? item.price).toFixed(2)}</td>
+                      <td style={{ textAlign: "center" }}>{Number(item.discountPct ?? 0).toFixed(2)}%</td>
                       <td style={{ textAlign: "right" }}>{Number(item.amount).toFixed(2)}</td>
                     </tr>
                   ))}
@@ -105,7 +107,13 @@ export default function TaxInvoice({ invoiceData, invoiceExpanded, onToggleExpan
             <Box sx={{ px: 3, pb: 1.5, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 3 }}>
               <Box sx={{ flex: 1 }}>
                 {[
-                  { label: "Subtotal", value: invoiceData.subtotal },
+                  ...(Number(invoiceData.orderDiscount) > 0
+                    ? [
+                        { label: "Gross total", value: invoiceData.grossTotal },
+                        { label: "Discount", value: -Number(invoiceData.orderDiscount) },
+                      ]
+                    : []),
+                  { label: "Taxable value", value: Number(invoiceData.itemsTotal) },
                   { label: "CGST @ 9.00%", value: invoiceData.cgst },
                   { label: "SGST @ 9.00%", value: invoiceData.sgst },
                   { label: "Round Off", value: invoiceData.roundOff },

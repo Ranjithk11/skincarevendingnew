@@ -33,17 +33,28 @@ export async function POST(request: NextRequest) {
     }
 
     // Build full Tax Invoice payload matching reference format
-    const items = (invoice.items || []).map((item: any, idx: number) => ({
-      sl_no: idx + 1,
-      description: item.name || "",
-      hsn_sac: item.hsnSac || "3304",
-      quantity: `${item.quantity || 1}.00 qty`,
-      rate_incl_tax: Number(item.rateInclTax || item.price || 0).toFixed(2),
-      rate: Number(item.rate || item.price || 0).toFixed(2),
-      per: item.per || "qty",
-      discount_pct: `${Number(item.discountPct || 0).toFixed(2)} %`,
-      amount: Number(item.amount || 0).toFixed(2),
-    }));
+    const items = (invoice.items || []).map((item: any, idx: number) => {
+      const rateInclTax = Number(item.rateInclTax ?? item.rate ?? item.price ?? 0);
+      const lineAmount = Number(item.amount ?? 0);
+      const discountPct =
+        item.discountPct !== undefined && item.discountPct !== null
+          ? Number(item.discountPct)
+          : rateInclTax > 0 && item.quantity
+            ? ((rateInclTax * Number(item.quantity) - lineAmount) / (rateInclTax * Number(item.quantity))) * 100
+            : 0;
+
+      return {
+        sl_no: idx + 1,
+        description: item.name || "",
+        hsn_sac: item.hsnSac || "3304",
+        quantity: `${item.quantity || 1}.00 qty`,
+        rate_incl_tax: rateInclTax.toFixed(2),
+        rate: Number(item.rate ?? item.price ?? rateInclTax).toFixed(2),
+        per: item.per || "qty",
+        discount_pct: `${Math.max(0, discountPct).toFixed(2)} %`,
+        amount: lineAmount.toFixed(2),
+      };
+    });
 
     const hsnBreakdown = (invoice.hsnBreakdown || []).map((h: any) => ({
       hsn_sac: h.hsnSac || "3304",

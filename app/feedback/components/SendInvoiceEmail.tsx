@@ -89,12 +89,7 @@ export default function SendInvoiceEmail({
           )}
           <Button
             variant="contained"
-            onClick={() => {
-              if (isEditingEmail) {
-                onEditConfirm();
-              }
-              onSendEmail();
-            }}
+            onClick={onSendEmail}
             disabled={isSendingEmail || emailSent || !userEmail.includes("@")}
             startIcon={<Image src="/NewFeedback/send_email_icon.svg" alt="" width={18} height={18} />}
             sx={{
