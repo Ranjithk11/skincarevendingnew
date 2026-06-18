@@ -26,6 +26,10 @@ import TaxInvoice from "./components/TaxInvoice";
 import FeedbackRating from "./components/FeedbackRating";
 import PaymentReporter from "./components/PaymentReporter";
 import { buildCheckoutInvoice } from "@/utils/checkoutInvoice";
+import {
+  getMachineFallbackInvoiceEmail,
+  resolveInvoiceRecipientEmail,
+} from "@/utils/invoiceEmail";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -117,9 +121,11 @@ export default function FeedbackPage() {
   // Notification state
   const [notification, setNotification] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const emailFieldRef = useRef<HTMLDivElement>(null);
+  const emailInitializedRef = useRef(false);
 
   // Machine info (fallback when no user session, e.g. direct purchase from /products or /slots)
   const [machineInfo, setMachineInfo] = useState<{ machineId: string; machineName: string; machineLocation: string } | null>(null);
+  const [machineInfoReady, setMachineInfoReady] = useState(false);
 
   useEffect(() => {
     fetch("/api/admin/machine-name")
@@ -133,7 +139,8 @@ export default function FeedbackPage() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setMachineInfoReady(true));
   }, []);
 
   // Tax Invoice accordion
@@ -271,7 +278,8 @@ export default function FeedbackPage() {
     if (key === "return") {
       if (keyboardTarget === "email") {
         setIsKeyboardOpen(false);
-        handleEmailEditConfirm();
+        setIsEditingEmail(false);
+        setKeyboardTarget("notes");
       } else {
         setter((prev) => `${prev}\n`);
         setIsKeyboardOpen(false);
@@ -284,40 +292,10 @@ export default function FeedbackPage() {
     setter((prev) => `${prev}${key}`);
   };
 
-  const handleEmailEditConfirm = async () => {
+  const handleEmailEditConfirm = () => {
     setIsEditingEmail(false);
     setIsKeyboardOpen(false);
     setKeyboardTarget("notes");
-
-    if (!userEmail || !userEmail.includes("@")) return;
-
-    const uid = (session?.user as any)?.id;
-    if (!uid) return;
-
-    try {
-      const res = await fetch("/api/user/update-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: uid,
-          email: userEmail,
-          name: (session?.user as any)?.name || "",
-          phoneNumber: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || "",
-          countryCode: "91",
-          onBoardingQuestions: (session?.user as any)?.onBoardingQuestions || [],
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setNotification({ message: "User details updated successfully", type: "success" });
-      } else {
-        setNotification({ message: data.error || "Failed to update email", type: "error" });
-      }
-    } catch (err: any) {
-      setNotification({ message: err.message || "Failed to update", type: "error" });
-    }
-
-    setTimeout(() => setNotification(null), 3000);
   };
 
   useEffect(() => {
@@ -487,11 +465,23 @@ export default function FeedbackPage() {
   const displayRating = hoveredRating || rating;
   const canSubmit = rating > 0 && !isSubmitting;
 
-  // Initialize email from session
+  // Initialize email once from session, or machine-location fallback when phone-only / walk-in
   useEffect(() => {
-    const email = (session?.user as any)?.email;
-    if (email && !userEmail) setUserEmail(email);
-  }, [session]);
+    if (!machineInfoReady || emailInitializedRef.current) return;
+
+    const sessionEmail = ((session?.user as any)?.email || "").trim();
+    if (sessionEmail.includes("@")) {
+      setUserEmail(sessionEmail);
+    } else {
+      setUserEmail(
+        getMachineFallbackInvoiceEmail(
+          machineInfo?.machineId,
+          machineInfo?.machineLocation
+        )
+      );
+    }
+    emailInitializedRef.current = true;
+  }, [session, machineInfo, machineInfoReady]);
 
   const buildInvoicePayload = useCallback(
     (buyerEmailOverride?: string) => {
@@ -537,21 +527,25 @@ export default function FeedbackPage() {
     return response.json();
   }, []);
 
-  // Auto-send only when the user already has a valid email on session (skip noreply / empty).
+  // Auto-send once after checkout: session email, or {machineLocation}@gmail.com fallback
   const invoiceWebhookFiredRef = useRef(false);
   useEffect(() => {
-    if (!invoiceData || invoiceWebhookFiredRef.current) return;
-    const sessionEmail = ((session?.user as any)?.email || "").trim();
-    if (!sessionEmail.includes("@")) return;
+    if (!invoiceData || !machineInfoReady || invoiceWebhookFiredRef.current) return;
+
+    const recipientEmail = resolveInvoiceRecipientEmail(
+      (session?.user as any)?.email,
+      machineInfo?.machineId,
+      machineInfo?.machineLocation
+    );
 
     invoiceWebhookFiredRef.current = true;
-    const invoicePayload = buildInvoicePayload(sessionEmail);
+    const invoicePayload = buildInvoicePayload(recipientEmail);
     if (!invoicePayload) return;
 
-    postInvoiceEmail(sessionEmail, invoicePayload)
+    postInvoiceEmail(recipientEmail, invoicePayload)
       .then((result) => {
         if (result.success) {
-          console.log("[FeedbackPage] Invoice webhook auto-sent to session email");
+          console.log("[FeedbackPage] Invoice webhook auto-sent to", recipientEmail);
         } else {
           console.warn("[FeedbackPage] Invoice webhook failed:", result.error);
         }
@@ -559,7 +553,7 @@ export default function FeedbackPage() {
       .catch((err) => {
         console.warn("[FeedbackPage] Invoice webhook error:", err);
       });
-  }, [invoiceData, session, buildInvoicePayload, postInvoiceEmail]);
+  }, [invoiceData, machineInfoReady, session, machineInfo, buildInvoicePayload, postInvoiceEmail]);
 
   const handleSendEmail = async () => {
     const nextEmail = userEmail.trim();
@@ -570,36 +564,7 @@ export default function FeedbackPage() {
     setEmailError("");
 
     try {
-      const uid = (session?.user as any)?.id;
-      const sessionEmail = ((session?.user as any)?.email || "").trim().toLowerCase();
-      const emailChanged = nextEmail.toLowerCase() !== sessionEmail;
-
-      if (uid && emailChanged) {
-        try {
-          const res = await fetch("/api/user/update-email", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userId: uid,
-              email: nextEmail,
-              name: (session?.user as any)?.name || "",
-              phoneNumber:
-                (session?.user as any)?.mobileNumber ||
-                (session?.user as any)?.phoneNumber ||
-                "",
-              countryCode: "91",
-              onBoardingQuestions: (session?.user as any)?.onBoardingQuestions || [],
-            }),
-          });
-          const data = await res.json();
-          if (!data.success) {
-            console.warn("[FeedbackPage] Email profile update failed:", data.error);
-          }
-        } catch (updateErr) {
-          console.warn("[FeedbackPage] Email profile update error:", updateErr);
-        }
-      }
-
+      // Invoice email only — do not call /api/user/update-email here; SAVE_USER sends OTP, not invoice.
       const invoiceWithUser = buildInvoicePayload(nextEmail);
       if (!invoiceWithUser) {
         setEmailError("Invoice data is not available");
@@ -859,6 +824,8 @@ export default function FeedbackPage() {
             emailFieldRef={emailFieldRef}
             onEditStart={() => {
               setIsEditingEmail(true);
+              setEmailSent(false);
+              setEmailError("");
               setKeyboardTarget("email");
               setIsKeyboardOpen(true);
               setTimeout(() => { emailFieldRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, 100);

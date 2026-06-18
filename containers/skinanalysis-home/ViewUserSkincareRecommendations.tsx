@@ -162,19 +162,28 @@ const ViewAdminSkincareReport = () => {
       // Notify external automation (Make.com) that a scan report is being viewed.
       // The webhook utility de-duplicates per userId per session so it only fires once.
       const user = data?.data?.user as any;
+      const productRecommendation = data?.data?.productRecommendation;
       if (user?._id) {
+        const scanWebhookPayload = {
+          name: user?.name,
+          email: user?.email,
+          phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
+          userId: user?._id,
+          skinType: user?.skinType || productRecommendation?.skinType,
+          detectedAttributes: productRecommendation?.detectedAttributes || [],
+          highRecommendation:
+            productRecommendation?.recommendedProducts?.highRecommendation || [],
+        };
+
         // Fetch machine settings from database
         fetch("/api/admin/machine-name")
           .then(res => res.json())
-          .then(data => {
-            if (data.success) {
+          .then(machineData => {
+            if (machineData.success) {
               void sendScanCompletedWebhook({
-                name: user?.name,
-                email: user?.email,
-                phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
-                userId: user?._id,
-                machineName: data.machineName || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
-                machineLocation: data.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+                ...scanWebhookPayload,
+                machineName: machineData.machineName || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+                machineLocation: machineData.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
               });
             }
           })
@@ -182,10 +191,7 @@ const ViewAdminSkincareReport = () => {
             console.error("[ViewUserSkincareRecommendations] Failed to fetch machine settings:", err);
             // Fallback to env vars
             void sendScanCompletedWebhook({
-              name: user?.name,
-              email: user?.email,
-              phone: user?.mobileNumber || user?.phoneNumber || user?.phone,
-              userId: user?._id,
+              ...scanWebhookPayload,
               machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
               machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
             });

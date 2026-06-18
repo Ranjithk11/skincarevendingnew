@@ -105,7 +105,7 @@ export default function SendInvoiceEmail({
               "&:disabled": { bgcolor: emailSent ? "#16a34a" : "#d1d5db", color: "#fff" },
             }}
           >
-            {isSendingEmail ? "Sending..." : emailSent ? "Sent!" : isEditingEmail ? "Update & Send" : "Send to Email"}
+            {isSendingEmail ? "Sending..." : emailSent ? "Sent!" : isEditingEmail ? "Send Invoice" : "Send to Email"}
           </Button>
         </Box>
       </Box>

@@ -18,6 +18,7 @@ import { useVoiceMessages } from "@/contexts/VoiceContext";
 import {
   validatePhone,
   wouldNationalDigitsBeTooLong,
+  shouldAcceptPhoneValue,
 } from "@/utils/phoneValidation";
 
 // Email validation - same as Skincare project
@@ -192,6 +193,8 @@ export default function Questionnaire() {
         // Keep an explicit separator after calling code so partial values don't become ambiguous
         // (e.g. '+1 9' instead of '+19'), which can cause MuiTelInput to switch countries.
         const nextNational = `${nationalDigits}${key}`;
+        if (!shouldAcceptPhoneValue(nextNational, country, code)) return;
+
         setPhone(`+${code} ${nextNational}`);
       } else {
         // Email: allow all characters

@@ -34,7 +34,7 @@ import { useAppSelector } from "@/redux/store/store";
 import Image from "next/image";
 import { ArrowBack } from "@mui/icons-material";
 import { useVoiceMessages, useVoice } from "@/contexts/VoiceContext";
-import { sendScanCompletedWebhook } from "@/utils/webhook";
+import { sendScanCompletedWebhook, extractScanAnalysisFields } from "@/utils/webhook";
 
 // Friendly progressive-message loader shown while AI analysis is in progress.
 const ANALYSIS_MESSAGES = [
@@ -769,8 +769,9 @@ const TakeSelfie = () => {
                     message: response?.data?.message || "Analysis completed successfully!",
                   });
                   
-                  // Save scan record to local SQLite database
+                  // Webhook + scan DB are best-effort — never fail the analysis UI
                   try {
+                    const analysisFields = extractScanAnalysisFields(response);
                     fetch('/api/admin/scans', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -779,49 +780,56 @@ const TakeSelfie = () => {
                         imageUrl: _res?.config?.url,
                         localCapturedImage: fileName,
                         skinType: formValues?.skinType,
-                        detectedAttributes: response?.data?.detected_attributes || response?.data?.detectedAttributes,
-                        analysisAiSummary: response?.data?.analysis_ai_summary || response?.data?.analysisAiSummary,
-                        recommendedProducts: response?.data?.recommended_products || response?.data?.recommendedProducts,
+                        detectedAttributes: analysisFields.detectedAttributes,
+                        recommendedProducts: {
+                          highRecommendation: analysisFields.highRecommendation,
+                        },
                       }),
                     }).catch(err => console.warn('Failed to save scan to local DB:', err));
-                  } catch (localDbError) {
-                    console.warn('Failed to save scan to local DB:', localDbError);
-                  }
 
-                  // Notify external automation (Make.com) about scan completion
-                  const sessUser = session?.user as any;
+                    const sessUser = session?.user as any;
+                    const scanWebhookPayload = {
+                      name: sessUser?.name as string,
+                      email: sessUser?.email as string,
+                      phone: (sessUser?.mobileNumber ||
+                        sessUser?.phoneNumber ||
+                        sessUser?.phone) as string,
+                      userId: resolvedUserId,
+                      skinType: (formValues?.skinType as string) || analysisFields.skinType,
+                      detectedAttributes: analysisFields.detectedAttributes,
+                      highRecommendation: analysisFields.highRecommendation,
+                    };
 
-                  // Fetch machine settings from database
-                  fetch("/api/admin/machine-name")
-                    .then(res => res.json())
-                    .then(data => {
-                      if (data.success) {
-                        void sendScanCompletedWebhook({
-                          name: sessUser?.name as string,
-                          email: sessUser?.email as string,
-                          phone: (sessUser?.mobileNumber ||
-                            sessUser?.phoneNumber ||
-                            sessUser?.phone) as string,
-                          userId: resolvedUserId,
-                          machineName: data.machineName || process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
-                          machineLocation: data.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
-                        });
-                      }
-                    })
-                    .catch(err => {
-                      console.error("[TakeSelfie] Failed to fetch machine settings:", err);
-                      // Fallback to env vars
+                    const dispatchScanWebhook = (machineName: string, machineLocation: string) => {
                       void sendScanCompletedWebhook({
-                        name: sessUser?.name as string,
-                        email: sessUser?.email as string,
-                        phone: (sessUser?.mobileNumber ||
-                          sessUser?.phoneNumber ||
-                          sessUser?.phone) as string,
-                        userId: resolvedUserId,
-                        machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
-                        machineLocation: process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
+                        ...scanWebhookPayload,
+                        machineName,
+                        machineLocation,
                       });
-                    });
+                    };
+
+                    fetch("/api/admin/machine-name")
+                      .then(res => res.json())
+                      .then(machineData => {
+                        dispatchScanWebhook(
+                          (machineData?.success && machineData.machineName) ||
+                            process.env.NEXT_PUBLIC_MACHINE_NAME ||
+                            "Vending Machine",
+                          (machineData?.success && machineData.machineLocation) ||
+                            process.env.NEXT_PUBLIC_MACHINE_LOCATION ||
+                            "LeafWater Vending Machine"
+                        );
+                      })
+                      .catch(err => {
+                        console.error("[TakeSelfie] Failed to fetch machine settings:", err);
+                        dispatchScanWebhook(
+                          process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+                          process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine"
+                        );
+                      });
+                  } catch (postAnalysisError) {
+                    console.warn("[TakeSelfie] Post-analysis webhook/DB step failed:", postAnalysisError);
+                  }
                 }
               })
               .catch((error) => {
