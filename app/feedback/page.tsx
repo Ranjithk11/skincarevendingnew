@@ -820,7 +820,7 @@ export default function FeedbackPage() {
                       Your amount will be refunded to your original payment method. Our team will get back to you shortly.
                     </Typography>
                     <Typography sx={{ fontSize: 24, color: "#6b7280", mt: 1, fontStyle: "italic" }}>
-                      For immediate assistance: +91 8008675263
+                      For immediate assistance: +91 8977016605
                     </Typography>
                   </Box>
                 </Box>
