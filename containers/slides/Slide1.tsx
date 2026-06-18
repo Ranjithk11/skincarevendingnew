@@ -11,7 +11,6 @@ import {
   maskPhoneDigits,
   shouldAcceptPhoneValue,
   validatePhone,
-  getIndianMobileStartError,
 } from "@/utils/phoneValidation";
 
 interface Slide1Props {
@@ -242,16 +241,11 @@ export default function Slide1({
                   if (shouldAcceptPhoneValue(nationalNumber, nextCountry, countryCode)) {
                     setPhone(value);
                     setPhoneError("");
-                  } else {
-                    const err = getIndianMobileStartError(nationalNumber, nextCountry, countryCode);
-                    if (err) setPhoneError(err);
                   }
                   return;
                 }
 
                 if (!shouldAcceptPhoneValue(nationalNumber, nextCountry, countryCode)) {
-                  const err = getIndianMobileStartError(nationalNumber, nextCountry, countryCode);
-                  if (err) setPhoneError(err);
                   return;
                 }
 

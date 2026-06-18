@@ -81,14 +81,15 @@ export function extractScanAnalysisFields(apiResponse: unknown): {
 
   const detectedRaw =
     rec?.detectedAttributes ?? rec?.detected_attributes ?? [];
+  const highRecommendation = recommendedProducts?.highRecommendation;
 
   return {
     skinType:
       (rec?.skinType as string | undefined) ||
       (rec?.skin_type as string | undefined),
     detectedAttributes: Array.isArray(detectedRaw) ? (detectedRaw as string[]) : [],
-    highRecommendation: Array.isArray(recommendedProducts?.highRecommendation)
-      ? (recommendedProducts.highRecommendation as unknown[])
+    highRecommendation: Array.isArray(highRecommendation)
+      ? (highRecommendation as unknown[])
       : [],
   };
 }
@@ -257,8 +258,10 @@ export interface DispenseErrorPayload {
   raw?: unknown;
   /** Machine location where the error occurred */
   machineLocation?: string;
+  /** Machine name where the error occurred */
+  machineName?: string;
   /** Optional dedup key. If the same key was reported in this session, the
-   *  webhook will not fire again. Defaults to a hash of errorMessage + orderId. */
+   *  webhook will not fire again. Defaults to paymentId + orderId. */
   dedupeKey?: string;
 }
 
@@ -309,10 +312,11 @@ export async function sendDispenseErrorWebhook(
 
     const dedupeKey =
       payload.dedupeKey ||
-      `${payload.errorMessage}::${payload.payment?.orderId || ""}`;
+      `dispense_error::${payload.payment?.paymentId || payload.payment?.orderId || ""}::${payload.errorMessage}`;
 
     loadDispenseErrorFiredFromSession();
     if (dispenseErrorFiredKeys.has(dedupeKey)) {
+      console.warn("[dispense_error webhook] skipped duplicate:", dedupeKey);
       return;
     }
 
@@ -321,6 +325,7 @@ export async function sendDispenseErrorWebhook(
       error_message: payload.errorMessage || "Unknown dispense error",
       occurred_at: new Date().toISOString(),
       machine_location: payload.machineLocation || "",
+      machine_name: payload.machineName || "",
       user: {
         user_id: payload.user?.userId || "",
         name: payload.user?.name || "",
@@ -352,8 +357,10 @@ export async function sendDispenseErrorWebhook(
       body: JSON.stringify(body),
       keepalive: true,
     }).catch((err) => {
-      console.warn("[dispense_error webhook] request failed:", err);
+      console.warn("[dispense_error webhook] request failed:", url, err);
     });
+
+    console.log("[dispense_error webhook] sent:", dedupeKey, "→", url);
 
     dispenseErrorFiredKeys.add(dedupeKey);
     persistDispenseErrorFiredToSession();
@@ -452,10 +459,11 @@ export async function sendPaymentWebhook(
 
     const dedupeKey =
       payload.dedupeKey ||
-      `payment::${payload.transaction?.orderId || ""}`;
+      `payment_success::${payload.transaction?.paymentId || payload.transaction?.orderId || ""}`;
 
     loadPaymentFiredFromSession();
     if (paymentFiredKeys.has(dedupeKey)) {
+      console.warn("[payment webhook] skipped duplicate:", dedupeKey);
       return;
     }
 
@@ -495,8 +503,10 @@ export async function sendPaymentWebhook(
       body: JSON.stringify(body),
       keepalive: true,
     }).catch((err) => {
-      console.warn("[payment webhook] request failed:", err);
+      console.warn("[payment webhook] request failed:", url, err);
     });
+
+    console.log("[payment webhook] sent:", dedupeKey, "→", url);
 
     paymentFiredKeys.add(dedupeKey);
     persistPaymentFiredToSession();
@@ -550,8 +560,10 @@ export interface DispenseSuccessPayload {
   command?: DispenseSuccessCommandInfo;
   /** Machine location where dispense occurred */
   machineLocation?: string;
+  /** Machine name where dispense occurred */
+  machineName?: string;
   /** Optional dedup key. If the same key was reported in this session, the
-   *  webhook will not fire again. Defaults to a hash of orderId + productId. */
+   *  webhook will not fire again. Defaults to paymentId + orderId. */
   dedupeKey?: string;
 }
 
@@ -602,10 +614,11 @@ export async function sendDispenseSuccessWebhook(
 
     const dedupeKey =
       payload.dedupeKey ||
-      `dispense::${payload.transaction?.orderId || ""}::${payload.command?.productId || ""}`;
+      `dispense_success::${payload.transaction?.paymentId || payload.transaction?.orderId || ""}::${payload.command?.slotId ?? payload.command?.productId ?? ""}`;
 
     loadDispenseSuccessFiredFromSession();
     if (dispenseSuccessFiredKeys.has(dedupeKey)) {
+      console.warn("[dispense_success webhook] skipped duplicate:", dedupeKey);
       return;
     }
 
@@ -613,6 +626,7 @@ export async function sendDispenseSuccessWebhook(
       event: "dispense_success",
       occurred_at: new Date().toISOString(),
       machine_location: payload.machineLocation || "",
+      machine_name: payload.machineName || "",
       user: {
         user_id: payload.user?.userId || "",
         name: payload.user?.name || "",
@@ -650,8 +664,10 @@ export async function sendDispenseSuccessWebhook(
       body: JSON.stringify(body),
       keepalive: true,
     }).catch((err) => {
-      console.warn("[dispense_success webhook] request failed:", err);
+      console.warn("[dispense_success webhook] request failed:", url, err);
     });
+
+    console.log("[dispense_success webhook] sent:", dedupeKey, "→", url);
 
     dispenseSuccessFiredKeys.add(dedupeKey);
     persistDispenseSuccessFiredToSession();

@@ -43,9 +43,9 @@ export default function PaymentReporter({
 
   useEffect(() => {
     if (!active) return;
-    if (!transaction?.orderId) return;
+    if (!transaction?.orderId && !transaction?.paymentId) return;
 
-    const key = `payment::${transaction.orderId}`;
+    const key = `payment_success::${transaction.paymentId || transaction.orderId || ""}`;
     if (lastFiredKeyRef.current === key) return;
     lastFiredKeyRef.current = key;
 

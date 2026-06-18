@@ -20,6 +20,8 @@ interface DispenseReporterProps {
   command?: DispenseSuccessCommandInfo;
   /** Machine location where dispense occurred */
   machineLocation?: string;
+  /** Machine name where dispense occurred */
+  machineName?: string;
 }
 
 /**
@@ -37,14 +39,15 @@ export default function DispenseReporter({
   transaction,
   command,
   machineLocation,
+  machineName,
 }: DispenseReporterProps) {
   const lastFiredKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!active) return;
-    if (!transaction?.orderId) return;
+    if (!transaction?.orderId && !transaction?.paymentId) return;
 
-    const key = `dispense::${transaction.orderId}::${command?.productId || ""}`;
+    const key = `dispense_success::${transaction.paymentId || transaction.orderId || ""}::${command?.slotId ?? command?.productId ?? ""}`;
     if (lastFiredKeyRef.current === key) return;
     lastFiredKeyRef.current = key;
 
@@ -54,9 +57,10 @@ export default function DispenseReporter({
       transaction,
       command,
       machineLocation,
+      machineName,
       dedupeKey: key,
     });
-  }, [active, user, products, transaction, command, machineLocation]);
+  }, [active, user, products, transaction, command, machineLocation, machineName]);
 
   return null;
 }

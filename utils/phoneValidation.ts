@@ -120,7 +120,7 @@ export function getIndianMobileStartError(
   if (!nationalDigits || !isIndianMobileCountry(country, callingCode)) return null;
   const firstDigit = nationalDigits[0];
   if (firstDigit >= "1" && firstDigit <= "5") {
-    return "Indian mobile numbers must start with 6, 7, 8, or 9";
+    return "Please enter a valid phone number";
   }
   return null;
 }
@@ -192,21 +192,21 @@ export function validatePhone(
     return `Phone number must be ${maxLen} digits for this country`;
   }
 
+  const patternError = validatePhonePattern(nationalDigits, country, callingCode);
+  if (patternError) return patternError;
+
   if (!isPhoneValidForCountry(phone, country)) {
     return getPhoneLengthError(phone, country) ?? "Please enter a valid phone number";
   }
 
-  return validatePhonePattern(nationalDigits, country, callingCode);
+  return null;
 }
 
-/** Reject MuiTelInput updates that exceed length or use invalid Indian mobile prefixes. */
+/** Reject MuiTelInput updates that exceed the country's mobile national length. */
 export function shouldAcceptPhoneValue(
   nationalNumber: string,
   country: string,
-  callingCode?: string
+  _callingCode?: string
 ): boolean {
-  if (getIndianMobileStartError(nationalNumber, country, callingCode)) {
-    return false;
-  }
   return nationalNumber.length <= getMaxNationalLength(country);
 }

@@ -294,7 +294,7 @@ export default function ConsultationPopUp({
                   <AutoAwesomeRoundedIcon sx={{ fontSize: 18, color: COLORS.primary }} />
                   <Typography
                     sx={{
-                      fontSize: 20,
+                      fontSize: 14,
                       fontWeight: 700,
                       letterSpacing: "0.1em",
                       color: COLORS.onPrimaryFixedVariant,

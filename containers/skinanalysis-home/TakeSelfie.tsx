@@ -649,6 +649,11 @@ const TakeSelfie = () => {
             type: "ERROR",
             message: response?.error?.data?.error,
           });
+        } else if (response?.error) {
+          setSkinAttributeStatus({
+            type: "ERROR",
+            message: response?.error?.message || "Analysis failed. Please try again.",
+          });
         } else {
           update({
             ...session,
@@ -659,11 +664,17 @@ const TakeSelfie = () => {
           });
           setSkinAttributeStatus({
             type: "SUCCESS",
-            message: response?.data?.message,
+            message: response?.data?.message || "Analysis completed successfully!",
           });
         }
       })
-      .catch((error) => {});
+      .catch((error) => {
+        console.error("Skin analysis error:", error);
+        setSkinAttributeStatus({
+          type: "ERROR",
+          message: "Analysis failed. Please try again.",
+        });
+      });
   };
 
   const handleGetSkinRecommendations = () => {

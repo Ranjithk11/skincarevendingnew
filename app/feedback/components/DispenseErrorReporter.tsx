@@ -19,6 +19,8 @@ interface DispenseErrorReporterProps {
   raw?: unknown;
   /** Machine location where the error occurred */
   machineLocation?: string;
+  /** Machine name where the error occurred */
+  machineName?: string;
 }
 
 /**
@@ -38,6 +40,7 @@ export default function DispenseErrorReporter({
   payment,
   raw,
   machineLocation,
+  machineName,
 }: DispenseErrorReporterProps) {
   const lastFiredKeyRef = useRef<string | null>(null);
 
@@ -45,7 +48,7 @@ export default function DispenseErrorReporter({
     if (!active) return;
     if (!errorMessage) return;
 
-    const key = `${errorMessage}::${payment?.orderId || ""}`;
+    const key = `dispense_error::${payment?.paymentId || payment?.orderId || ""}::${errorMessage}`;
     if (lastFiredKeyRef.current === key) return;
     lastFiredKeyRef.current = key;
 
@@ -56,9 +59,10 @@ export default function DispenseErrorReporter({
       payment,
       raw,
       machineLocation,
+      machineName,
       dedupeKey: key,
     });
-  }, [active, errorMessage, user, products, payment, raw, machineLocation]);
+  }, [active, errorMessage, user, products, payment, raw, machineLocation, machineName]);
 
   return null;
 }

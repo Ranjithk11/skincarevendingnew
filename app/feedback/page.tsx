@@ -264,6 +264,26 @@ export default function FeedbackPage() {
     return Array.isArray(items) ? items : [];
   }, [checkoutSummary]);
 
+  const dispenseSuccessCommand = useMemo(() => {
+    if (dispenseState.status !== "done") return null;
+    const results = Array.isArray((dispenseState as { results?: unknown }).results)
+      ? ((dispenseState as { results: Array<{ productCode?: string; ok?: boolean }> }).results)
+      : [];
+    const firstOk = results.find(
+      (r) => r?.ok && String(r?.productCode || "").toUpperCase() !== "TRAY"
+    );
+    const item = checkoutItems[0];
+    const slotId = item?.slotId || firstOk?.productCode || "";
+
+    return {
+      productId: item?.id || "",
+      productName: item?.name || "",
+      slotId,
+      command: firstOk?.productCode ? `RQ${firstOk.productCode}` : "DISPENSE",
+      timestamp: new Date().toISOString(),
+    };
+  }, [dispenseState, checkoutItems]);
+
   const handleKeyboardKeyPress = (key: string) => {
     const setter = keyboardTarget === "email" ? setUserEmail : setNotes;
 
@@ -603,7 +623,7 @@ export default function FeedbackPage() {
   return (
     <PageBackground fitParent>
       {/* Payment webhook safety net — fires once per orderId if cartProduct unmounted too fast */}
-      {checkoutSummary?.payment?.orderId && (
+      {(checkoutSummary?.payment?.orderId || checkoutSummary?.payment?.paymentId) && (
         <PaymentReporter
           active
           user={{
@@ -752,14 +772,9 @@ export default function FeedbackPage() {
                     slotId: item?.slotId, retailPrice: item?.retail_price, amount: item?.amount,
                   }))}
                   transaction={checkoutSummary?.payment}
-                  command={{
-                    productId: (dispenseState.results as any)?.productId || checkoutItems[0]?.id,
-                    productName: (dispenseState.results as any)?.productName || checkoutItems[0]?.name,
-                    slotId: (dispenseState.results as any)?.slotId || checkoutItems[0]?.slotId || (checkoutItems[0]?.id?.replace(/^products\//, "")),
-                    command: (dispenseState.results as any)?.command || "DISPENSE",
-                    timestamp: new Date().toISOString(),
-                  }}
-                  machineLocation={machineLocation}
+                  command={dispenseSuccessCommand || undefined}
+                  machineLocation={machineInfo?.machineLocation || machineLocation}
+                  machineName={machineInfo?.machineName || "Vending Machine"}
                 />
                 {pickupTimer > 0 && (
                   <Box sx={{ bgcolor: "#fef3c7", borderRadius: 2, border: "2px solid #f59e0b", textAlign: "center", p: 2 }}>
@@ -789,7 +804,8 @@ export default function FeedbackPage() {
                   }))}
                   payment={checkoutSummary?.payment}
                   raw={dispenseState}
-                  machineLocation={machineLocation}
+                  machineLocation={machineInfo?.machineLocation || machineLocation}
+                  machineName={machineInfo?.machineName || "Vending Machine"}
                 />
                 <Box sx={{ bgcolor: "#fef2f2", borderRadius: 2, border: "2px solid #ef4444", p: 2 }}>
                   <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#b91c1c", mb: 1 }}>
