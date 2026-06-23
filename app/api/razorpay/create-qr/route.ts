@@ -74,6 +74,9 @@ export async function POST(req: Request) {
       payment_amount: Math.round(amount),
       description: receipt,
       close_by: closeby,
+      notes: {
+        razorpay_order_id: order.id,
+      },
     });
 
     return NextResponse.json({

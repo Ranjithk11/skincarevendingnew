@@ -55,7 +55,11 @@ export default function LandingTopSection({
         overflowY: "auto",
       }}
     >
-      <Logo header onBrowseProducts={onBrowseProducts} onSlots={onSlots} />
+      <Logo
+        header
+        onBrowseProducts={onBrowseProducts}
+        onSlots={onSlots}
+      />
 
       <Box sx={{ mb: { xs: 2, sm: 3, md: 3.5 }, mt: 5 }}>
         <Typography

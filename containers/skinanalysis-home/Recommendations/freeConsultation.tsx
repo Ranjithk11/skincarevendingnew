@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Box, Typography, Button, IconButton, Modal, Fade } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  Modal,
+  Fade,
+  TextField,
+} from "@mui/material";
+import { MuiTelInput } from "mui-tel-input";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
@@ -14,32 +23,18 @@ import {
   sendConsultationWebhook,
   type ConsultationUserInfo,
 } from "@/utils/webhook";
+import {
+  shouldAcceptPhoneValue,
+  validatePhone,
+} from "@/utils/phoneValidation";
 
-interface ConsultationPopUpProps {
-  /** User info captured during the session. */
+interface FreeConsultationProps {
+  /** Pre-filled session user info (optional). */
   user?: ConsultationUserInfo;
-  /** Detected skin attribute codes / labels from the AI analysis. */
-  detectedAttributes?: unknown;
-  /** Prioritised key concerns from the report. */
-  keyConcerns?: unknown;
-  /** Per-metric skin scores. */
-  skinMetrics?: unknown;
-  /** Resolved skin type (e.g. OILY_SKIN). */
-  skinType?: string | null;
-  /** Overall skin health score / rating shown to the user. */
-  overallScore?: number | string | null;
-  overallRating?: string | null;
-  /** Clickable public report URL. */
-  resultUrl?: string;
-  /** Delay in milliseconds before the popup appears. Defaults to 20000ms. */
-  delayMs?: number;
-  /** When provided, opens the popup immediately and skips the auto-delay timer. */
   open?: boolean;
-  /** Called when the popup is closed (controlled mode only). */
   onClose?: () => void;
 }
 
-// Design tokens (from approved 2026 mockup)
 const COLORS = {
   primary: "#006c49",
   primaryContainer: "#10b981",
@@ -58,35 +53,37 @@ const TRUST_BADGES = [
   { icon: WorkspacePremiumRoundedIcon, label: "Expert advice" },
 ];
 
-export default function ConsultationPopUp({
+const fieldSx = {
+  mb: 2,
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "16px",
+    bgcolor: "rgba(255,255,255,0.85)",
+    fontSize: 18,
+    "& fieldset": { borderColor: `${COLORS.outlineVariant}88` },
+    "&:hover fieldset": { borderColor: COLORS.primary },
+    "&.Mui-focused fieldset": { borderColor: COLORS.primary },
+  },
+  "& .MuiInputLabel-root": {
+    fontSize: 16,
+    color: COLORS.onSurfaceVariant,
+  },
+};
+
+export default function FreeConsultation({
   user,
-  detectedAttributes,
-  keyConcerns,
-  skinMetrics,
-  skinType,
-  overallScore,
-  overallRating,
-  resultUrl,
-  delayMs = 20000,
-  open: openProp,
-  onClose: onCloseProp,
-}: ConsultationPopUpProps) {
-  const isControlled = openProp !== undefined;
-  const [internalOpen, setInternalOpen] = useState(false);
-  const open = isControlled ? openProp : internalOpen;
+  open = false,
+  onClose,
+}: FreeConsultationProps) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [country, setCountry] = useState("IN");
+  const [callingCode, setCallingCode] = useState("91");
+  const [nameError, setNameError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const machineRef = useRef<{ machineName?: string; machineLocation?: string }>({});
 
-  const setOpenState = (next: boolean) => {
-    if (isControlled) {
-      if (!next) onCloseProp?.();
-    } else {
-      setInternalOpen(next);
-    }
-  };
-
-  // Fetch machine settings once so the lead carries the correct location.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/admin/machine-name")
@@ -98,39 +95,60 @@ export default function ConsultationPopUp({
           machineLocation: data.machineLocation,
         };
       })
-      .catch(() => {
-        // ignore — fallbacks handled in webhook
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Show after the configured delay (uncontrolled mode only).
   useEffect(() => {
-    if (isControlled) return;
-    const timer = setTimeout(() => setInternalOpen(true), delayMs);
-    return () => clearTimeout(timer);
-  }, [delayMs, isControlled]);
+    if (!open) return;
+    setName(user?.name?.trim() || "");
+    setPhone(user?.phone?.trim() || "");
+    setNameError("");
+    setPhoneError("");
+    setSubmitted(false);
+    setSubmitting(false);
+  }, [open, user?.name, user?.phone]);
 
   const handleClose = () => {
     if (submitting) return;
-    setOpenState(false);
+    onClose?.();
   };
 
   const handleRequest = async () => {
     if (submitting || submitted) return;
+
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    let valid = true;
+
+    if (!trimmedName) {
+      setNameError("Please enter your name");
+      valid = false;
+    } else {
+      setNameError("");
+    }
+
+    const phoneValidationError = validatePhone(trimmedPhone, country, callingCode);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      valid = false;
+    } else {
+      setPhoneError("");
+    }
+
+    if (!valid) return;
+
     setSubmitting(true);
 
     await sendConsultationWebhook({
-      user,
-      detectedAttributes,
-      keyConcerns,
-      skinMetrics,
-      skinType,
-      overallScore,
-      overallRating,
-      resultUrl,
+      user: {
+        userId: user?.userId,
+        name: trimmedName,
+        email: user?.email,
+        phone: trimmedPhone,
+      },
       machineName:
         machineRef.current.machineName ||
         process.env.NEXT_PUBLIC_MACHINE_NAME ||
@@ -143,9 +161,7 @@ export default function ConsultationPopUp({
 
     setSubmitting(false);
     setSubmitted(true);
-
-    // Auto-dismiss shortly after the confirmation.
-    setTimeout(() => setOpenState(false), 4500);
+    setTimeout(() => onClose?.(), 4500);
   };
 
   return (
@@ -180,7 +196,6 @@ export default function ConsultationPopUp({
             outline: "none",
           }}
         >
-          {/* Close button */}
           <IconButton
             onClick={handleClose}
             disabled={submitting}
@@ -200,7 +215,6 @@ export default function ConsultationPopUp({
             <CloseIcon sx={{ fontSize: 20 }} />
           </IconButton>
 
-          {/* Left column: image */}
           <Box
             sx={{
               position: "relative",
@@ -221,7 +235,6 @@ export default function ConsultationPopUp({
                 display: "block",
               }}
             />
-            {/* Subtle overlay gradient */}
             <Box
               sx={{
                 position: "absolute",
@@ -229,7 +242,6 @@ export default function ConsultationPopUp({
                 background: "linear-gradient(to top, rgba(0,108,73,0.20), transparent)",
               }}
             />
-            {/* Certified badge */}
             <Box
               sx={{
                 position: "absolute",
@@ -264,7 +276,6 @@ export default function ConsultationPopUp({
             </Box>
           </Box>
 
-          {/* Right column: content */}
           <Box
             sx={{
               position: "relative",
@@ -276,7 +287,6 @@ export default function ConsultationPopUp({
               bgcolor: "rgba(255,255,255,0.2)",
             }}
           >
-            {/* Atmospheric glow */}
             <Box
               sx={{
                 position: "absolute",
@@ -293,7 +303,6 @@ export default function ConsultationPopUp({
 
             {!submitted ? (
               <>
-                {/* Limited-time pill */}
                 <Box
                   sx={{
                     display: "inline-flex",
@@ -321,7 +330,6 @@ export default function ConsultationPopUp({
                   </Typography>
                 </Box>
 
-                {/* Headline */}
                 <Typography
                   sx={{
                     fontSize: { xs: 32, sm: 40, md: 46 },
@@ -335,24 +343,74 @@ export default function ConsultationPopUp({
                   Get a <span style={{ color: COLORS.primary }}>FREE</span> skin consultation
                 </Typography>
 
-                {/* Description */}
                 <Typography
                   sx={{
                     fontSize: { xs: 24, sm: 24 },
                     color: COLORS.onSurfaceVariant,
                     lineHeight: 1.6,
                     maxWidth: 460,
-                    mb: { xs: 4, md: 5 },
+                    mb: { xs: 3, md: 4 },
                   }}
                 >
-                  Your personalised analysis is complete. Speak with our experts{" "}
+                  Share your details and speak with our experts{" "}
                   <Box component="span" sx={{ fontWeight: 600, color: COLORS.primary }}>
                     one-on-one
                   </Box>{" "}
-                  to build a routine that actually works for your skin type.
+                  to build a routine that works for your skin.
                 </Typography>
 
-                {/* CTA */}
+                <TextField
+                  fullWidth
+                  label="Full name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (nameError) setNameError("");
+                  }}
+                  error={Boolean(nameError)}
+                  helperText={nameError}
+                  disabled={submitting}
+                  sx={fieldSx}
+                />
+
+                <MuiTelInput
+                  fullWidth
+                  defaultCountry="IN"
+                  forceCallingCode
+                  value={phone}
+                  onChange={(value, info) => {
+                    const nationalNumber = info.nationalNumber || "";
+                    const countryCode = info.countryCallingCode || "";
+                    const iso2 = (info as { countryCode?: string }).countryCode;
+                    const nextCountry =
+                      typeof iso2 === "string" && iso2 ? iso2 : country;
+
+                    if (nextCountry !== country) {
+                      setCountry(nextCountry);
+                    }
+                    if (countryCode && countryCode !== callingCode) {
+                      setCallingCode(countryCode);
+                    }
+
+                    if (
+                      !shouldAcceptPhoneValue(
+                        nationalNumber,
+                        nextCountry,
+                        countryCode
+                      )
+                    ) {
+                      return;
+                    }
+
+                    setPhone(value);
+                    if (phoneError) setPhoneError("");
+                  }}
+                  error={Boolean(phoneError)}
+                  helperText={phoneError}
+                  disabled={submitting}
+                  sx={fieldSx}
+                />
+
                 <Button
                   onClick={handleRequest}
                   disabled={submitting}
@@ -378,11 +436,10 @@ export default function ConsultationPopUp({
                     "&.Mui-disabled": { color: "rgba(0,66,43,0.6)" },
                   }}
                 >
-                  {submitting ? "Requesting..." : "Claim Free Consultation"}
+                  {submitting ? "Submitting..." : "Claim Free Consultation"}
                   <ArrowForwardRoundedIcon />
                 </Button>
 
-                {/* Trust badges */}
                 <Box
                   sx={{
                     display: "flex",

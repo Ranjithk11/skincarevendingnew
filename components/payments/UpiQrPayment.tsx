@@ -14,6 +14,7 @@ type UpiQrPaymentProps = {
   onVerified?: (payload: {
     orderId: string;
     paymentId: string;
+    qrCodeId: string;
     signature: string;
     productId?: string;
   }) => void;
@@ -77,13 +78,37 @@ export default function UpiQrPayment({
           const data = await res.json();
 
           if (data.success && data.paid) {
+            let paymentId = data.paymentId || "";
+            let resolvedOrderId = data.orderId || oId;
+
+            if (!paymentId) {
+              try {
+                const retry = await fetch("/api/razorpay/check-payment", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ qrCodeId: qrId, orderId: oId, mode }),
+                });
+                const retryData = await retry.json();
+                if (retryData.success) {
+                  paymentId = retryData.paymentId || "";
+                  resolvedOrderId = retryData.orderId || resolvedOrderId;
+                }
+              } catch (err) {
+                console.warn("[UpiQR] paymentId retry failed:", err);
+              }
+            }
+
+            // Keep polling until Razorpay exposes pay_xxx (QR payments need qrCodeId).
+            if (!paymentId) return;
+
             cleanup();
             toast.success("Payment successful!");
             setShowQR(false);
             setIsLoading(false);
             onVerified?.({
-              orderId: data.orderId || oId,
-              paymentId: data.paymentId || "",
+              orderId: resolvedOrderId,
+              paymentId,
+              qrCodeId: qrId,
               signature: "",
               productId,
             });

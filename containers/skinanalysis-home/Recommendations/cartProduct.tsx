@@ -503,6 +503,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         setPaymentPayload({
                                             orderId: payload?.orderId,
                                             paymentId: payload?.paymentId,
+                                            qrCodeId: payload?.qrCodeId,
                                             amount: payableTotal,
                                             currency: "INR",
                                             status: "paid",
@@ -522,6 +523,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                         payment: {
                                                             orderId: payload?.orderId,
                                                             paymentId: payload?.paymentId,
+                                                            qrCodeId: payload?.qrCodeId,
                                                             amount: payableTotal,
                                                             currency: "INR",
                                                             status: "paid",
@@ -554,6 +556,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                         items: orderItems,
                                                         totalAmount: payableTotal,
                                                         paymentId: payload?.paymentId,
+                                                        qrCodeId: payload?.qrCodeId,
                                                         razorpayOrderId: payload?.orderId,
                                                         paymentMode,
                                                     }),

@@ -75,6 +75,57 @@ function formatDate(d: Date): string {
   return `${day}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
+/** Real scan user id, or machine location for walk-in kiosk purchases. */
+function getWebhookUserId(
+  session: { user?: Record<string, unknown> } | null | undefined,
+  machineInfo: { machineId?: string; machineName?: string; machineLocation?: string } | null
+): string {
+  const sessionUserId = session?.user?.id;
+  if (sessionUserId && String(sessionUserId).includes("/")) {
+    return String(sessionUserId);
+  }
+  return (
+    machineInfo?.machineLocation ||
+    machineInfo?.machineId ||
+    machineInfo?.machineName ||
+    ""
+  );
+}
+
+async function enrichCheckoutPayment(summary: any): Promise<any> {
+  const payment = summary?.payment;
+  if (!payment || payment.paymentId) return summary;
+  if (!payment.orderId && !payment.qrCodeId) return summary;
+
+  try {
+    const mode = payment.method === "test" ? "test" : "live";
+    const res = await fetch("/api/razorpay/check-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId: payment.orderId,
+        qrCodeId: payment.qrCodeId,
+        mode,
+      }),
+    });
+    const data = await res.json();
+    if (data.success && data.paymentId) {
+      return {
+        ...summary,
+        payment: {
+          ...payment,
+          paymentId: data.paymentId,
+          orderId: data.orderId || payment.orderId,
+        },
+      };
+    }
+  } catch (err) {
+    console.warn("[FeedbackPage] Failed to resolve paymentId:", err);
+  }
+
+  return summary;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -179,20 +230,25 @@ export default function FeedbackPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    try {
-      const raw = window.sessionStorage.getItem("kiosk_checkout_summary");
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      setCheckoutSummary(parsed);
+    const loadCheckout = async () => {
       try {
-        window.sessionStorage.removeItem("kiosk_checkout_summary");
+        const raw = window.sessionStorage.getItem("kiosk_checkout_summary");
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        const enriched = await enrichCheckoutPayment(parsed);
+        setCheckoutSummary(enriched);
+        try {
+          window.sessionStorage.removeItem("kiosk_checkout_summary");
+        } catch {
+        }
       } catch {
       }
-    } catch {
-    }
+    };
+
+    void loadCheckout();
     dispatch(clearCart());
     void persistor.purge();
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     if (hasAnnouncedFeedbackPromptRef.current) return;
@@ -263,6 +319,27 @@ export default function FeedbackPage() {
     const items = checkoutSummary?.items;
     return Array.isArray(items) ? items : [];
   }, [checkoutSummary]);
+
+  const webhookUserId = useMemo(
+    () => getWebhookUserId(session, machineInfo),
+    [session, machineInfo]
+  );
+
+  const webhookUser = useMemo(
+    () => ({
+      userId: webhookUserId,
+      name:
+        (session?.user as any)?.name ||
+        `Walk-in – ${machineInfo?.machineName || "Vending Machine"}`,
+      email: (session?.user as any)?.email || "",
+      phone:
+        (session?.user as any)?.mobileNumber ||
+        (session?.user as any)?.phoneNumber ||
+        (session?.user as any)?.phone ||
+        "",
+    }),
+    [session, machineInfo, webhookUserId]
+  );
 
   const dispenseSuccessCommand = useMemo(() => {
     if (dispenseState.status !== "done") return null;
@@ -626,12 +703,7 @@ export default function FeedbackPage() {
       {(checkoutSummary?.payment?.orderId || checkoutSummary?.payment?.paymentId) && (
         <PaymentReporter
           active
-          user={{
-            userId: (session?.user as any)?.id || machineInfo?.machineId || "",
-            name: (session?.user as any)?.name || `Walk-in – ${machineInfo?.machineName || "Vending Machine"}`,
-            email: (session?.user as any)?.email || "",
-            phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone || "",
-          }}
+          user={webhookUser}
           products={checkoutItems.map((item: any) => ({
             id: item?.id,
             name: item?.name,
@@ -761,12 +833,7 @@ export default function FeedbackPage() {
               <>
                 <DispenseReporter
                   active
-                  user={{
-                    userId: (session?.user as any)?.id || machineInfo?.machineId || "",
-                    name: (session?.user as any)?.name || `Walk-in – ${machineInfo?.machineName || "Vending Machine"}`,
-                    email: (session?.user as any)?.email || "",
-                    phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone || "",
-                  }}
+                  user={webhookUser}
                   products={checkoutItems.map((item: any) => ({
                     id: item?.id, name: item?.name, quantity: item?.quantity,
                     slotId: item?.slotId, retailPrice: item?.retail_price, amount: item?.amount,
@@ -792,12 +859,7 @@ export default function FeedbackPage() {
                 <DispenseErrorReporter
                   active
                   errorMessage={dispenseState.message}
-                  user={{
-                    userId: (session?.user as any)?.id || machineInfo?.machineId || "",
-                    name: (session?.user as any)?.name || `Walk-in – ${machineInfo?.machineName || "Vending Machine"}`,
-                    email: (session?.user as any)?.email || "",
-                    phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone || "",
-                  }}
+                  user={webhookUser}
                   products={checkoutItems.map((item: any) => ({
                     id: item?.id, name: item?.name, quantity: item?.quantity,
                     slotId: item?.slotId, retailPrice: item?.retail_price, amount: item?.amount,

@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  createRazorpayClient,
+  resolveRazorpayPaymentId,
+  type RazorpayMode,
+} from '@/lib/razorpayPaymentResolve';
 
 // GET /api/admin/orders - List all orders
 export async function GET(request: NextRequest) {
@@ -36,7 +41,35 @@ export async function POST(request: NextRequest) {
   try {
     const { adminDb } = await import('@/lib/admin-db');
     const body = await request.json();
-    const { userId, items, totalAmount, paymentId, razorpayOrderId, paymentMode } = body;
+    const {
+      userId,
+      items,
+      totalAmount,
+      paymentId,
+      qrCodeId,
+      razorpayOrderId,
+      paymentMode,
+    } = body;
+
+    let resolvedPaymentId = typeof paymentId === 'string' ? paymentId.trim() : '';
+
+    if (!resolvedPaymentId && (qrCodeId || razorpayOrderId)) {
+      const mode = (paymentMode === 'live' ? 'live' : 'test') as RazorpayMode;
+      const razorpay = createRazorpayClient(mode);
+      if (razorpay) {
+        const resolved = await resolveRazorpayPaymentId(
+          razorpay,
+          { qrCodeId, orderId: razorpayOrderId },
+          5
+        );
+        resolvedPaymentId = resolved.paymentId;
+        if (resolved.paymentId) {
+          console.log('[Orders API] Resolved paymentId:', resolved.paymentId);
+        } else {
+          console.warn('[Orders API] Could not resolve paymentId for order', razorpayOrderId);
+        }
+      }
+    }
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -56,7 +89,7 @@ export async function POST(request: NextRequest) {
       userId,
       items,
       totalAmount,
-      paymentId,
+      paymentId: resolvedPaymentId || undefined,
       razorpayOrderId,
       paymentMode: paymentMode || 'test',
     });
