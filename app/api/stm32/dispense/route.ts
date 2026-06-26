@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getStm32Config, stm32Dispense, stm32DispenseMany } from "@/utils/stm32";
-import { FIRMWARE_PATTERNS } from "@/utils/stm32Firmware";
 
 export const runtime = "nodejs";
 
@@ -143,9 +142,8 @@ export async function POST(req: Request) {
       const productCode = normalized[0];
       sentCommands = [productCode];
       const res = await stm32Dispense(cfg, productCode, {
-        okPattern: FIRMWARE_PATTERNS.dispense.ok,
-        errorPattern: FIRMWARE_PATTERNS.dispense.error,
-        timeoutMs: FIRMWARE_PATTERNS.dispense.timeoutMs,
+        okPattern: /Turning off motors/i,
+        errorPattern: /^(500|501)$|No detection|Sensor already/i,
       });
       results.push({
         productCode,
@@ -160,9 +158,8 @@ export async function POST(req: Request) {
         sentCommands = [...sentCommands, "TRAY"];
         const trayRes = await stm32Dispense(cfg, "TRAY", {
           commandPrefix: "",
-          okPattern: FIRMWARE_PATTERNS.tray.ok,
-          errorPattern: FIRMWARE_PATTERNS.tray.error,
-          timeoutMs: FIRMWARE_PATTERNS.tray.timeoutMs,
+          okPattern: /^200$|Closing door|Waiting 5s for pickup/i,
+          errorPattern: /^(500|501)$|No detection|Sensor already/i,
         });
         results.push({
           productCode: "TRAY",
@@ -213,11 +210,10 @@ export async function POST(req: Request) {
 
       console.log("[STM32 Dispense] normalized:", normalized, "cols:", cols, "hasDuplicateColumn:", hasDuplicateColumn, "finalizeMode:", finalizeMode);
 
-      const rqOkPattern = FIRMWARE_PATTERNS.dispense.ok;
-      const rqErrorPattern = FIRMWARE_PATTERNS.dispense.error;
-      const trayOkPattern = FIRMWARE_PATTERNS.tray.ok;
-      const trayErrorPattern = FIRMWARE_PATTERNS.tray.error;
-      const commandTimeoutMs = FIRMWARE_PATTERNS.dispense.timeoutMs;
+      const rqOkPattern = /Turning off motors/i;
+      const rqErrorPattern = /^(500|501)$|No detection|Sensor already/i;
+      const trayOkPattern = /^200$|Closing door|Waiting 5s for pickup/i;
+      const trayErrorPattern = rqErrorPattern;
 
       const shouldBatchSingleSlot = (() => {
         if (!(trayBatchSize > 0)) return false;
@@ -259,9 +255,8 @@ export async function POST(req: Request) {
 
         const batch = await stm32DispenseMany(cfg, expanded, {
           commandPrefix: "",
-          okPattern: rqOkPattern,
-          errorPattern: rqErrorPattern,
-          timeoutMs: commandTimeoutMs,
+          okPattern: /Turning off motors|^200$|Closing door|Waiting 5s for pickup/i,
+          errorPattern: /^(500|501)$|No detection|Sensor already/i,
           delayBetweenCommandsMs,
         });
 
@@ -318,9 +313,8 @@ export async function POST(req: Request) {
 
         const batch = await stm32DispenseMany(cfg, expanded, {
           commandPrefix: "",
-          okPattern: rqOkPattern,
-          errorPattern: rqErrorPattern,
-          timeoutMs: commandTimeoutMs,
+          okPattern: /Turning off motors|^200$|Closing door|Waiting 5s for pickup/i,
+          errorPattern: /^(500|501)$|No detection|Sensor already/i,
           delayBetweenCommandsMs,
         });
 
@@ -347,9 +341,8 @@ export async function POST(req: Request) {
 
         const batch = await stm32DispenseMany(cfg, expanded, {
           commandPrefix: "",
-          okPattern: rqOkPattern,
-          errorPattern: rqErrorPattern,
-          timeoutMs: commandTimeoutMs,
+          okPattern: /Turning off motors|^200$|Closing door|Waiting 5s for pickup/i,
+          errorPattern: /^(500|501)$|No detection|Sensor already/i,
           delayBetweenCommandsMs,
         });
 
@@ -370,7 +363,6 @@ export async function POST(req: Request) {
           errorPattern: rqErrorPattern,
           finalizeOkPattern: trayOkPattern,
           finalizeErrorPattern: trayErrorPattern,
-          timeoutMs: commandTimeoutMs,
           delayBetweenCommandsMs,
           delayBeforeFinalizeMs,
         });

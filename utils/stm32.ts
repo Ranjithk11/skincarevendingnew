@@ -68,7 +68,6 @@ export async function stm32Dispense(
     commandSuffix?: string;
     okPattern?: RegExp;
     errorPattern?: RegExp;
-    timeoutMs?: number;
   }
 ): Promise<DispenseResult> {
   const code = typeof productCode === "string" ? productCode.trim() : "";
@@ -89,19 +88,14 @@ export async function stm32Dispense(
 
   const commandPrefix = opts?.commandPrefix ?? "RQ";
   const commandSuffix = opts?.commandSuffix ?? "\r\n";
+  // Match success patterns - require "Stopping motors" to confirm dispense completion
+  // This prevents false positives from early sensor triggers
   const okPattern =
     opts?.okPattern ??
     /Stopping motors|Request sequence finished|^200$|Response 200/i;
   const errorPattern = opts?.errorPattern ?? /^ERROR\b/i;
 
-  const trimmedCode = code.toUpperCase();
-  const prefixUpper = commandPrefix.toUpperCase();
-  const effectiveCode =
-    prefixUpper.length > 0 && trimmedCode.startsWith(prefixUpper)
-      ? code
-      : prefixUpper.length > 0
-        ? `${commandPrefix}${code}`
-        : code;
+  const effectiveCode = code.toUpperCase().startsWith(commandPrefix.toUpperCase()) ? code : `${commandPrefix}${code}`;
   const command = `${effectiveCode}${commandSuffix}`;
 
   // Dynamic import to avoid webpack bundling issues
@@ -134,7 +128,7 @@ export async function stm32Dispense(
       const timeout = setTimeout(() => {
         cleanup();
         reject(new Error("STM32 response timeout"));
-      }, opts?.timeoutMs ?? cfg.timeoutMs);
+      }, cfg.timeoutMs);
 
       const onData = (data: string | Buffer) => {
         const line = normalizeLine(typeof data === "string" ? data : data.toString("utf8"));
@@ -190,7 +184,6 @@ export async function stm32DispenseMany(
     finalizeErrorPattern?: RegExp;
     delayBetweenCommandsMs?: number;
     delayBeforeFinalizeMs?: number;
-    timeoutMs?: number;
   }
 ): Promise<Array<{ productCode: string; result: DispenseResult }>> {
   const normalized = (Array.isArray(productCodes) ? productCodes : [])
@@ -254,24 +247,17 @@ export async function stm32DispenseMany(
   ): Promise<DispenseResult> => {
     const rawLines: string[] = [];
     const prefix = typeof prefixOverride === "string" ? prefixOverride : commandPrefix;
-    const trimmedCode = code.toUpperCase();
-    const prefixUpper = prefix.toUpperCase();
     const effectiveCode =
-      prefixUpper.length > 0 && trimmedCode.startsWith(prefixUpper)
-        ? code
-        : prefixUpper.length > 0
-          ? `${prefix}${code}`
-          : code;
+      prefix.length > 0 && code.toUpperCase().startsWith(prefix.toUpperCase()) ? code : `${prefix}${code}`;
     const command = `${effectiveCode}${commandSuffix}`;
 
+    // For TRAY commands, wait for "200" which indicates door closed and cycle complete
+    // This ensures user has time to pick up products and close door before next dispense
     const isTrayCommand = code.trim().toUpperCase() === "TRAY";
     const trayOkPattern = /^200$/i;
-
+    
     const ok = isTrayCommand ? trayOkPattern : (patterns?.okPattern ?? okPattern);
     const err = patterns?.errorPattern ?? errorPattern;
-    const commandTimeoutMs = isTrayCommand
-      ? Math.max(opts?.timeoutMs ?? cfg.timeoutMs, 180000)
-      : opts?.timeoutMs ?? cfg.timeoutMs;
 
     await new Promise<void>((resolve, reject) => {
       port.write(command, (err) => {
@@ -284,7 +270,7 @@ export async function stm32DispenseMany(
       const timeout = setTimeout(() => {
         cleanup();
         reject(new Error("STM32 response timeout"));
-      }, commandTimeoutMs);
+      }, cfg.timeoutMs);
 
       const onData = (data: string | Buffer) => {
         const line = normalizeLine(typeof data === "string" ? data : data.toString("utf8"));

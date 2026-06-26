@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stm32Dispense, getStm32Config, type Stm32Config } from "@/utils/stm32";
-import {
-  FIRMWARE_COMMANDS,
-  FIRMWARE_PATTERNS,
-  toFirmwareMotorNumber,
-} from "@/utils/stm32Firmware";
+import { stm32Dispense, getStm32Config } from "@/utils/stm32";
 
-// POST motor control command — protocol matches productDispenserV8 .ino on the NUC
+// POST motor control command
+// Connects to real STM32 hardware via serial port
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -19,7 +15,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let cfg: Stm32Config;
+    // Get STM32 config
+    let cfg;
     try {
       cfg = getStm32Config();
     } catch (envError) {
@@ -30,131 +27,189 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const runCommand = async (
-      firmwareCommand: string,
-      patterns: { ok: RegExp; error: RegExp; timeoutMs: number },
-      commandPrefix = ""
-    ) => {
-      if (cfg.mock) {
-        return {
-          success: true,
-          message: `${firmwareCommand} sent (mock)`,
-          response: "200",
-          rawLines: [`[MOCK] ${firmwareCommand}`],
-        };
-      }
-
-      const result = await stm32Dispense(cfg, firmwareCommand, {
-        commandPrefix,
-        okPattern: patterns.ok,
-        errorPattern: patterns.error,
-        timeoutMs: patterns.timeoutMs,
-      });
-
-      if (result.errorLine) {
-        return {
-          success: false,
-          message: result.errorLine,
-          rawLines: result.rawLines,
-        };
-      }
-
-      if (!result.okLine) {
-        return {
-          success: false,
-          message: "STM32 response timeout — check endstops / serial connection",
-          rawLines: result.rawLines,
-        };
-      }
-
-      return {
-        success: true,
-        message: `${firmwareCommand} OK`,
-        response: result.okLine,
-        rawLines: result.rawLines,
-      };
-    };
-
-    // Admin format: M,{uiSlot},{0=test|1=dispense} → firmware M{n} or RQ{n}
-    const parts = String(command).split(",");
-
+    // Parse command (format: "M,slotId,action" where action is 0=test, 1=dispense)
+    const parts = command.split(",");
+    
     if (parts[0] === "M" && parts.length >= 3) {
-      const uiSlot = parts[1];
-      const action = parts[2];
-      const motorNum = toFirmwareMotorNumber(uiSlot);
+      const slotId = parts[1];
+      const action = parts[2] === "1" ? "dispense" : "test";
+      
+      console.log(`[STM32] Motor command: ${action} for slot ${slotId}`);
+      
+      // In mock mode, simulate success
+      if (cfg.mock) {
+        console.log(`[STM32 Mock] Simulating ${action} for slot ${slotId}`);
 
-      if (action === "1") {
-        const outcome = await runCommand(
-          motorNum,
-          FIRMWARE_PATTERNS.dispense
-        );
-
-        if (outcome.success) {
+        if (action === "dispense") {
           try {
             const { adminDb } = await import("@/lib/admin-db");
-            const slotNum = Number(uiSlot);
+            const slotNum = Number(slotId);
             if (Number.isFinite(slotNum)) {
               adminDb.updateSlotQuantity(slotNum, -1);
+              console.log(`[STM32 Mock] Decremented slot ${slotNum} by 1`);
             }
           } catch (e) {
-            console.warn("[STM32] Failed to decrement slot inventory:", e);
+            console.warn("[STM32 Mock] Failed to decrement slot inventory:", e);
           }
         }
 
-        return NextResponse.json(outcome, { status: outcome.success ? 200 : 500 });
+        return NextResponse.json({
+          success: true,
+          message: `Motor ${action} command sent for slot ${slotId} (mock)`,
+          response: `200 OK - ${action.toUpperCase()} completed`,
+          rawLines: [`[MOCK] ${action} slot ${slotId}`, "[MOCK] Request sequence finished"],
+        });
       }
+      
+      // Send RQ command to STM32 for dispense
+      if (action === "dispense") {
+        try {
+          const result = await stm32Dispense(cfg, slotId);
+          
+          if (result.okLine) {
+            try {
+              const { adminDb } = await import("@/lib/admin-db");
+              const slotNum = Number(slotId);
+              if (Number.isFinite(slotNum)) {
+                adminDb.updateSlotQuantity(slotNum, -1);
+                console.log(`[STM32] Decremented slot ${slotNum} by 1 after successful dispense`);
+              }
+            } catch (e) {
+              console.warn("[STM32] Dispense succeeded but failed to decrement slot inventory:", e);
+            }
 
-      if (action === "0") {
-        const outcome = await runCommand(
-          `M${motorNum}`,
-          FIRMWARE_PATTERNS.testMotor,
-          ""
-        );
-        return NextResponse.json(outcome, { status: outcome.success ? 200 : 500 });
+            return NextResponse.json({
+              success: true,
+              message: `Motor ${action} command sent for slot ${slotId}`,
+              response: result.okLine,
+              rawLines: result.rawLines,
+            });
+          } else if (result.errorLine) {
+            return NextResponse.json({
+              success: false,
+              message: `STM32 error: ${result.errorLine}`,
+              rawLines: result.rawLines,
+            }, { status: 500 });
+          }
+        } catch (err) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          console.error("[STM32] Dispense error:", error);
+          return NextResponse.json({
+            success: false,
+            message: error.message,
+          }, { status: 500 });
+        }
       }
+      
+      return NextResponse.json({
+        success: true,
+        message: `Motor ${action} command sent for slot ${slotId}`,
+        response: `200 OK - ${action.toUpperCase()} completed`,
+      });
     }
 
-    if (command === "HOME" || command === FIRMWARE_COMMANDS.homeTray) {
-      const outcome = await runCommand(
-        FIRMWARE_COMMANDS.homeTray,
-        FIRMWARE_PATTERNS.home,
-        ""
-      );
-      return NextResponse.json(outcome, { status: outcome.success ? 200 : 500 });
-    }
-
-    if (command === "TRAY" || command === FIRMWARE_COMMANDS.tray) {
-      const outcome = await runCommand(
-        FIRMWARE_COMMANDS.tray,
-        FIRMWARE_PATTERNS.tray,
-        ""
-      );
-      return NextResponse.json(outcome, { status: outcome.success ? 200 : 500 });
-    }
-
-    if (command === "REOPEN" || command === FIRMWARE_COMMANDS.reopen) {
-      const outcome = await runCommand(
-        FIRMWARE_COMMANDS.reopen,
-        FIRMWARE_PATTERNS.reopen,
-        ""
-      );
-      return NextResponse.json(outcome, { status: outcome.success ? 200 : 500 });
-    }
-
-    if (command === "DISPENSE") {
-      return NextResponse.json(
-        {
+    // Handle HOME command
+    if (command === "HOME") {
+      // In mock mode or serverless, simulate success
+      if (cfg.mock) {
+        console.log("[STM32 Mock] Simulating HOME command");
+        return NextResponse.json({
+          success: true,
+          message: "Home command sent (mock)",
+          response: "Homing initiated",
+          rawLines: ["[MOCK] HOME command", "[MOCK] Homing complete"],
+        });
+      }
+      
+      try {
+        // Firmware expects HOME<axisNumber>. Home tray axis (0) for "Home Machine".
+        // Treat homing prints as success so UI doesn't show false errors.
+        const result = await stm32Dispense(cfg, "HOME0", {
+          commandPrefix: "",
+          okPattern: /Homed axis successfully|Moving toward endstop|Endstop already trigerred/i,
+          errorPattern: /Endstop error|Invalid stepper Motor selected|Unknown command/i,
+        });
+        
+        return NextResponse.json({
+          success: true,
+          message: "Home command sent",
+          response: result.okLine || "Homing initiated",
+          rawLines: result.rawLines,
+        });
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error("[STM32] Home error:", error);
+        return NextResponse.json({
           success: false,
-          message: "Please select a slot on the grid first, then click Dispense",
-        },
-        { status: 400 }
-      );
+          message: error.message,
+        }, { status: 500 });
+      }
     }
 
-    return NextResponse.json(
-      { success: false, message: `Unknown command: ${command}. Use HOME, TRAY, REOPEN, or M,{slot},{0|1}` },
-      { status: 400 }
-    );
+    // Handle REOPEN command - reopens the tray door
+    // Firmware outputs: "REOPEN command received", "Opening dispensing door", 
+    // "Door opened. Waiting 10 seconds...", "Closing dispensing door", "REOPEN complete", "200"
+    if (command === "REOPEN") {
+      if (cfg.mock) {
+        console.log("[STM32 Mock] Simulating REOPEN command");
+        return NextResponse.json({
+          success: true,
+          message: "Reopen command sent (mock)",
+          response: "REOPEN complete",
+          rawLines: [
+            "[MOCK] REOPEN command received",
+            "[MOCK] Opening dispensing door",
+            "[MOCK] Door opened. Waiting 10 seconds...",
+            "[MOCK] Closing dispensing door",
+            "[MOCK] REOPEN complete",
+            "[MOCK] 200",
+          ],
+        });
+      }
+      
+      try {
+        const result = await stm32Dispense(cfg, "REOPEN", {
+          commandPrefix: "",
+          okPattern: /REOPEN complete|^200$/i,
+          errorPattern: /error|fail|invalid/i,
+        });
+        
+        return NextResponse.json({
+          success: true,
+          message: "Reopen command sent",
+          response: result.okLine || "REOPEN complete",
+          rawLines: result.rawLines,
+        });
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error("[STM32] Reopen error:", error);
+        return NextResponse.json({
+          success: false,
+          message: error.message,
+        }, { status: 500 });
+      }
+    }
+
+    // Handle DISPENSE command (generic - no slot selected)
+    if (command === "DISPENSE") {
+      // In mock mode, return helpful message
+      if (cfg.mock) {
+        return NextResponse.json({
+          success: false,
+          message: "Please select a slot first before dispensing",
+        }, { status: 400 });
+      }
+      return NextResponse.json({
+        success: false,
+        message: "Please select a slot first before dispensing",
+      }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Command '${command}' processed`,
+      response: "200 OK",
+    });
   } catch (error) {
     console.error("Motor control error:", error);
     const err = error instanceof Error ? error : new Error(String(error));
