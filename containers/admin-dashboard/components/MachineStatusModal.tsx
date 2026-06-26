@@ -15,6 +15,7 @@ interface MachineStatusModalProps {
   successSubMessage?: string;
   errorSubMessage?: string;
   isLoading?: boolean;
+  loadingMessage?: string;
 }
 
 export default function MachineStatusModal({
@@ -27,6 +28,7 @@ export default function MachineStatusModal({
   successSubMessage = "Connected to machine",
   errorSubMessage = "Failed to connect to the machine",
   isLoading = false,
+  loadingMessage = "Sending command...",
 }: MachineStatusModalProps) {
   return (
     <Modal
@@ -108,7 +110,7 @@ export default function MachineStatusModal({
                   color: "#666",
                 }}
               >
-                Sending command...
+                {loadingMessage}
               </Typography>
             </>
           ) : isSuccess === true ? (

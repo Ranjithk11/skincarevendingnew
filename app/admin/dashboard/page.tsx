@@ -31,10 +31,14 @@ export default function AdminDashboardPage() {
   const [dispenseModalOpen, setDispenseModalOpen] = useState(false);
   const [dispenseStatus, setDispenseStatus] = useState<boolean | null>(null);
   const [dispenseLoading, setDispenseLoading] = useState(false);
+  const [dispenseErrorDetail, setDispenseErrorDetail] = useState("");
+  const [dispenseSuccessDetail, setDispenseSuccessDetail] = useState("");
+  const [dispenseLoadingMessage, setDispenseLoadingMessage] = useState("Sending command...");
 
   const [trayDoorModalOpen, setTrayDoorModalOpen] = useState(false);
   const [trayDoorStatus, setTrayDoorStatus] = useState<boolean | null>(null);
   const [trayDoorLoading, setTrayDoorLoading] = useState(false);
+  const [trayErrorDetail, setTrayErrorDetail] = useState("");
 
   // Edit product modal state
   const [editProductModalOpen, setEditProductModalOpen] = useState(false);
@@ -254,15 +258,32 @@ export default function AdminDashboardPage() {
     setDispenseModalOpen(true);
     setDispenseLoading(true);
     setDispenseStatus(null);
-    
+    setDispenseErrorDetail("");
+    setDispenseSuccessDetail("");
+    setDispenseLoadingMessage(
+      "Recovering tray — moving to pickup position and opening door… (TRAY, ~1–3 min)"
+    );
+
     try {
-      const result = await motorControl({ command: "REOPEN" }).unwrap();
-      setDispenseStatus(result.success);
-    } catch (error) {
+      // Always TRAY: homes steppers, moves tray to dispense place, opens door 15s.
+      // Use when tray is stuck mid-cycle or after a partial dispense — no motor spin.
+      const trayResult = await motorControl({ command: "TRAY" }).unwrap();
+      setDispenseStatus(trayResult.success);
+
+      if (trayResult.success) {
+        setDispenseSuccessDetail(
+          "Tray moved to dispense position. Door opened for pickup (15 seconds)."
+        );
+      } else {
+        setDispenseErrorDetail(trayResult.message || "Tray recovery failed");
+      }
+    } catch (error: any) {
       console.error("Dispense error:", error);
       setDispenseStatus(false);
+      setDispenseErrorDetail(error?.data?.message || error?.message || "Tray recovery failed");
     } finally {
       setDispenseLoading(false);
+      setDispenseLoadingMessage("Sending command...");
     }
   };
 
@@ -270,13 +291,18 @@ export default function AdminDashboardPage() {
     setTrayDoorModalOpen(true);
     setTrayDoorLoading(true);
     setTrayDoorStatus(null);
+    setTrayErrorDetail("");
 
     try {
-      const result = await motorControl({ command: "REOPEN" }).unwrap();
+      const result = await motorControl({ command: "TRAY" }).unwrap();
       setTrayDoorStatus(result.success);
-    } catch (error) {
+      if (!result.success) {
+        setTrayErrorDetail(result.message || "TRAY command failed");
+      }
+    } catch (error: any) {
       console.error("Tray door error:", error);
       setTrayDoorStatus(false);
+      setTrayErrorDetail(error?.data?.message || error?.message || "TRAY command failed");
     } finally {
       setTrayDoorLoading(false);
     }
@@ -618,13 +644,14 @@ export default function AdminDashboardPage() {
       <MachineStatusModal
         open={dispenseModalOpen}
         onClose={() => setDispenseModalOpen(false)}
-        title="Machine Dispense Status"
+        title="Tray Recovery"
         isSuccess={dispenseStatus}
         isLoading={dispenseLoading}
-        successMessage="Dispense command sent successfully"
-        errorMessage="Error Sending dispense command"
-        successSubMessage="Connected to machine"
-        errorSubMessage="Failed to connect to the machine"
+        successMessage="Tray recovered"
+        errorMessage="Tray recovery failed"
+        successSubMessage={dispenseSuccessDetail || "Tray cycle finished"}
+        errorSubMessage={dispenseErrorDetail || "Check endstops, drop sensor, and STM32_PORT"}
+        loadingMessage={dispenseLoadingMessage}
       />
 
       <MachineStatusModal
@@ -633,10 +660,10 @@ export default function AdminDashboardPage() {
         title="Tray Door Status"
         isSuccess={trayDoorStatus}
         isLoading={trayDoorLoading}
-        successMessage="Tray door reopened successfully"
-        errorMessage="Failed to reopen tray door"
-        successSubMessage="The tray door has been reopened"
-        errorSubMessage="Failed to connect to the machine"
+        successMessage="Tray door cycle completed"
+        errorMessage="Tray door command failed"
+        successSubMessage="Homing + door open/close finished (TRAY, ~1–3 min)"
+        errorSubMessage={trayErrorDetail || "Check stepper endstops and STM32_PORT"}
       />
 
       {/* Edit Product Modal */}
