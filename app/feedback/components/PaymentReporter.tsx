@@ -3,11 +3,11 @@
 import { useEffect, useRef } from "react";
 import {
   sendPaymentWebhook,
-  type PaymentPayload,
   type PaymentUserInfo,
   type PaymentProductInfo,
   type PaymentTransactionInfo,
 } from "@/utils/webhook";
+import { resolvePaymentForWebhook } from "@/lib/resolveWebhookPayment";
 
 interface PaymentReporterProps {
   /** Whether the reporter should be active (i.e. payment was successful). */
@@ -26,9 +26,6 @@ interface PaymentReporterProps {
 /**
  * Side-effect-only React component that fires the `payment_success` webhook
  * exactly once per `orderId` per browser session whenever `active` becomes `true`.
- *
- * It renders nothing — it lives purely to encapsulate the side effect so the
- * parent component doesn't get cluttered with webhook plumbing.
  */
 export default function PaymentReporter({
   active,
@@ -43,21 +40,34 @@ export default function PaymentReporter({
 
   useEffect(() => {
     if (!active) return;
-    if (!transaction?.orderId && !transaction?.paymentId) return;
+    if (!transaction?.orderId && !transaction?.paymentId && !transaction?.qrCodeId) return;
 
-    const key = `payment_success::${transaction.paymentId || transaction.orderId || ""}`;
-    if (lastFiredKeyRef.current === key) return;
-    lastFiredKeyRef.current = key;
+    let cancelled = false;
 
-    void sendPaymentWebhook({
-      user,
-      products,
-      transaction,
-      selectedSlots,
-      machineLocation,
-      machineName,
-      dedupeKey: key,
-    });
+    void (async () => {
+      const resolvedTx = (await resolvePaymentForWebhook(transaction)) || transaction;
+      if (cancelled) return;
+
+      if (!resolvedTx.orderId && !resolvedTx.paymentId) return;
+
+      const key = `payment_success::${resolvedTx.orderId || resolvedTx.paymentId || ""}`;
+      if (lastFiredKeyRef.current === key) return;
+      lastFiredKeyRef.current = key;
+
+      void sendPaymentWebhook({
+        user,
+        products,
+        transaction: resolvedTx,
+        selectedSlots,
+        machineLocation,
+        machineName,
+        dedupeKey: key,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [active, user, products, transaction, selectedSlots, machineLocation, machineName]);
 
   return null;

@@ -9,6 +9,7 @@ import {
   type DispenseSuccessTransactionInfo,
   type DispenseSuccessCommandInfo,
 } from "@/utils/webhook";
+import { resolvePaymentForWebhook } from "@/lib/resolveWebhookPayment";
 
 interface DispenseReporterProps {
   /** Whether the reporter should be active (i.e. dispense was successful). */
@@ -26,11 +27,8 @@ interface DispenseReporterProps {
 
 /**
  * Side-effect-only React component that fires the `dispense_success` webhook
- * exactly once per `(orderId + productId)` per browser session whenever `active`
+ * exactly once per `(orderId + slot)` per browser session whenever `active`
  * becomes `true`.
- *
- * It renders nothing — it lives purely to encapsulate the side effect so the
- * parent component doesn't get cluttered with webhook plumbing.
  */
 export default function DispenseReporter({
   active,
@@ -45,21 +43,35 @@ export default function DispenseReporter({
 
   useEffect(() => {
     if (!active) return;
-    if (!transaction?.orderId && !transaction?.paymentId) return;
+    if (!transaction?.orderId && !transaction?.paymentId && !transaction?.qrCodeId) return;
 
-    const key = `dispense_success::${transaction.paymentId || transaction.orderId || ""}::${command?.slotId ?? command?.productId ?? ""}`;
-    if (lastFiredKeyRef.current === key) return;
-    lastFiredKeyRef.current = key;
+    let cancelled = false;
 
-    void sendDispenseSuccessWebhook({
-      user,
-      products,
-      transaction,
-      command,
-      machineLocation,
-      machineName,
-      dedupeKey: key,
-    });
+    void (async () => {
+      const resolvedTx = (await resolvePaymentForWebhook(transaction)) || transaction;
+      if (cancelled) return;
+
+      if (!resolvedTx.orderId && !resolvedTx.paymentId) return;
+
+      const slotKey = command?.slotId ?? command?.productId ?? "";
+      const key = `dispense_success::${resolvedTx.orderId || resolvedTx.paymentId || ""}::${slotKey}`;
+      if (lastFiredKeyRef.current === key) return;
+      lastFiredKeyRef.current = key;
+
+      void sendDispenseSuccessWebhook({
+        user,
+        products,
+        transaction: resolvedTx,
+        command,
+        machineLocation,
+        machineName,
+        dedupeKey: key,
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [active, user, products, transaction, command, machineLocation, machineName]);
 
   return null;

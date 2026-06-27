@@ -30,6 +30,12 @@ import {
   getMachineFallbackInvoiceEmail,
   resolveInvoiceRecipientEmail,
 } from "@/utils/invoiceEmail";
+import {
+  mergeMachineContext,
+  getWebhookUserId,
+  getWalkInDisplayName,
+} from "@/lib/machineContext";
+import { resolveCheckoutPaymentClient } from "@/lib/checkoutPaymentResolve";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -75,55 +81,11 @@ function formatDate(d: Date): string {
   return `${day}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
-/** Real scan user id, or machine location for walk-in kiosk purchases. */
-function getWebhookUserId(
-  session: { user?: Record<string, unknown> } | null | undefined,
-  machineInfo: { machineId?: string; machineName?: string; machineLocation?: string } | null
-): string {
-  const sessionUserId = session?.user?.id;
-  if (sessionUserId && String(sessionUserId).includes("/")) {
-    return String(sessionUserId);
-  }
-  return (
-    machineInfo?.machineLocation ||
-    machineInfo?.machineId ||
-    machineInfo?.machineName ||
-    ""
-  );
-}
-
 async function enrichCheckoutPayment(summary: any): Promise<any> {
-  const payment = summary?.payment;
-  if (!payment || payment.paymentId) return summary;
-  if (!payment.orderId && !payment.qrCodeId) return summary;
-
-  try {
-    const mode = payment.method === "test" ? "test" : "live";
-    const res = await fetch("/api/razorpay/check-payment", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        orderId: payment.orderId,
-        qrCodeId: payment.qrCodeId,
-        mode,
-      }),
-    });
-    const data = await res.json();
-    if (data.success && data.paymentId) {
-      return {
-        ...summary,
-        payment: {
-          ...payment,
-          paymentId: data.paymentId,
-          orderId: data.orderId || payment.orderId,
-        },
-      };
-    }
-  } catch (err) {
-    console.warn("[FeedbackPage] Failed to resolve paymentId:", err);
-  }
-
-  return summary;
+  if (!summary?.payment) return summary;
+  const resolved = await resolveCheckoutPaymentClient(summary.payment, 8);
+  if (!resolved || resolved === summary.payment) return summary;
+  return { ...summary, payment: resolved };
 }
 
 // ---------------------------------------------------------------------------
@@ -320,17 +282,25 @@ export default function FeedbackPage() {
     return Array.isArray(items) ? items : [];
   }, [checkoutSummary]);
 
+  const mergedMachine = useMemo(
+    () =>
+      mergeMachineContext(
+        machineInfo,
+        checkoutSummary?.payment,
+        session?.user as { machineId?: string; machineName?: string; machineLocation?: string }
+      ),
+    [machineInfo, checkoutSummary?.payment, session?.user]
+  );
+
   const webhookUserId = useMemo(
-    () => getWebhookUserId(session, machineInfo),
-    [session, machineInfo]
+    () => getWebhookUserId(session, mergedMachine),
+    [session, mergedMachine]
   );
 
   const webhookUser = useMemo(
     () => ({
       userId: webhookUserId,
-      name:
-        (session?.user as any)?.name ||
-        `Walk-in – ${machineInfo?.machineName || "Vending Machine"}`,
+      name: getWalkInDisplayName(session, mergedMachine),
       email: (session?.user as any)?.email || "",
       phone:
         (session?.user as any)?.mobileNumber ||
@@ -338,7 +308,7 @@ export default function FeedbackPage() {
         (session?.user as any)?.phone ||
         "",
     }),
-    [session, machineInfo, webhookUserId]
+    [session, mergedMachine, webhookUserId]
   );
 
   const dispenseSuccessCommand = useMemo(() => {
@@ -713,8 +683,8 @@ export default function FeedbackPage() {
             amount: item?.amount,
           }))}
           transaction={checkoutSummary?.payment}
-          machineLocation={machineInfo?.machineLocation || machineLocation}
-          machineName={machineInfo?.machineName || "Vending Machine"}
+          machineLocation={mergedMachine.machineLocation}
+          machineName={mergedMachine.machineName || "Vending Machine"}
         />
       )}
       <Box
@@ -840,8 +810,8 @@ export default function FeedbackPage() {
                   }))}
                   transaction={checkoutSummary?.payment}
                   command={dispenseSuccessCommand || undefined}
-                  machineLocation={machineInfo?.machineLocation || machineLocation}
-                  machineName={machineInfo?.machineName || "Vending Machine"}
+                  machineLocation={mergedMachine.machineLocation}
+                  machineName={mergedMachine.machineName || "Vending Machine"}
                 />
                 {pickupTimer > 0 && (
                   <Box sx={{ bgcolor: "#fef3c7", borderRadius: 2, border: "2px solid #f59e0b", textAlign: "center", p: 2 }}>
@@ -866,8 +836,8 @@ export default function FeedbackPage() {
                   }))}
                   payment={checkoutSummary?.payment}
                   raw={dispenseState}
-                  machineLocation={machineInfo?.machineLocation || machineLocation}
-                  machineName={machineInfo?.machineName || "Vending Machine"}
+                  machineLocation={mergedMachine.machineLocation}
+                  machineName={mergedMachine.machineName || "Vending Machine"}
                 />
                 <Box sx={{ bgcolor: "#fef2f2", borderRadius: 2, border: "2px solid #ef4444", p: 2 }}>
                   <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#b91c1c", mb: 1 }}>

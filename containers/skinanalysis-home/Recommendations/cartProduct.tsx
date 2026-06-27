@@ -24,6 +24,11 @@ import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { useSession } from "next-auth/react";
 import PaymentReporter from "@/app/feedback/components/PaymentReporter";
 import {
+  getWalkInDisplayName,
+  getWebhookUserId,
+  mergeMachineContext,
+} from "@/lib/machineContext";
+import {
     clampCartQuantity,
     fetchMachineStockForProduct,
     getCartQuantityLimitMessage,
@@ -60,10 +65,35 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [paymentPayload, setPaymentPayload] = useState<any>(null);
     const [machineLocation, setMachineLocation] = useState<string>("LeafWater Vending Machine");
     const [machineName, setMachineName] = useState<string>("Vending Machine");
+    const [machineId, setMachineId] = useState<string>("");
     const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
     const [limitNotice, setLimitNotice] = useState({ open: false, message: "" });
 
     const cartItemKey = (item: CartItem) => item.id || item.name;
+
+    const machineContext = useMemo(
+        () =>
+            mergeMachineContext({
+                machineId,
+                machineName,
+                machineLocation,
+            }),
+        [machineId, machineName, machineLocation]
+    );
+
+    const webhookUser = useMemo(
+        () => ({
+            userId: getWebhookUserId(session, machineContext),
+            name: getWalkInDisplayName(session, machineContext),
+            email: (session?.user as any)?.email || "",
+            phone:
+                (session?.user as any)?.mobileNumber ||
+                (session?.user as any)?.phoneNumber ||
+                (session?.user as any)?.phone ||
+                "",
+        }),
+        [session, machineContext]
+    );
 
     // Fetch machine location and name from database
     useEffect(() => {
@@ -74,6 +104,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 if (data.success) {
                     if (data.machineLocation) setMachineLocation(data.machineLocation);
                     if (data.machineName) setMachineName(data.machineName);
+                    if (data.machineId) setMachineId(data.machineId);
                 }
             } catch (error) {
                 console.error("[CartProduct] Failed to fetch machine settings:", error);
@@ -528,7 +559,9 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                             currency: "INR",
                                                             status: "paid",
                                                             method: paymentMode,
-                                                            machineLocation: machineLocation,
+                                                            machineId,
+                                                            machineName,
+                                                            machineLocation,
                                                         },
                                                     })
                                                 );
@@ -1000,12 +1033,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 {/* Payment webhook reporter */}
                 <PaymentReporter
                     active={paymentSuccess}
-                    user={{
-                        userId: (session?.user as any)?.id,
-                        name: (session?.user as any)?.name,
-                        email: (session?.user as any)?.email,
-                        phone: (session?.user as any)?.mobileNumber || (session?.user as any)?.phoneNumber || (session?.user as any)?.phone,
-                    }}
+                    user={webhookUser}
                     products={items.map((item) => ({
                         id: item.id,
                         name: item.name,
@@ -1016,8 +1044,8 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                     }))}
                     transaction={paymentPayload}
                     selectedSlots={items.map((item) => item.slotId).filter((slot): slot is number => slot !== undefined).map(String)}
-                    machineLocation={machineLocation}
-                    machineName={machineName}
+                    machineLocation={machineContext.machineLocation}
+                    machineName={machineContext.machineName}
                 />
             </Dialog>
         </>

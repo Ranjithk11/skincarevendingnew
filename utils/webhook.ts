@@ -392,6 +392,7 @@ export interface PaymentProductInfo {
 export interface PaymentTransactionInfo {
   orderId?: string;
   paymentId?: string;
+  qrCodeId?: string;
   amount?: number;
   currency?: string;
   status?: string;
@@ -538,6 +539,7 @@ export interface DispenseSuccessProductInfo {
 export interface DispenseSuccessTransactionInfo {
   orderId?: string;
   paymentId?: string;
+  qrCodeId?: string;
   amount?: number;
   currency?: string;
   status?: string;
