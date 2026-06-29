@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useLayoutEffect } from "react";
-import { Box, Typography, IconButton, InputAdornment } from "@mui/material";
+import { Box, Typography, IconButton, InputAdornment, FormControl, Select, MenuItem } from "@mui/material";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { MuiTelInput } from "mui-tel-input";
@@ -13,6 +13,10 @@ import {
   validatePhone,
 } from "@/utils/phoneValidation";
 
+import {
+  CONSULTATION_TIME_OPTIONS,
+} from "@/lib/consultationFlow";
+
 interface Slide1Props {
   name: string;
   phone: string;
@@ -22,6 +26,9 @@ interface Slide1Props {
   activeField: "name" | "phone" | "email";
   cursorPosition: number | null;
   isNumeric: boolean;
+  consultationFlow?: boolean;
+  preferredTime?: string;
+  setPreferredTime?: (value: string) => void;
   setActiveField: (field: "name" | "phone" | "email") => void;
   setCursorPosition: (pos: number | null) => void;
   setIsNumeric: (value: boolean) => void;
@@ -43,6 +50,9 @@ export default function Slide1({
   activeField,
   cursorPosition,
   isNumeric,
+  consultationFlow = false,
+  preferredTime = "",
+  setPreferredTime,
   setActiveField,
   setCursorPosition,
   setIsNumeric,
@@ -123,7 +133,9 @@ export default function Slide1({
                 letterSpacing: 0,
               }}
             >
-              Let's get started
+              {consultationFlow
+                ? "Let's connect you with our skincare expert"
+                : "Let's get started"}
             </Typography>
             <Typography
               sx={{
@@ -136,7 +148,9 @@ export default function Slide1({
                 letterSpacing: 0,
               }}
             >
-              Sign up using your name and phone number
+              {consultationFlow
+                ? "Please share your details and preferred consultation time."
+                : "Sign up using your name and phone number"}
             </Typography>
 
             {/* Name Field */}
@@ -355,6 +369,8 @@ export default function Slide1({
             )}
             </Box>
 
+            {!consultationFlow && (
+              <>
             {/* Email Field */}
             <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>Email (Optional) </Typography>
             <Box
@@ -406,6 +422,60 @@ export default function Slide1({
                 )}
               </Typography>
             </Box>
+              </>
+            )}
+
+            {consultationFlow && setPreferredTime && (
+              <>
+                <Typography sx={{ color: "#000", fontSize: "36px", mb: 0 }}>
+                  Preferred Time for Consultation
+                </Typography>
+                <FormControl fullWidth>
+                  <Select
+                    displayEmpty
+                    value={preferredTime}
+                    onChange={(e) => setPreferredTime(String(e.target.value))}
+                    renderValue={(selected) =>
+                      selected
+                        ? CONSULTATION_TIME_OPTIONS.find((o) => o.value === selected)
+                            ?.label || selected
+                        : "Select preferred time"
+                    }
+                    sx={{
+                      borderRadius: 2,
+                      bgcolor: "white",
+                      minHeight: "72px",
+                      fontSize: "28px",
+                      color: preferredTime ? "#1a1a1a" : "#9ca3af",
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#9ca3af",
+                        borderWidth: 5,
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#6b7280",
+                      },
+                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#2d5a3d",
+                        borderWidth: 5,
+                      },
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      Select preferred time
+                    </MenuItem>
+                    {CONSULTATION_TIME_OPTIONS.map((opt) => (
+                      <MenuItem
+                        key={opt.value}
+                        value={opt.value}
+                        sx={{ fontSize: 24 }}
+                      >
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </>
+            )}
           </Box>
         </Box>
 
@@ -440,7 +510,9 @@ export default function Slide1({
             handleNext();
           }}
         >
-          <Typography sx={{ color: "white", fontWeight: 600, fontSize: "30px" }}>Next</Typography>
+          <Typography sx={{ color: "white", fontWeight: 600, fontSize: "30px" }}>
+            {consultationFlow ? "Submit Details" : "Next"}
+          </Typography>
         </Box>
 
         {/* Virtual Keyboard */}

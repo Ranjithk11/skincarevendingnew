@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import Questionnaire from "@/containers/slides/questionare";
 
 export default function QuestionnairePage() {
-  return <Questionnaire />;
+  return (
+    <Suspense fallback={null}>
+      <Questionnaire />
+    </Suspense>
+  );
 }

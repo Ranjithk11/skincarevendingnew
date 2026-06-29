@@ -4,12 +4,16 @@ import { useEffect, useState, useCallback } from "react";
 import { Box, IconButton, Typography } from "@mui/material";
 import { ArrowBack } from "@mui/icons-material";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, signOut } from "next-auth/react";
 import { saveUser as saveUserApi } from "@/redux/api/authApi";
 import Slide1 from "./Slide1";
 import Slide2 from "./Slide2";
 import { PageBackground } from "@/components/ui";
+import {
+  isFreeConsultationFlow,
+  selfiePathForConsultation,
+} from "@/lib/consultationFlow";
 import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { setSkinType } from "@/redux/reducers/analysisSlice";
@@ -59,6 +63,8 @@ const skinTypeOptions = [
 
 export default function Questionnaire() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const consultationFlow = isFreeConsultationFlow(searchParams.get("flow"));
   const dispatch = useAppDispatch();
   const { speakMessage } = useVoiceMessages();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -72,6 +78,7 @@ export default function Questionnaire() {
   const [isShift, setIsShift] = useState(true);
   const [isNumeric, setIsNumeric] = useState(false);
   const [selectedSkinType, setSelectedSkinType] = useState<string>("");
+  const [preferredTime, setPreferredTime] = useState<string>("");
   const [validationError, setValidationError] = useState<string>("");
   const [machineLocation, setMachineLocation] = useState<string>("leafterwater_vendingmachine02");
 
@@ -164,7 +171,7 @@ export default function Questionnaire() {
         setActiveField("phone");
         setIsNumeric(true);
         setCursorPosition(null); // Reset cursor for new field
-      } else if (activeField === "phone") {
+      } else if (activeField === "phone" && !consultationFlow) {
         setActiveField("email");
         setIsNumeric(false);
         setCursorPosition(null); // Reset cursor for new field
@@ -202,7 +209,7 @@ export default function Questionnaire() {
         if (isShift && !isNumeric) setIsShift(false);
       }
     }
-  }, [activeField, name, phone, email, isShift, isNumeric, cursorPosition, callingCode, country]);
+  }, [activeField, name, phone, email, isShift, isNumeric, cursorPosition, callingCode, country, consultationFlow]);
 
   // Physical keyboard support
   useEffect(() => {
@@ -268,7 +275,7 @@ export default function Questionnaire() {
         return;
       }
       // Email is optional - if not provided, use machine location default
-      if (email.trim()) {
+      if (!consultationFlow && email.trim()) {
         const emailValidation = isValidateEmail(email.trim());
         if (emailValidation !== true) {
           setValidationError(emailValidation as string);
@@ -276,6 +283,12 @@ export default function Questionnaire() {
           setTimeout(() => setValidationError(""), 3000);
           return;
         }
+      }
+      if (consultationFlow && !preferredTime) {
+        setValidationError("Please select a preferred consultation time");
+        speakMessage("invalidInput");
+        setTimeout(() => setValidationError(""), 3000);
+        return;
       }
       setValidationError("");
     }
@@ -349,7 +362,9 @@ export default function Questionnaire() {
         email: finalEmail,
         location: machineLocation,
         skinType: skinTypeId,
-        onBoardingQuestions: JSON.stringify([]),
+        onBoardingQuestions: JSON.stringify(
+          consultationFlow ? [{ preferredConsultationTime: preferredTime }] : []
+        ),
       });
 
       if (authResponse?.error) {
@@ -382,7 +397,11 @@ export default function Questionnaire() {
       // Announce completion
       speakMessage('success');
       
-      router.push(APP_ROUTES.SELFIE);
+      router.push(
+        consultationFlow
+          ? selfiePathForConsultation(preferredTime)
+          : APP_ROUTES.SELFIE
+      );
     } catch (err) {
       const e: any = err;
       console.error("Failed to save user", {
@@ -399,6 +418,8 @@ export default function Questionnaire() {
   const handleBack = () => {
     if (currentSlide > 0) {
       setCurrentSlide(currentSlide - 1);
+    } else if (consultationFlow) {
+      router.push(APP_ROUTES.HOME);
     } else {
       router.back();
     }
@@ -468,6 +489,9 @@ export default function Questionnaire() {
             activeField={activeField}
             cursorPosition={cursorPosition}
             isNumeric={isNumeric}
+            consultationFlow={consultationFlow}
+            preferredTime={preferredTime}
+            setPreferredTime={setPreferredTime}
             setActiveField={setActiveField}
             setCursorPosition={setCursorPosition}
             setIsNumeric={setIsNumeric}

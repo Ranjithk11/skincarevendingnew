@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Box, Typography } from "@mui/material";
 import Image from "next/image";
-import { useSession } from "next-auth/react";
 import ActionButton from "./ActionButton";
-import FreeConsultation from "@/containers/skinanalysis-home/Recommendations/freeConsultation";
+import { FREE_CONSULTATION_FLOW } from "@/lib/consultationFlow";
 
 interface LogoProps {
   size?: "small" | "medium" | "large";
@@ -31,13 +30,12 @@ export default function Logo({
   onBrowseProducts,
   onSlots,
 }: LogoProps) {
-  const { data: session } = useSession();
-  const [consultationOpen, setConsultationOpen] = useState(false);
+  const router = useRouter();
   const { width, height } = sizeMap[size];
 
   const handleFreeConsultationClick = () => {
     onFreeConsultation?.();
-    setConsultationOpen(true);
+    router.push(`/questionnaire?flow=${FREE_CONSULTATION_FLOW}`);
   };
 
   const logoMark = (
@@ -137,20 +135,6 @@ export default function Logo({
             </Typography>
           </ActionButton>
         </Box>
-
-        <FreeConsultation
-          open={consultationOpen}
-          onClose={() => setConsultationOpen(false)}
-          user={{
-            userId: (session?.user as any)?.id,
-            name: (session?.user as any)?.name,
-            email: (session?.user as any)?.email,
-            phone:
-              (session?.user as any)?.mobileNumber ||
-              (session?.user as any)?.phoneNumber ||
-              (session?.user as any)?.phone,
-          }}
-        />
       </Box>
     );
   }

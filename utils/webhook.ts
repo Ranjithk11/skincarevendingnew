@@ -780,6 +780,8 @@ export interface ConsultationUserInfo {
 
 export interface ConsultationPayload {
   user?: ConsultationUserInfo;
+  /** Preferred consultation time slot label from the questionnaire. */
+  preferredTime?: string;
   /** Detected skin attribute codes / labels from the AI analysis. */
   detectedAttributes?: unknown;
   /** Prioritised key concerns from the report. */
@@ -828,6 +830,7 @@ export async function sendConsultationWebhook(
       overall_score: payload.overallScore ?? null,
       overall_rating: payload.overallRating || "",
       result_url: payload.resultUrl || "",
+      preferred_time: payload.preferredTime || "",
       machine_name: payload.machineName || "",
       machine_location: payload.machineLocation || "",
     };

@@ -1,8 +1,10 @@
-import React from "react";
+import { Suspense } from "react";
 import TakeSelfie from "@/containers/skinanalysis-home/TakeSelfie";
 
-const SelfiePage = async () => {
-  return <TakeSelfie />;
-};
-
-export default SelfiePage;
+export default function SelfiePage() {
+  return (
+    <Suspense fallback={null}>
+      <TakeSelfie />
+    </Suspense>
+  );
+}
