@@ -28,6 +28,12 @@ import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
 import IdleRedirect from "@/components/ui/IdleRedirect";
 import StartupSync from "@/components/StartupSync";
 
+const IDLE_VIDEO_PLAYLIST = [
+  "/videos/airport.mp4",
+  "/videos/leafwater kavya reel .mp4",
+  "/videos/leaf water  f 28th.mp4",
+];
+
 interface DefaultLayoutProps {
   children?: React.ReactNode;
 }
@@ -237,7 +243,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
       >
         <SideMenuComponent />
       </Drawer> */}
-      <IdleVideoOverlay reIdleMs={120_000} />
+      <IdleVideoOverlay reIdleMs={120_000} sources={IDLE_VIDEO_PLAYLIST} />
       <IdleRedirect defaultIdleMs={120_000} feedbackIdleMs={180_000} excludePaths={["/", "/admin"]} />
     </Fragment>
   );
