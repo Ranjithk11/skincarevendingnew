@@ -85,6 +85,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (resolvedPaymentId) {
+      const existing = adminDb.getOrderByPaymentId(resolvedPaymentId);
+      if (existing) {
+        console.log('[Orders API] Duplicate request ignored for paymentId:', resolvedPaymentId, existing.id);
+        return NextResponse.json({
+          success: true,
+          order: existing,
+          duplicate: true,
+        });
+      }
+    }
+
+    if (razorpayOrderId) {
+      const existing = adminDb.getOrderByRazorpayOrderId(String(razorpayOrderId).trim());
+      if (existing) {
+        console.log('[Orders API] Duplicate request ignored for razorpayOrderId:', razorpayOrderId, existing.id);
+        return NextResponse.json({
+          success: true,
+          order: existing,
+          duplicate: true,
+        });
+      }
+    }
+
     const order = adminDb.createOrder({
       userId,
       items,

@@ -115,6 +115,16 @@ export default function BrowseProductsPage() {
     return n === "all" || n === "all brands";
   };
 
+  const sortedBrands = useMemo(() => {
+    return [...brands]
+      .filter((brand: any) => !isAllBrandName(brand?.name))
+      .sort((a: any, b: any) =>
+        String(a?.name ?? "").localeCompare(String(b?.name ?? ""), undefined, {
+          sensitivity: "base",
+        })
+      );
+  }, [brands]);
+
   // State to store category images
   const [categoryImages, setCategoryImages] = useState<Record<string, string | undefined>>({});
   const [brandImages, setBrandImages] = useState<Record<string, string | undefined>>({});
@@ -163,6 +173,7 @@ export default function BrowseProductsPage() {
 
               update(rawId);
               if (cleanId && cleanId !== rawId) update(cleanId);
+              if (cleanId) update(`products/${cleanId}`);
             }
           });
           setSlotsMap(map);
@@ -177,20 +188,37 @@ export default function BrowseProductsPage() {
   const sortedProducts = useMemo(() => {
     const getSlotInfo = (p: any) => {
       const productId = p?.id ?? p?._id;
-      return slotsMap[String(productId)] || slotsMap[normalizeProductId(productId)];
+      const rawId = String(productId ?? "").trim();
+      const cleanId = normalizeProductId(productId);
+      const candidates = Array.from(
+        new Set([rawId, cleanId, cleanId ? `products/${cleanId}` : ""].filter(Boolean))
+      );
+
+      for (const key of candidates) {
+        if (slotsMap[key]) return slotsMap[key];
+      }
+
+      const apiQuantity = Number(p?.quantity ?? 0);
+      if (apiQuantity > 0) {
+        return { slotNumbers: [], quantity: apiQuantity };
+      }
+
+      return undefined;
     };
 
     const decorated = products.map((product: any) => {
       const slotInfo = getSlotInfo(product);
-      const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
-      const quantity = slotInfo?.quantity ?? 0;
+      const quantity = slotInfo?.quantity ?? Number(product?.quantity ?? 0);
+      const isAvailable = quantity > 0;
       return { product, slotInfo, isAvailable, quantity };
     });
 
     decorated.sort((a: any, b: any) => {
       if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
       if (a.quantity !== b.quantity) return b.quantity - a.quantity;
-      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""));
+      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
+        sensitivity: "base",
+      });
     });
 
     return decorated;
@@ -569,9 +597,7 @@ export default function BrowseProductsPage() {
                 </Typography>
               </Box>
 
-              {brands
-                .filter((brand: any) => !isAllBrandName(brand?.name))
-                .map((brand: any) => {
+              {sortedBrands.map((brand: any) => {
                   const active = selectedBrand === brand._id;
                   const firstImg = brandImages[brand._id];
 
@@ -661,9 +687,8 @@ export default function BrowseProductsPage() {
                   const product = row?.product;
                   const slotInfo = row?.slotInfo;
                   const productId = product?.id ?? product?._id;
-                  // Product must be assigned to a slot to be available from vending machine
-                  const productQty = slotInfo?.quantity ?? 0;
-                  const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
+                  const productQty = row?.quantity ?? slotInfo?.quantity ?? Number(product?.quantity ?? 0);
+                  const isAvailable = row?.isAvailable ?? productQty > 0;
                   return (
                     <Grid
                       item

@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/admin-db";
-import { transformOrderToPosifly, LeafwaterOrder, getPosiflyConfig } from "@/lib/posifly";
+import { transformOrderToPosifly, LeafwaterOrder, getPosiflyConfig, generateBillNumber } from "@/lib/posifly";
 import { localBillToAnalyticsSyncPayload, pushPosSyncToAnalytics, pushSaleToVendingSync } from "@/lib/analytics-sync";
 
 export const dynamic = 'force-dynamic';
+
+function findExistingPosiflyBill(orderId: string) {
+  const candidates = Array.from(
+    new Set([orderId, generateBillNumber(orderId)].filter(Boolean))
+  );
+
+  for (const billNumber of candidates) {
+    const bill = adminDb.getPosiflyFullBill(billNumber);
+    if (bill) {
+      return { bill, billNumber };
+    }
+  }
+
+  return null;
+}
 
 /**
  * GET /api/posifly/bills - Read-only access to POSIFLY bill data
@@ -91,9 +106,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const paymentId =
+      typeof body.paymentId === "string" ? body.paymentId.trim() : "";
+    let resolvedOrderId = String(body.orderId || "").trim();
+
+    if (paymentId) {
+      const existingOrder = adminDb.getOrderByPaymentId(paymentId);
+      if (existingOrder?.id) {
+        resolvedOrderId = existingOrder.id;
+      }
+    }
+
+    const existingBill = findExistingPosiflyBill(resolvedOrderId);
+    if (existingBill) {
+      console.log("[POSIFLY Bills] Duplicate request ignored:", existingBill.billNumber);
+      return NextResponse.json({
+        success: true,
+        billNumber: existingBill.billNumber,
+        duplicate: true,
+        message: "POSIFLY bill already exists",
+      });
+    }
+
     // Build LeafwaterOrder
     const order: LeafwaterOrder = {
-      orderId: body.orderId,
+      orderId: resolvedOrderId,
       items: body.items.map((item: any) => ({
         productId: item.productId || "",
         productName: item.productName || item.name || "Unknown",

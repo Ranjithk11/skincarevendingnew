@@ -48,6 +48,7 @@ export default function UpiQrPayment({
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasTriggered = useRef(false);
+  const verifiedRef = useRef(false);
 
   const cleanup = useCallback(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
@@ -100,6 +101,11 @@ export default function UpiQrPayment({
 
             // Keep polling until Razorpay exposes pay_xxx (QR payments need qrCodeId).
             if (!paymentId) return;
+            if (verifiedRef.current) {
+              cleanup();
+              return;
+            }
+            verifiedRef.current = true;
 
             cleanup();
             toast.success("Payment successful!");
@@ -131,6 +137,7 @@ export default function UpiQrPayment({
 
   const generateQR = useCallback(async () => {
     if (isLoading) return;
+    verifiedRef.current = false;
     setIsLoading(true);
     onProcessingStart?.();
 

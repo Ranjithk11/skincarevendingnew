@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
     Box,
     Button,
@@ -68,6 +68,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [machineId, setMachineId] = useState<string>("");
     const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
     const [limitNotice, setLimitNotice] = useState({ open: false, message: "" });
+    const paymentRecordedRef = useRef<string | null>(null);
 
     const cartItemKey = (item: CartItem) => item.id || item.name;
 
@@ -526,6 +527,28 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         speakMessage("paymentProcessing");
                                     }}
                                     onVerified={async (payload) => {
+                                        const dedupeKey =
+                                            payload?.paymentId ||
+                                            payload?.qrCodeId ||
+                                            payload?.orderId ||
+                                            "";
+                                        if (!dedupeKey) return;
+
+                                        if (paymentRecordedRef.current === dedupeKey) {
+                                            console.log("[Payment] Duplicate onVerified ignored:", dedupeKey);
+                                            return;
+                                        }
+
+                                        if (typeof window !== "undefined") {
+                                            const storageKey = `kiosk_order_recorded::${dedupeKey}`;
+                                            if (window.sessionStorage.getItem(storageKey)) {
+                                                console.log("[Payment] Duplicate onVerified ignored (session):", dedupeKey);
+                                                return;
+                                            }
+                                            window.sessionStorage.setItem(storageKey, "1");
+                                        }
+
+                                        paymentRecordedRef.current = dedupeKey;
                                         console.log("[Payment] onVerified called, items:", items, "payload:", payload);
                                         const itemsToDispense = [...items];
 

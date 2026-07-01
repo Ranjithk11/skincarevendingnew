@@ -63,7 +63,10 @@ export async function GET() {
     return NextResponse.json(slots);
   } catch (error) {
     console.error("Error fetching slots:", error);
-    return NextResponse.json({});
+    return NextResponse.json(
+      { success: false, message: "Failed to load slots", error: String((error as Error)?.message || error) },
+      { status: 500 }
+    );
   }
 }
 
@@ -259,7 +262,11 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error assigning product to slot:", error);
     return NextResponse.json(
-      { success: false, message: "Failed to assign product" },
+      {
+        success: false,
+        message: "Failed to assign product",
+        error: String((error as Error)?.message || error),
+      },
       { status: 500 }
     );
   }

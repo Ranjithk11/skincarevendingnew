@@ -57,6 +57,8 @@ export const adminDb = {
   // Orders/Sales tracking - now using SQLite
   createOrder: sqliteDb.createOrder.bind(sqliteDb),
   getOrder: sqliteDb.getOrder.bind(sqliteDb),
+  getOrderByPaymentId: sqliteDb.getOrderByPaymentId.bind(sqliteDb),
+  getOrderByRazorpayOrderId: sqliteDb.getOrderByRazorpayOrderId.bind(sqliteDb),
   updateOrder: sqliteDb.updateOrder.bind(sqliteDb),
   updateOrderItemDispenseStatus: sqliteDb.updateOrderItemDispenseStatus.bind(sqliteDb),
   completeOrder: sqliteDb.completeOrder.bind(sqliteDb),

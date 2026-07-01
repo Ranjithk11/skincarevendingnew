@@ -30,6 +30,76 @@ function dropRelationIfExists(name: string) {
   }
 }
 
+function dedupeOrdersByColumn(column: "payment_id" | "razorpay_order_id") {
+  const duplicates = db
+    .prepare(
+      `
+      SELECT ${column} as dup_key
+      FROM orders
+      WHERE ${column} IS NOT NULL AND ${column} != ''
+      GROUP BY ${column}
+      HAVING COUNT(*) > 1
+    `
+    )
+    .all() as { dup_key: string }[];
+
+  if (duplicates.length === 0) return;
+
+  const selectIds = db.prepare(
+    `
+    SELECT id FROM orders
+    WHERE ${column} = ?
+    ORDER BY created_at ASC, rowid ASC
+  `
+  );
+  const deleteItems = db.prepare("DELETE FROM order_items WHERE order_id = ?");
+  const deleteOrder = db.prepare("DELETE FROM orders WHERE id = ?");
+
+  const removeDuplicates = db.transaction((keys: string[]) => {
+    for (const dupKey of keys) {
+      const ids = selectIds.all(dupKey) as { id: string }[];
+      for (const row of ids.slice(1)) {
+        deleteItems.run(row.id);
+        deleteOrder.run(row.id);
+      }
+    }
+  });
+
+  removeDuplicates(duplicates.map((row) => row.dup_key));
+  console.log(`[SQLite] Removed duplicate orders by ${column}:`, duplicates.length);
+}
+
+function ensureOrderIdempotencyIndexes() {
+  dedupeOrdersByColumn("payment_id");
+  dedupeOrdersByColumn("razorpay_order_id");
+
+  try {
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_payment_id_unique
+        ON orders(payment_id)
+        WHERE payment_id IS NOT NULL AND payment_id != ''
+    `);
+  } catch (err: any) {
+    console.warn(
+      "[SQLite] Could not create payment_id unique index:",
+      err?.message || err
+    );
+  }
+
+  try {
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_razorpay_order_id_unique
+        ON orders(razorpay_order_id)
+        WHERE razorpay_order_id IS NOT NULL AND razorpay_order_id != ''
+    `);
+  } catch (err: any) {
+    console.warn(
+      "[SQLite] Could not create razorpay_order_id unique index:",
+      err?.message || err
+    );
+  }
+}
+
 // Initialize database tables
 function initDb() {
   // Orders table - main sales records
@@ -46,6 +116,8 @@ function initDb() {
       completed_at TEXT
     )
   `);
+
+  ensureOrderIdempotencyIndexes();
 
   // Dispense history table - tracks every dispense event
   db.exec(`
@@ -471,7 +543,11 @@ function initDb() {
 }
 
 // Initialize on module load
-initDb();
+try {
+  initDb();
+} catch (err) {
+  console.error("[SQLite] Database initialization failed:", err);
+}
 
 // Types
 export interface OrderItem {
@@ -550,35 +626,88 @@ export const sqliteDb = {
     razorpayOrderId?: string;
     paymentMode: 'test' | 'live';
   }): Order {
+    const paymentId = orderData.paymentId?.trim() || "";
+    const razorpayOrderId = orderData.razorpayOrderId?.trim() || "";
+
+    if (paymentId) {
+      const existing = this.getOrderByPaymentId(paymentId);
+      if (existing) {
+        console.log('[SQLite] Reusing existing order for paymentId:', paymentId, existing.id);
+        return existing;
+      }
+    }
+
+    if (razorpayOrderId) {
+      const existing = this.getOrderByRazorpayOrderId(razorpayOrderId);
+      if (existing) {
+        console.log('[SQLite] Reusing existing order for razorpayOrderId:', razorpayOrderId, existing.id);
+        return existing;
+      }
+    }
+
     const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const createdAt = new Date().toISOString();
 
-    // Insert order
     const insertOrder = db.prepare(`
       INSERT INTO orders (id, user_id, total_amount, payment_id, razorpay_order_id, status, payment_mode, created_at)
       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
     `);
-    insertOrder.run(
-      orderId,
-      orderData.userId || null,
-      orderData.totalAmount,
-      orderData.paymentId || null,
-      orderData.razorpayOrderId || null,
-      orderData.paymentMode,
-      createdAt
-    );
-
-    // Insert order items
     const insertItem = db.prepare(`
       INSERT INTO order_items (order_id, product_id, product_name, quantity, price, slot_id, dispensed)
       VALUES (?, ?, ?, ?, ?, ?, 0)
     `);
-    for (const item of orderData.items) {
-      insertItem.run(orderId, item.productId, item.productName, item.quantity, item.price, item.slotId || null);
+
+    try {
+      insertOrder.run(
+        orderId,
+        orderData.userId || null,
+        orderData.totalAmount,
+        paymentId || null,
+        razorpayOrderId || null,
+        orderData.paymentMode,
+        createdAt
+      );
+
+      for (const item of orderData.items) {
+        insertItem.run(orderId, item.productId, item.productName, item.quantity, item.price, item.slotId || null);
+      }
+    } catch (err: any) {
+      const message = String(err?.message || err || "");
+      if (message.includes("UNIQUE constraint failed")) {
+        if (paymentId) {
+          const existing = this.getOrderByPaymentId(paymentId);
+          if (existing) return existing;
+        }
+        if (razorpayOrderId) {
+          const existing = this.getOrderByRazorpayOrderId(razorpayOrderId);
+          if (existing) return existing;
+        }
+      }
+      throw err;
     }
 
     console.log('[SQLite] Created order:', orderId);
     return this.getOrder(orderId)!;
+  },
+
+  getOrderByPaymentId(paymentId: string): Order | undefined {
+    const normalized = paymentId.trim();
+    if (!normalized) return undefined;
+    const orderRow = db
+      .prepare(`SELECT id FROM orders WHERE payment_id = ? ORDER BY created_at ASC LIMIT 1`)
+      .get(normalized) as { id: string } | undefined;
+    if (!orderRow) return undefined;
+    return this.getOrder(orderRow.id);
+  },
+
+  getOrderByRazorpayOrderId(razorpayOrderId: string): Order | undefined {
+    const normalized = razorpayOrderId.trim();
+    if (!normalized) return undefined;
+    const orderRow = db
+      .prepare(`SELECT id FROM orders WHERE razorpay_order_id = ? ORDER BY created_at ASC LIMIT 1`)
+      .get(normalized) as { id: string } | undefined;
+    if (!orderRow) return undefined;
+    return this.getOrder(orderRow.id);
   },
 
   getOrder(orderId: string): Order | undefined {
