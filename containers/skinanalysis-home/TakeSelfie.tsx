@@ -447,7 +447,9 @@ const StyledTakeSelfie = styled(Container)(({ theme }) => ({
 
 const TakeSelfie = () => {
   const { speakMessage } = useVoiceMessages();
-  const [initializing, setInitializing] = useState(false);
+  const [initializing, setInitializing] = useState(true);
+  const [modelsReady, setModelsReady] = useState(false);
+  const modelsReadyRef = useRef(false);
   const [croppedFace, setCroppedFace] = useState(null);
   const [isImageUploading, setIsImageUploading] = useState<boolean>(false);
   const [isAutoAnalyzing, setIsAutoAnalyzing] = useState<boolean>(false);
@@ -625,7 +627,7 @@ const TakeSelfie = () => {
   };
 
   const processImage = async () => {
-    if (!image || !imageRef.current) return;
+    if (!image || !imageRef.current || !modelsReadyRef.current) return;
 
     // Clear previous results
     if (canvasRef.current) {
@@ -942,17 +944,43 @@ const TakeSelfie = () => {
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadModels = async () => {
       setInitializing(true);
-      Promise.all([
-        faceapi.nets.tinyFaceDetector.load("/models"),
-        faceapi.nets.faceLandmark68Net.load("/models"),
-        faceapi.nets.faceRecognitionNet.load("/models"),
-      ])
-        .then(() => setInitializing(false))
-        .catch((e) => console.error("Error loading models:", e));
+      setModelsReady(false);
+      modelsReadyRef.current = false;
+
+      try {
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
+          faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+          faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
+        ]);
+
+        if (cancelled) return;
+        modelsReadyRef.current = true;
+        setModelsReady(true);
+      } catch (e) {
+        console.error("Error loading face detection models:", e);
+        if (!cancelled) {
+          setSkinAttributeStatus({
+            type: "ERROR",
+            message: "Failed to load face detection. Please refresh and try again.",
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setInitializing(false);
+        }
+      }
     };
+
     loadModels();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -1182,6 +1210,7 @@ const TakeSelfie = () => {
           <ARCameraComponent
             autoStart={true}
             initializing={initializing}
+            modelsReady={modelsReady}
             disabledSkipBtn={!dataImageInfo}
             onSkip={() => {
               setOpenCamera(!openCamera);

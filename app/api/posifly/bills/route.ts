@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic';
 
 function findExistingPosiflyBill(orderId: string) {
   const candidates = Array.from(
-    new Set([orderId, generateBillNumber(orderId)].filter(Boolean))
+    new Set([generateBillNumber(orderId), orderId].filter(Boolean))
   );
 
   for (const billNumber of candidates) {
+    if (!adminDb.hasSavedPosiflyBill(billNumber)) continue;
     const bill = adminDb.getPosiflyFullBill(billNumber);
     if (bill) {
       return { bill, billNumber };

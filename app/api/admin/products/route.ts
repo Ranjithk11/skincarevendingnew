@@ -27,6 +27,7 @@ async function applyOverrides(products: any[]) {
       // Calculate quantity from slots (sum of all slot quantities for this product)
       const slots = adminDb.getSlotsForProduct(productId, product.name);
       const totalQuantity = slots.reduce((sum, slot) => sum + slot.quantity, 0);
+      const slotIds = slots.map((slot) => slot.slot_id).sort((a, b) => a - b);
       
       if (override) {
         // Use override quantity if explicitly set, otherwise use slot calculation
@@ -37,12 +38,14 @@ async function applyOverrides(products: any[]) {
           category: override.category ?? product.category,
           retail_price: override.retail_price ?? product.retail_price,
           quantity: quantity,
+          slot_ids: slotIds,
           discount: (override as any).discount ?? product.discount,
         };
       }
       return {
         ...product,
         quantity: totalQuantity > 0 ? totalQuantity : product.quantity,
+        slot_ids: slotIds,
       };
     });
   } catch (e) {
@@ -109,13 +112,20 @@ export async function GET(request: Request) {
         id: p._id || p.id,
         name: p.name,
         description: p.productBenefits || p.description || "",
+        productUse: p.productUse || "",
+        productBenefits: p.productBenefits || p.description || "",
         retail_price: p.retailPrice || p.retail_price || 0,
         category: p.productCategory?.title || p.category || "",
+        productCategory: p.productCategory || null,
         image_url: p.images?.[0]?.url || p.image_url || "",
+        images: p.images || [],
         quantity: p.quantity || 0,
         in_stock: p.inStock ?? p.in_stock ?? true,
         shopify_url: p.shopifyUrl || p.shopify_url || "",
+        shopifyUrl: p.shopifyUrl || p.shopify_url || "",
         discount: p.discount || null,
+        skinTypes: p.skinTypes || [],
+        matches: p.matches || [],
       }));
       // Apply local overrides to external products (like Flask's SQLite storage)
       const productsWithOverrides = await applyOverrides(products);

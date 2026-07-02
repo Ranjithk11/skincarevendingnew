@@ -104,6 +104,24 @@ export default function BrowseProductsPage() {
     if (numericMatch?.[1]) return numericMatch[1];
     return raw.replace(/^products\//, "");
   };
+
+  const mergeSlotEntry = (
+    map: Record<string, { slotNumbers: number[]; quantity: number }>,
+    key: string,
+    slotId: number,
+    quantity: number
+  ) => {
+    if (!key || !Number.isFinite(slotId)) return;
+    const existing = map[key];
+    if (!existing) {
+      map[key] = { slotNumbers: [slotId], quantity };
+      return;
+    }
+    if (!existing.slotNumbers.includes(slotId)) {
+      existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
+    }
+    existing.quantity = Number(existing.quantity || 0) + quantity;
+  };
   const { data: categoriesData } = useGetProductCategoriesQuery({});
   const { data: brandsData } = useGetAllBrandsQuery({});
 
@@ -153,27 +171,19 @@ export default function BrowseProductsPage() {
               const rawId = String(slot.product_id);
               const cleanId = normalizeProductId(rawId);
               const quantity = Number(slot.quantity || 0);
+              const slotId = Number(slot.slot_id);
+              if (!Number.isFinite(slotId)) return;
 
-              const update = (key: string) => {
-                if (!key) return;
-                const slotId = Number(slot.slot_id);
-                if (!Number.isFinite(slotId)) return;
+              mergeSlotEntry(map, rawId, slotId, quantity);
+              if (cleanId && cleanId !== rawId) mergeSlotEntry(map, cleanId, slotId, quantity);
+              if (cleanId) mergeSlotEntry(map, `products/${cleanId}`, slotId, quantity);
+            }
 
-                const existing = map[key];
-                if (!existing) {
-                  map[key] = { slotNumbers: [slotId], quantity };
-                  return;
-                }
-
-                if (!existing.slotNumbers.includes(slotId)) {
-                  existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
-                }
-                existing.quantity = Number(existing.quantity || 0) + quantity;
-              };
-
-              update(rawId);
-              if (cleanId && cleanId !== rawId) update(cleanId);
-              if (cleanId) update(`products/${cleanId}`);
+            if (slot.product_name) {
+              const nameKey = String(slot.product_name).toUpperCase().trim().slice(0, 20);
+              const slotId = Number(slot.slot_id);
+              const quantity = Number(slot.quantity || 0);
+              if (nameKey) mergeSlotEntry(map, `name:${nameKey}`, slotId, quantity);
             }
           });
           setSlotsMap(map);
@@ -187,6 +197,18 @@ export default function BrowseProductsPage() {
 
   const sortedProducts = useMemo(() => {
     const getSlotInfo = (p: any) => {
+      const apiSlotIds = (Array.isArray(p?.slot_ids) ? p.slot_ids : [])
+        .map((id: unknown) => Number(id))
+        .filter((id: number) => Number.isFinite(id))
+        .sort((a: number, b: number) => a - b);
+
+      if (apiSlotIds.length > 0) {
+        return {
+          slotNumbers: apiSlotIds,
+          quantity: Number(p?.quantity ?? 0) || apiSlotIds.length,
+        };
+      }
+
       const productId = p?.id ?? p?._id;
       const rawId = String(productId ?? "").trim();
       const cleanId = normalizeProductId(productId);
@@ -198,9 +220,9 @@ export default function BrowseProductsPage() {
         if (slotsMap[key]) return slotsMap[key];
       }
 
-      const apiQuantity = Number(p?.quantity ?? 0);
-      if (apiQuantity > 0) {
-        return { slotNumbers: [], quantity: apiQuantity };
+      const nameKey = String(p?.name ?? "").toUpperCase().trim().slice(0, 20);
+      if (nameKey && slotsMap[`name:${nameKey}`]) {
+        return slotsMap[`name:${nameKey}`];
       }
 
       return undefined;

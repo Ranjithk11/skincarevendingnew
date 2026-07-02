@@ -112,6 +112,73 @@ export default function VendingProducts({ data }: Props) {
     return raw.replace(/^products\//, "");
   };
 
+  const mergeSlotEntry = (
+    map: Record<string, { slotNumbers: number[]; quantity: number }>,
+    key: string,
+    slotId: number,
+    quantity: number
+  ) => {
+    if (!key || !Number.isFinite(slotId)) return;
+    const existing = map[key];
+    if (!existing) {
+      map[key] = { slotNumbers: [slotId], quantity };
+      return;
+    }
+    if (!existing.slotNumbers.includes(slotId)) {
+      existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
+    }
+    existing.quantity = Number(existing.quantity || 0) + quantity;
+  };
+
+  const getSlotInfo = (product: any) => {
+    const apiSlotIds = (Array.isArray(product?.slot_ids) ? product.slot_ids : [])
+      .map((id: unknown) => Number(id))
+      .filter((id: number) => Number.isFinite(id))
+      .sort((a: number, b: number) => a - b);
+
+    if (apiSlotIds.length > 0) {
+      return {
+        slotNumbers: apiSlotIds,
+        quantity: Number(product?.quantity ?? 0) || apiSlotIds.length,
+      };
+    }
+
+    const productId = product?.id ?? product?._id;
+    const rawId = String(productId ?? "").trim();
+    const cleanId = normalizeProductId(productId);
+    const candidates = Array.from(
+      new Set([rawId, cleanId, cleanId ? `products/${cleanId}` : ""].filter(Boolean))
+    );
+
+    for (const key of candidates) {
+      if (slotsMap[key]) return slotsMap[key];
+    }
+
+    const nameKey = String(product?.name ?? "").toUpperCase().trim().slice(0, 20);
+    if (nameKey && slotsMap[`name:${nameKey}`]) {
+      return slotsMap[`name:${nameKey}`];
+    }
+
+    return undefined;
+  };
+
+  const isAllBrandName = (name: unknown) => {
+    const n = String(name ?? "").trim().toLowerCase();
+    return n === "all" || n === "all brands";
+  };
+
+  const sortedBrands = useMemo(
+    () =>
+      [...cloudBrands]
+        .filter((brand: any) => brand?._id && !isAllBrandName(brand?.name))
+        .sort((a: any, b: any) =>
+          String(a?.name ?? "").localeCompare(String(b?.name ?? ""), undefined, {
+            sensitivity: "base",
+          })
+        ),
+    [cloudBrands]
+  );
+
   // Fetch slots on mount
   useEffect(() => {
     const fetchSlots = async () => {
@@ -127,24 +194,17 @@ export default function VendingProducts({ data }: Props) {
               const rawId = String(slot.product_id);
               const cleanId = normalizeProductId(rawId);
               const quantity = Number(slot.quantity || 0);
+              const slotId = Number(slot.slot_id);
+              if (!Number.isFinite(slotId)) return;
 
-              const update = (key: string) => {
-                if (!key) return;
-                const slotId = Number(slot.slot_id);
-                if (!Number.isFinite(slotId)) return;
-                const existing = map[key];
-                if (!existing) {
-                  map[key] = { slotNumbers: [slotId], quantity };
-                  return;
-                }
-                if (!existing.slotNumbers.includes(slotId)) {
-                  existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
-                }
-                existing.quantity = Number(existing.quantity || 0) + quantity;
-              };
+              mergeSlotEntry(map, rawId, slotId, quantity);
+              if (cleanId && cleanId !== rawId) mergeSlotEntry(map, cleanId, slotId, quantity);
+              if (cleanId) mergeSlotEntry(map, `products/${cleanId}`, slotId, quantity);
+            }
 
-              update(rawId);
-              if (cleanId && cleanId !== rawId) update(cleanId);
+            if (slot.product_name) {
+              const nameKey = String(slot.product_name).toUpperCase().trim().slice(0, 20);
+              if (nameKey) mergeSlotEntry(map, `name:${nameKey}`, Number(slot.slot_id), Number(slot.quantity || 0));
             }
           });
           setSlotsMap(map);
@@ -185,8 +245,12 @@ export default function VendingProducts({ data }: Props) {
           // Check if any product in this category is available in vending machine
           const hasAvailable = catProducts.some((p: any) => {
             const productId = p?._id || p?.id;
-            const slotInfo = slotsMap[String(productId)] || slotsMap[normalizeProductId(productId)];
-            return slotInfo && slotInfo.quantity > 0;
+            const cleanId = normalizeProductId(productId);
+            const slotInfo =
+              slotsMap[String(productId)] ||
+              slotsMap[cleanId] ||
+              slotsMap[`products/${cleanId}`];
+            return (slotInfo && slotInfo.quantity > 0) || Number(p?.quantity ?? 0) > 0;
           });
 
           if (hasAvailable) {
@@ -215,7 +279,7 @@ export default function VendingProducts({ data }: Props) {
         setIsLoading(true);
         const params = new URLSearchParams();
         params.set("page", "1");
-        params.set("limit", "100");
+        params.set("limit", "1000");
         params.set("hasBrand", "true");
         params.set("isShopifyAvailable", "true");
         if (selectedCategory !== "all") params.set("catId", selectedCategory);
@@ -314,24 +378,20 @@ export default function VendingProducts({ data }: Props) {
 
   // Sort products - available first, then by quantity
   const sortedProducts = useMemo(() => {
-    const getSlotInfo = (p: any) => {
-      const productId = p?.id ?? p?._id;
-      return slotsMap[String(productId)] || slotsMap[normalizeProductId(productId)];
-    };
-
     const decorated = products.map((product: any) => {
       const slotInfo = getSlotInfo(product);
-      const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
-      const quantity = slotInfo?.quantity ?? 0;
+      const quantity = slotInfo?.quantity ?? Number(product?.quantity ?? 0);
+      const isAvailable = quantity > 0;
       return { product, slotInfo, isAvailable, quantity };
     });
 
-    // Filter to show only available products
     const availableOnly = decorated.filter((item) => item.isAvailable);
 
     availableOnly.sort((a, b) => {
       if (a.quantity !== b.quantity) return b.quantity - a.quantity;
-      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""));
+      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
+        sensitivity: "base",
+      });
     });
 
     return availableOnly;
@@ -356,8 +416,11 @@ export default function VendingProducts({ data }: Props) {
           if (id && !seenIds.has(id)) {
             seenIds.add(id);
             // Check if available in vending machine
-            const slotInfo = slotsMap[String(id)] || slotsMap[normalizeProductId(id)];
-            if (slotInfo && slotInfo.quantity > 0) {
+            const slotInfo =
+              slotsMap[String(id)] ||
+              slotsMap[normalizeProductId(id)] ||
+              slotsMap[`products/${normalizeProductId(id)}`];
+            if ((slotInfo && slotInfo.quantity > 0) || Number(p?.quantity ?? 0) > 0) {
               availableProducts.push({
                 product: p,
                 slotInfo,
@@ -492,29 +555,101 @@ export default function VendingProducts({ data }: Props) {
         </Box>
 
         {/* Brand Filter */}
-        {/* <Typography sx={{ fontSize: 24, color: "#9A9A9A", fontWeight: 400, letterSpacing: 1, textTransform: "uppercase" }}>
+        <Typography sx={{ fontSize: 24, color: "#9A9A9A", fontWeight: 400, letterSpacing: 1, textTransform: "uppercase", mt: 1 }}>
           BRAND FILTER
         </Typography>
-        <Box sx={{ display: "flex", gap: 2, overflowX: "auto", py: 2, "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}>
-          <Box onClick={() => setSelectedBrand("all")} sx={{ flex: "0 0 auto", cursor: "pointer", textAlign: "center", minWidth: 80 }}>
-            <Box sx={{ width: { xs: 58, md: 86 }, height: { xs: 58, md: 86 }, borderRadius: "50%", mx: "auto", border: selectedBrand === "all" ? "2px solid #0f766e" : "2px solid #e5e7eb", bgcolor: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            overflowX: "auto",
+            py: 2,
+            "&::-webkit-scrollbar": { display: "none" },
+            scrollbarWidth: "none",
+          }}
+        >
+          <Box
+            onClick={() => setSelectedBrand("all")}
+            sx={{ flex: "0 0 auto", cursor: "pointer", textAlign: "center", minWidth: 100 }}
+          >
+            <Box
+              sx={{
+                width: { xs: 58, md: 86 },
+                height: { xs: 58, md: 86 },
+                borderRadius: "50%",
+                mx: "auto",
+                border: selectedBrand === "all" ? "2px solid #0f766e" : "2px solid #e5e7eb",
+                bgcolor: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Typography sx={{ fontSize: 24, fontWeight: 600, color: "#0f766e" }}>All</Typography>
             </Box>
-            <Typography sx={{ mt: 0.75, fontSize: 18, color: "#000", fontWeight: selectedBrand === "all" ? 600 : 400, whiteSpace: "nowrap" }}>All Brands</Typography>
+            <Typography
+              sx={{
+                mt: 0.75,
+                fontSize: 18,
+                color: "#000",
+                fontWeight: selectedBrand === "all" ? 600 : 400,
+                whiteSpace: "nowrap",
+              }}
+            >
+              All Brands
+            </Typography>
           </Box>
-          {cloudBrands.filter((b: any) => b?._id && b._id !== "all").map((brand: any) => {
+          {sortedBrands.map((brand: any) => {
             const active = selectedBrand === brand._id;
             const brandImg = brandImages[brand._id];
             return (
-              <Box key={brand._id} onClick={() => setSelectedBrand(brand._id)} sx={{ flex: "0 0 auto", cursor: "pointer", textAlign: "center", minWidth: 80 }}>
-                <Box sx={{ width: { xs: 58, md: 86 }, height: { xs: 58, md: 86 }, borderRadius: "50%", mx: "auto", border: active ? "2px solid #0f766e" : "2px solid #e5e7eb", bgcolor: "#ffffff", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {brandImg ? <Box component="img" src={brandImg} alt={brand.name || "brand"} sx={{ width: "122px", height: "122px", objectFit: "contain" }} /> : null}
+              <Box
+                key={brand._id}
+                onClick={() => setSelectedBrand(brand._id)}
+                sx={{ flex: "0 0 auto", cursor: "pointer", textAlign: "center", minWidth: 100 }}
+              >
+                <Box
+                  sx={{
+                    width: { xs: 58, md: 86 },
+                    height: { xs: 58, md: 86 },
+                    borderRadius: "50%",
+                    mx: "auto",
+                    border: active ? "2px solid #0f766e" : "2px solid #e5e7eb",
+                    bgcolor: "#ffffff",
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {brandImg ? (
+                    <Box
+                      component="img"
+                      src={brandImg}
+                      alt={brand.name || "brand"}
+                      sx={{ width: "122px", height: "122px", objectFit: "contain" }}
+                    />
+                  ) : (
+                    <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#0f766e", px: 1 }}>
+                      {String(brand.name || "").slice(0, 2).toUpperCase()}
+                    </Typography>
+                  )}
                 </Box>
-                <Typography sx={{ mt: 0.75, fontSize: 18, color: "#000", fontWeight: active ? 600 : 400, whiteSpace: "nowrap" }}>{brand.name}</Typography>
+                <Typography
+                  sx={{
+                    mt: 0.75,
+                    fontSize: 18,
+                    color: "#000",
+                    fontWeight: active ? 600 : 400,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {brand.name}
+                </Typography>
               </Box>
             );
           })}
-        </Box> */}
+        </Box>
 
         {/* Products Grid - show all for "All" category, limit to 4 for others */}
         <Grid container spacing={{ xs: 1.5, md: 2 }} sx={{ mt: 2 }}>
@@ -529,8 +664,8 @@ export default function VendingProducts({ data }: Props) {
               const product = row?.product;
               const slotInfo = row?.slotInfo;
               const mappedProduct = mapProductToCardProps(product);
-              const productQty = slotInfo?.quantity ?? 0;
-              const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
+              const productQty = row?.quantity ?? slotInfo?.quantity ?? 0;
+              const isAvailable = productQty > 0;
               return (
                 <Grid item xs={6} md={4} key={`product-${String(mappedProduct._id)}-${idx}`} sx={{ display: "flex", justifyContent: "center" }}>
                   <ProductCard

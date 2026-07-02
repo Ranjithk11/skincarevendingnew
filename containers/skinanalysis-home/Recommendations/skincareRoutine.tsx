@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Box, Card, Grid, Switch, Typography } from "@mui/material";
+import React, { useEffect, useMemo, useState } from "react";
+import { Box, Card, Grid, Typography } from "@mui/material";
 import ProductCard from "./ProductCard";
 
 type Props = {
@@ -166,18 +166,209 @@ const HowToUseCard = ({
 /* ===============================
    PRODUCT CARD
 ================================ */
-const RoutineProductCard = ({ product, category }: { product: any; category?: string }) => {
-  return (
-    <ProductCard
-      {...product}
-      category={category}
-      enabledMask={false}
-      compact={false}
-      horizontalLayout={true}
-      cardSx={{ width: "100%" }}
-    />
-  );
+const normalizeText = (v: unknown) =>
+  String(v ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+
+const normalizeProductId = (id: unknown) => {
+  const raw = String(id ?? "").trim();
+  if (!raw) return "";
+
+  const numericMatch = raw.match(/(\d{5,})\/?$/);
+  if (numericMatch?.[1]) return numericMatch[1];
+
+  return raw.replace(/^products\//, "");
 };
+
+const normalizeProductName = (name: unknown) => normalizeText(name);
+
+const normalizeNamePrefix = (name: unknown) =>
+  String(name ?? "")
+    .toUpperCase()
+    .trim()
+    .slice(0, 20);
+
+type SlotInfo = { slotNumber: number; quantity: number };
+
+const ROUTINE_STEP_MATCHERS: Record<
+  string,
+  { positives: string[]; negatives: string[]; categoryHints: string[] }
+> = {
+  cleanser: {
+    positives: ["face wash", "facewash", "cleanser", "cleansing water", "micellar"],
+    negatives: [
+      "serum",
+      "sunscreen",
+      "sun screen",
+      "sunblock",
+      "sun lotion",
+      "sun gel",
+      "moistur",
+      "night cream",
+      "night creme",
+      "night gel",
+      "eye cream",
+      "body lotion",
+      "peeling solution",
+      "face mask",
+      "sleeping mask",
+      "toner",
+      "cleansing bar",
+    ],
+    categoryHints: ["face wash", "cleanser"],
+  },
+  serum: {
+    positives: ["face serum", "serum"],
+    negatives: [
+      "cleanser",
+      "face wash",
+      "sunscreen",
+      "moistur",
+      "night cream",
+      "eye cream",
+      "mask",
+      "toner",
+      "body lotion",
+    ],
+    categoryHints: ["face serum", "serum"],
+  },
+  daycream: {
+    positives: [
+      "day cream",
+      "daycream",
+      "day creme",
+      "moisturizer",
+      "moisturiser",
+      "moisturizing cream",
+      "moisturising cream",
+      "face moisturizer",
+      "face moisturiser",
+      "hydration",
+    ],
+    negatives: [
+      "cleanser",
+      "face wash",
+      "serum",
+      "sunscreen",
+      "sun screen",
+      "sunblock",
+      "sun lotion",
+      "sun gel",
+      "night cream",
+      "night creme",
+      "night gel",
+      "eye cream",
+      "body lotion",
+      "baby",
+      "peeling",
+      "face mask",
+      "sleeping mask",
+      "toner",
+      "cleansing bar",
+    ],
+    categoryHints: ["day cream", "moistur"],
+  },
+  sunscreen: {
+    positives: ["sunscreen", "sun screen", "sunblock", "spf", "sun lotion", "sun gel"],
+    negatives: [
+      "cleanser",
+      "face wash",
+      "serum",
+      "moistur",
+      "night cream",
+      "eye cream",
+      "mask",
+      "toner",
+      "body lotion",
+      "baby body",
+    ],
+    categoryHints: ["sunscreen"],
+  },
+  nightcream: {
+    positives: [
+      "night cream",
+      "nightcream",
+      "night creme",
+      "night gel",
+      "night comfort cream",
+      "sleeping mask",
+    ],
+    negatives: [
+      "cleanser",
+      "face wash",
+      "sunscreen",
+      "sun screen",
+      "serum",
+      "eye cream",
+      "body lotion",
+      "baby",
+      "toner",
+      "peeling",
+      "face mask",
+    ],
+    categoryHints: ["night cream", "night"],
+  },
+  undereye: {
+    positives: ["under-eye", "under eye", "eye cream"],
+    negatives: ["cleanser", "sunscreen", "serum", "face wash"],
+    categoryHints: ["under eye", "eye cream"],
+  },
+};
+
+function getProductText(product: any): string {
+  return normalizeText(
+    [
+      product?.name,
+      product?.productUse,
+      product?.productCategory?.title,
+      product?.category,
+      product?.productBenefits,
+    ].join(" ")
+  );
+}
+
+function matchesRoutineStep(product: any, stepId: string): boolean {
+  const matcher = ROUTINE_STEP_MATCHERS[stepId];
+  if (!matcher) return false;
+
+  const text = getProductText(product);
+  const category = normalizeText(product?.productCategory?.title || product?.category);
+
+  const positiveMatch =
+    matcher.positives.some((term) => text.includes(term)) ||
+    matcher.categoryHints.some((term) => category.includes(term));
+
+  if (!positiveMatch) return false;
+  if (matcher.negatives.some((term) => text.includes(term))) return false;
+  return true;
+}
+
+function mapProductToCardProps(product: any) {
+  const productId = product?._id || product?.id;
+  const imageUrl =
+    product?.images?.[0]?.url ||
+    product?.image_url ||
+    (typeof product?.images?.[0] === "string" ? product.images[0] : "");
+
+  return {
+    ...product,
+    _id: productId,
+    id: productId,
+    name: product?.name,
+    productBenefits: product?.productBenefits || product?.description || "",
+    productUse: product?.productUse || "",
+    retailPrice: product?.retailPrice ?? product?.retail_price ?? 0,
+    matches: product?.matches || [],
+    images: imageUrl ? [{ url: imageUrl }] : product?.images || [],
+    shopifyUrl: product?.shopifyUrl || product?.shopify_url || "#buy",
+    productCategory: product?.productCategory || {
+      title: product?.category || "",
+    },
+    skinTypes: product?.skinTypes || product?.skin_types || [],
+  };
+}
 
 /* ===============================
    MAIN PAGE
@@ -185,192 +376,201 @@ const RoutineProductCard = ({ product, category }: { product: any; category?: st
 export default function SkincareRoutinePage({ recommendationData }: Props) {
   const [night, setNight] = useState(false);
 
-  const normalizeProductId = (id: unknown) => {
-    const raw = String(id ?? "").trim();
-    if (!raw) return "";
-
-    const numericMatch = raw.match(/(\d{5,})\/?$/);
-    if (numericMatch?.[1]) return numericMatch[1];
-
-    return raw.replace(/^products\//, "");
-  };
-
-  const normalizeProductName = (name: unknown) =>
-    String(name ?? "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-  const [slotsMap, setSlotsMap] = useState<
-    Record<string, { slotNumber: number; quantity: number }>
-  >({});
-
-  const [slotsNameMap, setSlotsNameMap] = useState<
-    Record<string, { slotNumber: number; quantity: number }>
-  >({});
-
-  // Store vending machine products with their full details
+  const [slotsMap, setSlotsMap] = useState<Record<string, SlotInfo>>({});
+  const [slotsNameMap, setSlotsNameMap] = useState<Record<string, SlotInfo>>({});
   const [vendingProducts, setVendingProducts] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchSlots = async () => {
-      try {
-        const res = await fetch("/api/admin/slots");
-        if (!res.ok) return;
+    const mergeSlotEntry = (
+      target: Record<string, SlotInfo>,
+      key: string,
+      slotNumber: number,
+      quantity: number
+    ) => {
+      if (!key || !Number.isFinite(slotNumber)) return;
+      const existing = target[key];
+      if (!existing || quantity > existing.quantity) {
+        target[key] = { slotNumber, quantity };
+      }
+    };
 
-        const slotsData = await res.json();
-        const map: Record<string, { slotNumber: number; quantity: number }> = {};
-        const nameMap: Record<string, { slotNumber: number; quantity: number }> = {};
+    const fetchMachineCatalog = async () => {
+      try {
+        const [slotsRes, productsRes] = await Promise.all([
+          fetch("/api/admin/slots"),
+          fetch("/api/admin/products?limit=1000&hasBrand=true&isShopifyAvailable=true"),
+        ]);
+
+        if (!slotsRes.ok) return;
+
+        const slotsData = await slotsRes.json();
+        const map: Record<string, SlotInfo> = {};
+        const nameMap: Record<string, SlotInfo> = {};
         const slotsArray = Array.isArray(slotsData) ? slotsData : Object.values(slotsData);
-        const productIds: string[] = [];
 
         slotsArray.forEach((slot: any) => {
           const quantity = Number(slot?.quantity || 0);
-
-          const update = (
-            target: Record<string, { slotNumber: number; quantity: number }>,
-            key: string
-          ) => {
-            if (!key) return;
-            const existing = target[key];
-            if (!existing || quantity > existing.quantity) {
-              target[key] = {
-                slotNumber: slot.slot_id,
-                quantity,
-              };
-            }
-          };
+          const slotNumber = Number(slot?.slot_id);
+          if (!Number.isFinite(slotNumber)) return;
 
           if (slot?.product_id) {
             const rawId = String(slot.product_id);
             const cleanId = normalizeProductId(rawId);
-            update(map, rawId);
-            if (cleanId && cleanId !== rawId) update(map, cleanId);
-            if (quantity > 0) {
-              productIds.push(cleanId || rawId);
-            }
+            mergeSlotEntry(map, rawId, slotNumber, quantity);
+            if (cleanId && cleanId !== rawId) mergeSlotEntry(map, cleanId, slotNumber, quantity);
+            if (cleanId) mergeSlotEntry(map, `products/${cleanId}`, slotNumber, quantity);
           }
 
-          const slotNameKey = normalizeProductName(slot?.product_name);
-          if (slotNameKey) update(nameMap, slotNameKey);
+          const fullNameKey = normalizeProductName(slot?.product_name);
+          const prefixNameKey = normalizeNamePrefix(slot?.product_name);
+          if (fullNameKey) mergeSlotEntry(nameMap, fullNameKey, slotNumber, quantity);
+          if (prefixNameKey) mergeSlotEntry(nameMap, `prefix:${prefixNameKey}`, slotNumber, quantity);
         });
 
         setSlotsMap(map);
         setSlotsNameMap(nameMap);
 
-        // Fetch product details from cloud API for vending machine products
-        if (productIds.length > 0) {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-          const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
-          if (apiUrl) {
-            try {
-              const productsRes = await fetch(
-                `${apiUrl}/product/fetch-by-filter?limit=100&isShopifyAvailable=true&hasBrand=true`,
-                { headers: { "x-db-token": dbToken } }
-              );
-              const productsData = await productsRes.json();
-              const allCloudProducts = productsData?.data?.[0]?.products || [];
-              
-              // Filter to only products in vending machine
-              const vendingProds = allCloudProducts.filter((p: any) => {
-                const id = p?._id || p?.id;
-                return productIds.includes(String(id)) || productIds.includes(normalizeProductId(id));
-              });
-              setVendingProducts(vendingProds);
-            } catch (err) {
-              console.warn("Failed to fetch vending products:", err);
-            }
+        if (!productsRes.ok) return;
+
+        const productsPayload = await productsRes.json();
+        const allProducts = Array.isArray(productsPayload)
+          ? productsPayload
+          : productsPayload?.data || [];
+
+        const resolveSlotInfo = (product: any): SlotInfo | undefined => {
+          const productId = product?.id ?? product?._id;
+          const rawId = String(productId ?? "").trim();
+          const cleanId = normalizeProductId(productId);
+          const keys = [rawId, cleanId, cleanId ? `products/${cleanId}` : ""].filter(Boolean);
+
+          for (const key of keys) {
+            if (map[key]) return map[key];
           }
-        }
+
+          const fullNameKey = normalizeProductName(product?.name);
+          const prefixNameKey = normalizeNamePrefix(product?.name);
+          if (fullNameKey && nameMap[fullNameKey]) return nameMap[fullNameKey];
+          if (prefixNameKey && nameMap[`prefix:${prefixNameKey}`]) {
+            return nameMap[`prefix:${prefixNameKey}`];
+          }
+
+          return undefined;
+        };
+
+        const inMachine = allProducts
+          .map((product: any) => {
+            const slotInfo = resolveSlotInfo(product);
+            const quantity = Number(product?.quantity ?? slotInfo?.quantity ?? 0);
+            if (!slotInfo || quantity <= 0) return null;
+            return mapProductToCardProps({
+              ...product,
+              quantity,
+            });
+          })
+          .filter(Boolean);
+
+        setVendingProducts(inMachine as any[]);
       } catch (err) {
-        console.warn("Failed to fetch slots:", err);
+        console.warn("Failed to fetch machine catalog for routine:", err);
       }
     };
 
-    fetchSlots();
+    fetchMachineCatalog();
   }, []);
 
-  const normalize = (v: any) => String(v ?? "").toLowerCase().trim();
-
   const highRecommendations = recommendationData?.recommendedProducts?.highRecommendation;
-  const productBuckets: Array<{ categoryTitle: string; products: any[] }> = Array.isArray(highRecommendations)
-    ? highRecommendations
-      .filter(Boolean)
-      .map((c: any) => ({
-        categoryTitle: normalize(c?.productCategory?.title),
-        products: Array.isArray(c?.products) ? c.products.filter(Boolean) : [],
-      }))
-    : [];
+  const productBuckets: Array<{ categoryTitle: string; products: any[] }> = useMemo(
+    () =>
+      Array.isArray(highRecommendations)
+        ? highRecommendations
+            .filter(Boolean)
+            .map((c: any) => ({
+              categoryTitle: normalizeText(c?.productCategory?.title),
+              products: Array.isArray(c?.products)
+                ? c.products.filter(Boolean).map(mapProductToCardProps)
+                : [],
+            }))
+        : [],
+    [highRecommendations]
+  );
 
-  // Helper to check if product is available in vending machine
-  const isProductAvailable = (p: any) => {
-    const productId = p?.id ?? p?._id;
-    const slotInfo =
-      slotsMap[String(productId)] ||
-      slotsMap[normalizeProductId(productId)] ||
-      slotsNameMap[normalizeProductName(p?.name)];
-    return slotInfo && slotInfo.quantity > 0;
-  };
+  const recommendedProductIds = useMemo(() => {
+    const ids = new Set<string>();
+    productBuckets.forEach((bucket) => {
+      bucket.products.forEach((product) => {
+        const id = normalizeProductId(product?._id || product?.id);
+        if (id) ids.add(id);
+      });
+    });
+    return ids;
+  }, [productBuckets]);
 
-  const pickProducts = (keywords: string[], limit: number) => {
-    const kw = keywords.map(normalize);
-    let candidates: any[] = [];
-    
-    // First try to find products from matching category in recommendations
-    for (const b of productBuckets) {
-      const title = b.categoryTitle;
-      if (kw.some((k) => title.includes(k))) {
-        candidates = [...candidates, ...b.products];
-      }
+  const getSlotInfo = (product: any): SlotInfo | undefined => {
+    const productId = product?.id ?? product?._id;
+    const rawId = String(productId ?? "").trim();
+    const cleanId = normalizeProductId(productId);
+    const keys = [rawId, cleanId, cleanId ? `products/${cleanId}` : ""].filter(Boolean);
+
+    for (const key of keys) {
+      if (slotsMap[key]) return slotsMap[key];
     }
 
-    // Also search in all recommendation products by name/use
-    const flat = productBuckets.flatMap((b) => b.products);
-    const nameMatches = flat.filter((p: any) => {
-      const use = normalize(p?.productUse);
-      const name = normalize(p?.name);
-      const category = normalize(p?.productCategory?.title);
-      return kw.some((k) => use.includes(k) || name.includes(k) || category.includes(k));
-    });
-    
-    // FALLBACK: Also search in vending machine products directly
-    const vendingMatches = vendingProducts.filter((p: any) => {
-      const use = normalize(p?.productUse);
-      const name = normalize(p?.name);
-      const category = normalize(p?.productCategory?.title);
-      return kw.some((k) => use.includes(k) || name.includes(k) || category.includes(k));
-    });
-    
-    // Combine and deduplicate (recommendations first, then vending fallback)
-    const seenIds = new Set<string>();
-    const allCandidates: any[] = [];
-    [...candidates, ...nameMatches, ...vendingMatches].forEach((p) => {
-      const id = p?._id || p?.id;
-      if (id && !seenIds.has(id)) {
-        seenIds.add(id);
-        allCandidates.push(p);
-      }
-    });
-    
-    // Filter to only show available products
-    const availableProducts = allCandidates.filter(isProductAvailable);
-    
-    return availableProducts.slice(0, limit);
+    const fullNameKey = normalizeProductName(product?.name);
+    const prefixNameKey = normalizeNamePrefix(product?.name);
+    if (fullNameKey && slotsNameMap[fullNameKey]) return slotsNameMap[fullNameKey];
+    if (prefixNameKey && slotsNameMap[`prefix:${prefixNameKey}`]) {
+      return slotsNameMap[`prefix:${prefixNameKey}`];
+    }
+
+    return undefined;
   };
 
-  const cleanserProducts = pickProducts(["face wash", "cleanser"], 2);
-  const serumProducts = pickProducts(["face serum", "serum"], 1);
-  const daycreamProducts = pickProducts([
-    "day cream",
-    "daycream",
-    "moisturizer",
-    "moisturiser",
-    "moisturizing cream",
-    "moisturising cream",
-  ], 1);
-  const sunscreenProducts = pickProducts(["sunscreen", "sun screen", "sunblock", "spf"], 1);
-  const underEyeProducts = pickProducts(["under-eye", "under eye", "eye cream"], 1);
-  const nightcreamProducts = pickProducts(["night cream", "nightcream", "night"], 1);
+  const pickProducts = (stepId: string, limit: number) => {
+    const recommendedMatches = productBuckets
+      .flatMap((bucket) => bucket.products)
+      .filter(
+        (product) =>
+          matchesRoutineStep(product, stepId) && getSlotInfo(product)?.quantity
+      );
+
+    const machineMatches = vendingProducts.filter((product) =>
+      matchesRoutineStep(product, stepId)
+    );
+
+    const seen = new Set<string>();
+    const ranked: any[] = [];
+
+    [...recommendedMatches, ...machineMatches].forEach((product) => {
+      const id = normalizeProductId(product?._id || product?.id);
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+
+      const slotInfo = getSlotInfo(product);
+      if (!slotInfo || slotInfo.quantity <= 0) return;
+
+      ranked.push({
+        product: mapProductToCardProps(product),
+        slotInfo,
+        recommended: recommendedProductIds.has(id),
+        quantity: slotInfo.quantity,
+      });
+    });
+
+    ranked.sort((a, b) => {
+      if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
+      if (a.quantity !== b.quantity) return b.quantity - a.quantity;
+      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""));
+    });
+
+    return ranked.slice(0, limit).map((row) => row.product);
+  };
+
+  const cleanserProducts = useMemo(() => pickProducts("cleanser", 2), [vendingProducts, productBuckets, slotsMap, slotsNameMap, recommendedProductIds]);
+  const serumProducts = useMemo(() => pickProducts("serum", 2), [vendingProducts, productBuckets, slotsMap, slotsNameMap, recommendedProductIds]);
+  const daycreamProducts = useMemo(() => pickProducts("daycream", 2), [vendingProducts, productBuckets, slotsMap, slotsNameMap, recommendedProductIds]);
+  const sunscreenProducts = useMemo(() => pickProducts("sunscreen", 2), [vendingProducts, productBuckets, slotsMap, slotsNameMap, recommendedProductIds]);
+  const underEyeProducts = useMemo(() => pickProducts("undereye", 1), [vendingProducts, productBuckets, slotsMap, slotsNameMap, recommendedProductIds]);
+  const nightcreamProducts = useMemo(() => pickProducts("nightcream", 2), [vendingProducts, productBuckets, slotsMap, slotsNameMap, recommendedProductIds]);
 
   const steps = night
     ? [
@@ -614,17 +814,14 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
                 {s.products.map((p: any, idx: number) => (
                   <Grid item xs={6} key={idx}>
                     {(() => {
-                      const productId = p?.id ?? p?._id;
-                      const slotInfo =
-                        slotsMap[String(productId)] ||
-                        slotsMap[normalizeProductId(productId)] ||
-                        slotsNameMap[normalizeProductName(p?.name)];
+                      const mapped = mapProductToCardProps(p);
+                      const slotInfo = getSlotInfo(mapped);
                       const productQty = slotInfo?.quantity ?? 0;
-                      const isAvailable = slotInfo ? slotInfo.quantity > 0 : false;
+                      const isAvailable = productQty > 0;
 
                       return (
                         <ProductCard
-                          {...p}
+                          {...mapped}
                           category={s.title}
                           enabledMask={false}
                           compact={false}

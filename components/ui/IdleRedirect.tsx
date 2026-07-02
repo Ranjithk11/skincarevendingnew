@@ -17,7 +17,7 @@ interface IdleRedirectProps {
 export default function IdleRedirect({
   defaultIdleMs = 120_000,   // 2 minutes for most pages
   feedbackIdleMs = 180_000,  // 3 minutes for feedback page
-  excludePaths = ["/", "/admin"],
+  excludePaths = ["/"],
 }: IdleRedirectProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -45,9 +45,17 @@ export default function IdleRedirect({
       try {
         await signOut({ redirect: false });
       } catch {}
+
+      if (pathname.startsWith("/admin")) {
+        try {
+          localStorage.removeItem("admin_logged_in");
+          localStorage.removeItem("admin_name");
+        } catch {}
+      }
+
       router.push(APP_ROUTES.HOME);
     }, ms);
-  }, [clearTimer, getIdleMs, router]);
+  }, [clearTimer, getIdleMs, router, pathname]);
 
   const handleActivity = useCallback(() => {
     startTimer();
