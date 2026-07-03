@@ -210,6 +210,7 @@ export default function AdminDashboardPage() {
     const productId = product.id.toString();
     const catalogPrice = Number(product.retail_price ?? 0);
     const retailPrice = resolveInventoryPrice(productId, catalogPrice);
+    const slotQty = getProductQuantityFromSlots(productId);
     return {
       id: productId,
       name: product.name,
@@ -217,7 +218,7 @@ export default function AdminDashboardPage() {
       retail_price: retailPrice,
       discount: product.discount || undefined,
       price: `Rs.${retailPrice}`,
-      amount: product.quantity || getProductQuantityFromSlots(productId),
+      amount: slotQty,
       image: product.image_url,
     };
   }) || [];
@@ -236,6 +237,7 @@ export default function AdminDashboardPage() {
     const catalogPrice = Number(p.retailPrice || p.retail_price || 0);
     const adminMatch = findAdminProductMatch(String(productId));
     const retailPrice = resolveInventoryPrice(String(productId), catalogPrice, adminMatch);
+    const slotQty = getProductQuantityFromSlots(String(productId));
     return {
       id: productId,
       name: adminMatch?.name ?? productName,
@@ -243,22 +245,65 @@ export default function AdminDashboardPage() {
       retail_price: retailPrice,
       discount: adminMatch?.discount ?? (p.discount || undefined),
       price: `Rs.${retailPrice}`,
-      amount: adminMatch?.amount ?? getProductQuantityFromSlots(String(productId)),
+      amount: slotQty,
       image: adminMatch?.image ?? (p.images?.[0]?.url || p.image_url || ""),
     };
   });
   
-  // One row per product — slot/custom price wins over catalog
+  // One row per product — slot totals and custom prices from machine slots
   const transformedProducts = (() => {
     const byKey = new Map<string, InventoryProductRow>();
-    [...browseProducts, ...adminProducts].forEach((p) => {
-      const key = normalizeProductId(p.id);
+
+    const upsert = (row: InventoryProductRow) => {
+      const key = normalizeProductId(row.id);
       if (!key) return;
+      const slotQty = getProductQuantityFromSlots(String(row.id));
+      const merged: InventoryProductRow = { ...row, amount: slotQty };
       const existing = byKey.get(key);
-      if (!existing || (p.amount ?? 0) >= (existing.amount ?? 0)) {
-        byKey.set(key, p);
+      if (!existing) {
+        byKey.set(key, merged);
+        return;
       }
-    });
+      byKey.set(key, {
+        ...existing,
+        ...merged,
+        amount: slotQty,
+        retail_price: merged.retail_price ?? existing.retail_price,
+        name: merged.name || existing.name,
+        image: merged.image || existing.image,
+      });
+    };
+
+    browseProducts.forEach(upsert);
+    adminProducts.forEach(upsert);
+
+    if (slotsData) {
+      Object.values(slotsData).forEach((slot: any) => {
+        if (!slot?.product_id || Number(slot.quantity || 0) <= 0) return;
+        const productId = String(slot.product_id);
+        const key = normalizeProductId(productId);
+        if (!key || byKey.has(key)) return;
+
+        const browseMatch = allCategoryProducts.find(
+          (p: any) => normalizeProductId(p._id || p.id) === key
+        );
+        const catalogPrice = Number(
+          browseMatch?.retailPrice || browseMatch?.retail_price || slot.retail_price || 0
+        );
+        const retailPrice = resolveInventoryPrice(productId, catalogPrice);
+
+        upsert({
+          id: productId,
+          name: slot.product_name || browseMatch?.name || "Product",
+          category: slot.category || browseMatch?.productCategory?.title || "Uncategorized",
+          retail_price: retailPrice,
+          price: `Rs.${retailPrice}`,
+          amount: getProductQuantityFromSlots(productId),
+          image: slot.image_url || browseMatch?.images?.[0]?.url || "",
+        });
+      });
+    }
+
     return Array.from(byKey.values());
   })();
 

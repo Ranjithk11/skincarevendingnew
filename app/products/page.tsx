@@ -18,6 +18,7 @@ import {
   getSlotDiscountMap,
   mergeCatalogWithSlotProducts,
   normalizeProductDiscount,
+  productMatchesBrandFilter,
   type SlotsMap,
 } from "@/lib/product-slot-utils";
 
@@ -106,6 +107,11 @@ export default function BrowseProductsPage() {
   const [rawSlotsData, setRawSlotsData] = useState<unknown>({});
   const [slotsMap, setSlotsMap] = useState<SlotsMap>({});
 
+  const { data: categoriesData } = useGetProductCategoriesQuery({});
+  const { data: brandsData } = useGetAllBrandsQuery({});
+  const categories = categoriesData?.data || [];
+  const brands = brandsData?.data || [];
+
   // Fetch all slots once on mount
   useEffect(() => {
     const fetchSlots = async () => {
@@ -123,9 +129,19 @@ export default function BrowseProductsPage() {
     fetchSlots();
   }, []);
 
+  const hasCatalogFilter = selectedCategory !== "all" || selectedBrand !== "all";
+
+  const selectedBrandName = useMemo(() => {
+    if (selectedBrand === "all") return undefined;
+    return brands.find((b: any) => b._id === selectedBrand)?.name as string | undefined;
+  }, [selectedBrand, brands]);
+
   const machineProducts = useMemo(
-    () => mergeCatalogWithSlotProducts(products, rawSlotsData),
-    [products, rawSlotsData]
+    () =>
+      mergeCatalogWithSlotProducts(products, rawSlotsData, {
+        includeUnlistedSlotProducts: !hasCatalogFilter,
+      }),
+    [products, rawSlotsData, hasCatalogFilter]
   );
 
   const slotDiscountMap = useMemo(() => getSlotDiscountMap(rawSlotsData), [rawSlotsData]);
@@ -138,20 +154,19 @@ export default function BrowseProductsPage() {
     });
 
     return decorated
-      .filter((item) => item.isAvailable)
+      .filter((item) =>
+        productMatchesBrandFilter(item.product, selectedBrand, selectedBrandName)
+      )
       .sort((a, b) => {
-        if (a.quantity !== b.quantity) return b.quantity - a.quantity;
+        if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+        if (a.isAvailable && b.isAvailable && a.quantity !== b.quantity) {
+          return b.quantity - a.quantity;
+        }
         return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
           sensitivity: "base",
         });
       });
-  }, [machineProducts, slotsMap]);
-
-  const { data: categoriesData } = useGetProductCategoriesQuery({});
-  const { data: brandsData } = useGetAllBrandsQuery({});
-
-  const categories = categoriesData?.data || [];
-  const brands = brandsData?.data || [];
+  }, [machineProducts, slotsMap, selectedBrand, selectedBrandName]);
 
   const isAllBrandName = (name: unknown) => {
     const n = String(name ?? "").trim().toLowerCase();
@@ -360,7 +375,7 @@ export default function BrowseProductsPage() {
           sx={{
             pt: isDesktop ? 20 : 16,
             px: isDesktop ? 4 : 2,
-            pb: 4,
+            pb: 8,
             minHeight: "100vh",
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-y",
@@ -624,7 +639,7 @@ export default function BrowseProductsPage() {
             ) : sortedProducts.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 8 }}>
                 <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#4b5563", mb: 1 }}>
-                  No products available in the machine
+                  No products found
                 </Typography>
                 <Typography sx={{ fontSize: 16, color: "#9ca3af" }}>
                   Try a different category or brand filter
@@ -637,6 +652,7 @@ export default function BrowseProductsPage() {
                   const slotInfo = row?.slotInfo;
                   const productId = product?.id ?? product?._id;
                   const productQty = row?.quantity ?? slotInfo?.quantity ?? 0;
+                  const isAvailable = row?.isAvailable ?? productQty > 0;
                   return (
                     <Grid
                       item
@@ -646,8 +662,8 @@ export default function BrowseProductsPage() {
                     >
                       <ProductCard
                         {...mapProductToCardProps(product, slotDiscountMap)}
-                        slotNumbers={slotInfo?.slotNumbers ?? null}
-                        isAvailable={true}
+                        slotNumbers={isAvailable ? (slotInfo?.slotNumbers ?? null) : null}
+                        isAvailable={isAvailable}
                         quantity={productQty}
                       />
                     </Grid>

@@ -154,11 +154,52 @@ export function normalizeProductDiscount(
   return null;
 }
 
+export function getProductBrandId(product: unknown): string {
+  const p = product as Record<string, unknown>;
+  const brand = p?.brand as Record<string, unknown> | undefined;
+  const productBrand = p?.productBrand as Record<string, unknown> | string | undefined;
+  return String(
+    p?.brandId ??
+      p?.brand_id ??
+      brand?._id ??
+      (typeof productBrand === "object" ? productBrand?._id : productBrand) ??
+      ""
+  ).trim();
+}
+
+export function productMatchesBrandFilter(
+  product: unknown,
+  selectedBrandId: string,
+  selectedBrandName?: string
+): boolean {
+  if (!selectedBrandId || selectedBrandId === "all") return true;
+
+  const productBrandId = getProductBrandId(product);
+  if (productBrandId && productBrandId === String(selectedBrandId)) return true;
+
+  if (selectedBrandName) {
+    const normalizedBrand = selectedBrandName.toLowerCase().replace(/[^a-z0-9]/g, "");
+    const normalizedName = String((product as any)?.name ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    if (normalizedBrand && normalizedName.includes(normalizedBrand)) return true;
+  }
+
+  return false;
+}
+
+export type MergeCatalogOptions = {
+  /** When false, only enrich catalog rows — do not inject slot-only products (keeps brand/category filters). */
+  includeUnlistedSlotProducts?: boolean;
+};
+
 /** Include catalog products plus slot-assigned products missing from the API response. */
 export function mergeCatalogWithSlotProducts(
   catalogProducts: any[],
-  slotsData: unknown
+  slotsData: unknown,
+  options: MergeCatalogOptions = {}
 ): any[] {
+  const { includeUnlistedSlotProducts = true } = options;
   const slotDiscountMap = getSlotDiscountMap(slotsData);
   const byId = new Map<string, any>();
   catalogProducts.forEach((product) => {
@@ -192,6 +233,8 @@ export function mergeCatalogWithSlotProducts(
       }
       return;
     }
+
+    if (!includeUnlistedSlotProducts) return;
 
     byId.set(key, {
       id: slot.product_id,

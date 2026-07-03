@@ -178,6 +178,8 @@ export async function GET(request: Request) {
         in_stock: p.inStock ?? p.in_stock ?? true,
         shopify_url: p.shopifyUrl || p.shopify_url || "",
         shopifyUrl: p.shopifyUrl || p.shopify_url || "",
+        brandId: p.brandId || p.brand_id || p.brand?._id || p.productBrand?._id || p.productBrand || "",
+        brand: p.brand || p.productBrand || null,
         discount: p.discount || null,
         skinTypes: p.skinTypes || [],
         matches: p.matches || [],

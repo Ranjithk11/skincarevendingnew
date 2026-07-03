@@ -13,6 +13,7 @@ import {
   getSlotInfoForProduct,
   mergeCatalogWithSlotProducts,
   normalizeProductDiscount,
+  productMatchesBrandFilter,
   type SlotsMap,
 } from "@/lib/product-slot-utils";
 
@@ -130,10 +131,17 @@ export default function VendingProducts({ data }: Props) {
     fetchSlots();
   }, []);
 
-  const machineProducts = useMemo(
-    () => mergeCatalogWithSlotProducts(products, rawSlotsData),
-    [products, rawSlotsData]
-  );
+  const machineProducts = useMemo(() => {
+    const hasCatalogFilter = selectedCategory !== "all" || selectedBrand !== "all";
+    return mergeCatalogWithSlotProducts(products, rawSlotsData, {
+      includeUnlistedSlotProducts: !hasCatalogFilter,
+    });
+  }, [products, rawSlotsData, selectedCategory, selectedBrand]);
+
+  const selectedBrandName = useMemo(() => {
+    if (selectedBrand === "all") return undefined;
+    return cloudBrands.find((b: any) => b._id === selectedBrand)?.name as string | undefined;
+  }, [selectedBrand, cloudBrands]);
 
   const slotDiscountMap = useMemo(() => getSlotDiscountMap(rawSlotsData), [rawSlotsData]);
 
@@ -317,14 +325,19 @@ export default function VendingProducts({ data }: Props) {
     });
 
     return decorated
-      .filter((item) => item.isAvailable)
+      .filter((item) =>
+        productMatchesBrandFilter(item.product, selectedBrand, selectedBrandName)
+      )
       .sort((a, b) => {
-        if (a.quantity !== b.quantity) return b.quantity - a.quantity;
+        if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+        if (a.isAvailable && b.isAvailable && a.quantity !== b.quantity) {
+          return b.quantity - a.quantity;
+        }
         return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
           sensitivity: "base",
         });
       });
-  }, [machineProducts, slotsMap]);
+  }, [machineProducts, slotsMap, selectedBrand, selectedBrandName]);
 
   // Process personalized recommendations from cloud API (data prop)
   // Group by category, show up to 4 products per category (minimum 2 if available)
@@ -582,7 +595,7 @@ export default function VendingProducts({ data }: Props) {
           {sortedProducts.length === 0 ? (
             <Grid item xs={12}>
               <Typography sx={{ mt: 1.5, color: "#6b7280" }}>
-                {isLoading ? "Loading products..." : "No products available in vending machine for this selection."}
+                {isLoading ? "Loading products..." : "No products found for this selection."}
               </Typography>
             </Grid>
           ) : (
@@ -591,7 +604,7 @@ export default function VendingProducts({ data }: Props) {
               const slotInfo = row?.slotInfo;
               const mappedProduct = mapProductToCardProps(product, slotDiscountMap);
               const productQty = row?.quantity ?? slotInfo?.quantity ?? 0;
-              const isAvailable = productQty > 0;
+              const isAvailable = row?.isAvailable ?? productQty > 0;
               return (
                 <Grid item xs={6} md={4} key={`product-${String(mappedProduct._id)}-${idx}`} sx={{ display: "flex", justifyContent: "center" }}>
                   <ProductCard
@@ -599,7 +612,7 @@ export default function VendingProducts({ data }: Props) {
                     enabledMask={false}
                     compact={false}
                     horizontalLayout={true}
-                    slotNumbers={slotInfo?.slotNumbers ?? null}
+                    slotNumbers={isAvailable ? (slotInfo?.slotNumbers ?? null) : null}
                     isAvailable={isAvailable}
                     quantity={productQty}
                     cardSx={{ width: "100%", ...(isDesktop ? { maxWidth: 700, minHeight: 380 } : { maxWidth: 700, height: 300 }) }}
