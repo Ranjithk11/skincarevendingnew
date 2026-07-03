@@ -12,6 +12,12 @@ import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import ProductCard from "@/containers/skinanalysis-home/Recommendations/ProductCard";
 import { useCart } from "@/containers/skinanalysis-home/Recommendations/CartContext";
 import CartProduct from "@/containers/skinanalysis-home/Recommendations/cartProduct";
+import {
+  buildSlotsMap,
+  getSlotInfoForProduct,
+  mergeCatalogWithSlotProducts,
+  type SlotsMap,
+} from "@/lib/product-slot-utils";
 
 const PageBackground = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -95,33 +101,48 @@ export default function BrowseProductsPage() {
 
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumbers: number[]; quantity: number }>>({});
+  const [rawSlotsData, setRawSlotsData] = useState<unknown>({});
+  const [slotsMap, setSlotsMap] = useState<SlotsMap>({});
 
-  const normalizeProductId = (id: unknown) => {
-    const raw = String(id ?? "").trim();
-    if (!raw) return "";
-    const numericMatch = raw.match(/(\d{5,})\/?$/);
-    if (numericMatch?.[1]) return numericMatch[1];
-    return raw.replace(/^products\//, "");
-  };
+  // Fetch all slots once on mount
+  useEffect(() => {
+    const fetchSlots = async () => {
+      try {
+        const res = await fetch("/api/admin/slots");
+        if (res.ok) {
+          const slotsData = await res.json();
+          setRawSlotsData(slotsData);
+          setSlotsMap(buildSlotsMap(slotsData));
+        }
+      } catch (err) {
+        console.warn("Failed to fetch slots:", err);
+      }
+    };
+    fetchSlots();
+  }, []);
 
-  const mergeSlotEntry = (
-    map: Record<string, { slotNumbers: number[]; quantity: number }>,
-    key: string,
-    slotId: number,
-    quantity: number
-  ) => {
-    if (!key || !Number.isFinite(slotId)) return;
-    const existing = map[key];
-    if (!existing) {
-      map[key] = { slotNumbers: [slotId], quantity };
-      return;
-    }
-    if (!existing.slotNumbers.includes(slotId)) {
-      existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
-    }
-    existing.quantity = Number(existing.quantity || 0) + quantity;
-  };
+  const machineProducts = useMemo(
+    () => mergeCatalogWithSlotProducts(products, rawSlotsData),
+    [products, rawSlotsData]
+  );
+
+  const sortedProducts = useMemo(() => {
+    const decorated = machineProducts.map((product: any) => {
+      const slotInfo = getSlotInfoForProduct(product, slotsMap);
+      const quantity = slotInfo?.quantity ?? 0;
+      return { product, slotInfo, quantity, isAvailable: quantity > 0 };
+    });
+
+    return decorated
+      .filter((item) => item.isAvailable)
+      .sort((a, b) => {
+        if (a.quantity !== b.quantity) return b.quantity - a.quantity;
+        return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
+          sensitivity: "base",
+        });
+      });
+  }, [machineProducts, slotsMap]);
+
   const { data: categoriesData } = useGetProductCategoriesQuery({});
   const { data: brandsData } = useGetAllBrandsQuery({});
 
@@ -154,98 +175,6 @@ export default function BrowseProductsPage() {
     { dragging: false, startX: 0, startScrollLeft: 0 }
   );
 
-  // Fetch all slots once on mount
-  useEffect(() => {
-    const fetchSlots = async () => {
-      try {
-        const res = await fetch("/api/admin/slots");
-        if (res.ok) {
-          const slotsData = await res.json();
-          const map: Record<string, { slotNumbers: number[]; quantity: number }> = {};
-          // Handle both array and object formats
-          const slotsArray = Array.isArray(slotsData)
-            ? slotsData
-            : Object.values(slotsData);
-          slotsArray.forEach((slot: any) => {
-            if (slot.product_id) {
-              const rawId = String(slot.product_id);
-              const cleanId = normalizeProductId(rawId);
-              const quantity = Number(slot.quantity || 0);
-              const slotId = Number(slot.slot_id);
-              if (!Number.isFinite(slotId)) return;
-
-              mergeSlotEntry(map, rawId, slotId, quantity);
-              if (cleanId && cleanId !== rawId) mergeSlotEntry(map, cleanId, slotId, quantity);
-              if (cleanId) mergeSlotEntry(map, `products/${cleanId}`, slotId, quantity);
-            }
-
-            if (slot.product_name) {
-              const nameKey = String(slot.product_name).toUpperCase().trim().slice(0, 20);
-              const slotId = Number(slot.slot_id);
-              const quantity = Number(slot.quantity || 0);
-              if (nameKey) mergeSlotEntry(map, `name:${nameKey}`, slotId, quantity);
-            }
-          });
-          setSlotsMap(map);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch slots:", err);
-      }
-    };
-    fetchSlots();
-  }, []);
-
-  const sortedProducts = useMemo(() => {
-    const getSlotInfo = (p: any) => {
-      const apiSlotIds = (Array.isArray(p?.slot_ids) ? p.slot_ids : [])
-        .map((id: unknown) => Number(id))
-        .filter((id: number) => Number.isFinite(id))
-        .sort((a: number, b: number) => a - b);
-
-      if (apiSlotIds.length > 0) {
-        return {
-          slotNumbers: apiSlotIds,
-          quantity: Number(p?.quantity ?? 0) || apiSlotIds.length,
-        };
-      }
-
-      const productId = p?.id ?? p?._id;
-      const rawId = String(productId ?? "").trim();
-      const cleanId = normalizeProductId(productId);
-      const candidates = Array.from(
-        new Set([rawId, cleanId, cleanId ? `products/${cleanId}` : ""].filter(Boolean))
-      );
-
-      for (const key of candidates) {
-        if (slotsMap[key]) return slotsMap[key];
-      }
-
-      const nameKey = String(p?.name ?? "").toUpperCase().trim().slice(0, 20);
-      if (nameKey && slotsMap[`name:${nameKey}`]) {
-        return slotsMap[`name:${nameKey}`];
-      }
-
-      return undefined;
-    };
-
-    const decorated = products.map((product: any) => {
-      const slotInfo = getSlotInfo(product);
-      const quantity = slotInfo?.quantity ?? Number(product?.quantity ?? 0);
-      const isAvailable = quantity > 0;
-      return { product, slotInfo, isAvailable, quantity };
-    });
-
-    decorated.sort((a: any, b: any) => {
-      if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
-      if (a.quantity !== b.quantity) return b.quantity - a.quantity;
-      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
-        sensitivity: "base",
-      });
-    });
-
-    return decorated;
-  }, [products, slotsMap]);
-
   // Fetch products for selected category
   useEffect(() => {
     let cancelled = false;
@@ -256,7 +185,7 @@ export default function BrowseProductsPage() {
 
         const params = new URLSearchParams();
         params.set("page", "1");
-        params.set("limit", "100");
+        params.set("limit", "1000");
         params.set("hasBrand", "true");
         params.set("isShopifyAvailable", "true");
         if (selectedCategory !== "all") params.set("catId", selectedCategory);
@@ -688,19 +617,13 @@ export default function BrowseProductsPage() {
                   Loading products...
                 </Typography>
               </Box>
-            ) : products.length === 0 ? (
+            ) : sortedProducts.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 8 }}>
-                <Box
-                  component="img"
-                  src="/wending/productlog.svg"
-                  alt="No products"
-                  sx={{ width: 100, height: 100, opacity: 0.3, mb: 2 }}
-                />
                 <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#4b5563", mb: 1 }}>
-                  No products found
+                  No products available in the machine
                 </Typography>
                 <Typography sx={{ fontSize: 16, color: "#9ca3af" }}>
-                  Try selecting a different category
+                  Try a different category or brand filter
                 </Typography>
               </Box>
             ) : (
@@ -709,8 +632,7 @@ export default function BrowseProductsPage() {
                   const product = row?.product;
                   const slotInfo = row?.slotInfo;
                   const productId = product?.id ?? product?._id;
-                  const productQty = row?.quantity ?? slotInfo?.quantity ?? Number(product?.quantity ?? 0);
-                  const isAvailable = row?.isAvailable ?? productQty > 0;
+                  const productQty = row?.quantity ?? slotInfo?.quantity ?? 0;
                   return (
                     <Grid
                       item
@@ -721,7 +643,7 @@ export default function BrowseProductsPage() {
                       <ProductCard
                         {...mapProductToCardProps(product)}
                         slotNumbers={slotInfo?.slotNumbers ?? null}
-                        isAvailable={isAvailable}
+                        isAvailable={true}
                         quantity={productQty}
                       />
                     </Grid>

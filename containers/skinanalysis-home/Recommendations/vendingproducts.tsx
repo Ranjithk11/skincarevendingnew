@@ -7,6 +7,12 @@ import {
   useGetProductCategoriesQuery,
   useGetAllBrandsQuery,
 } from "@/redux/api/products";
+import {
+  buildSlotsMap,
+  getSlotInfoForProduct,
+  mergeCatalogWithSlotProducts,
+  type SlotsMap,
+} from "@/lib/product-slot-utils";
 
 type Props = {
   data: any;
@@ -94,7 +100,8 @@ export default function VendingProducts({ data }: Props) {
 
   // State for products and slots
   const [products, setProducts] = useState<any[]>([]);
-  const [slotsMap, setSlotsMap] = useState<Record<string, { slotNumbers: number[]; quantity: number }>>({});
+  const [rawSlotsData, setRawSlotsData] = useState<unknown>({});
+  const [slotsMap, setSlotsMap] = useState<SlotsMap>({});
   const [isLoading, setIsLoading] = useState(false);
 
   // State for category/brand images
@@ -104,63 +111,27 @@ export default function VendingProducts({ data }: Props) {
   // State for categories that have available products in vending machine
   const [availableCategoryIds, setAvailableCategoryIds] = useState<Set<string>>(new Set());
 
-  const normalizeProductId = (id: unknown) => {
-    const raw = String(id ?? "").trim();
-    if (!raw) return "";
-    const numericMatch = raw.match(/(\d{5,})\/?$/);
-    if (numericMatch?.[1]) return numericMatch[1];
-    return raw.replace(/^products\//, "");
-  };
+  // Fetch slots on mount
+  useEffect(() => {
+    const fetchSlots = async () => {
+      try {
+        const res = await fetch("/api/admin/slots");
+        if (res.ok) {
+          const slotsData = await res.json();
+          setRawSlotsData(slotsData);
+          setSlotsMap(buildSlotsMap(slotsData));
+        }
+      } catch (err) {
+        console.warn("Failed to fetch slots:", err);
+      }
+    };
+    fetchSlots();
+  }, []);
 
-  const mergeSlotEntry = (
-    map: Record<string, { slotNumbers: number[]; quantity: number }>,
-    key: string,
-    slotId: number,
-    quantity: number
-  ) => {
-    if (!key || !Number.isFinite(slotId)) return;
-    const existing = map[key];
-    if (!existing) {
-      map[key] = { slotNumbers: [slotId], quantity };
-      return;
-    }
-    if (!existing.slotNumbers.includes(slotId)) {
-      existing.slotNumbers = [...existing.slotNumbers, slotId].sort((a, b) => a - b);
-    }
-    existing.quantity = Number(existing.quantity || 0) + quantity;
-  };
-
-  const getSlotInfo = (product: any) => {
-    const apiSlotIds = (Array.isArray(product?.slot_ids) ? product.slot_ids : [])
-      .map((id: unknown) => Number(id))
-      .filter((id: number) => Number.isFinite(id))
-      .sort((a: number, b: number) => a - b);
-
-    if (apiSlotIds.length > 0) {
-      return {
-        slotNumbers: apiSlotIds,
-        quantity: Number(product?.quantity ?? 0) || apiSlotIds.length,
-      };
-    }
-
-    const productId = product?.id ?? product?._id;
-    const rawId = String(productId ?? "").trim();
-    const cleanId = normalizeProductId(productId);
-    const candidates = Array.from(
-      new Set([rawId, cleanId, cleanId ? `products/${cleanId}` : ""].filter(Boolean))
-    );
-
-    for (const key of candidates) {
-      if (slotsMap[key]) return slotsMap[key];
-    }
-
-    const nameKey = String(product?.name ?? "").toUpperCase().trim().slice(0, 20);
-    if (nameKey && slotsMap[`name:${nameKey}`]) {
-      return slotsMap[`name:${nameKey}`];
-    }
-
-    return undefined;
-  };
+  const machineProducts = useMemo(
+    () => mergeCatalogWithSlotProducts(products, rawSlotsData),
+    [products, rawSlotsData]
+  );
 
   const isAllBrandName = (name: unknown) => {
     const n = String(name ?? "").trim().toLowerCase();
@@ -178,43 +149,6 @@ export default function VendingProducts({ data }: Props) {
         ),
     [cloudBrands]
   );
-
-  // Fetch slots on mount
-  useEffect(() => {
-    const fetchSlots = async () => {
-      try {
-        const res = await fetch("/api/admin/slots");
-        if (res.ok) {
-          const slotsData = await res.json();
-          const map: Record<string, { slotNumbers: number[]; quantity: number }> = {};
-          const slotsArray = Array.isArray(slotsData) ? slotsData : Object.values(slotsData);
-
-          slotsArray.forEach((slot: any) => {
-            if (slot.product_id) {
-              const rawId = String(slot.product_id);
-              const cleanId = normalizeProductId(rawId);
-              const quantity = Number(slot.quantity || 0);
-              const slotId = Number(slot.slot_id);
-              if (!Number.isFinite(slotId)) return;
-
-              mergeSlotEntry(map, rawId, slotId, quantity);
-              if (cleanId && cleanId !== rawId) mergeSlotEntry(map, cleanId, slotId, quantity);
-              if (cleanId) mergeSlotEntry(map, `products/${cleanId}`, slotId, quantity);
-            }
-
-            if (slot.product_name) {
-              const nameKey = String(slot.product_name).toUpperCase().trim().slice(0, 20);
-              if (nameKey) mergeSlotEntry(map, `name:${nameKey}`, Number(slot.slot_id), Number(slot.quantity || 0));
-            }
-          });
-          setSlotsMap(map);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch slots:", err);
-      }
-    };
-    fetchSlots();
-  }, []);
 
   // Check which categories have available products in vending machine
   useEffect(() => {
@@ -243,15 +177,9 @@ export default function VendingProducts({ data }: Props) {
           const catProducts = data?.data?.[0]?.products || [];
 
           // Check if any product in this category is available in vending machine
-          const hasAvailable = catProducts.some((p: any) => {
-            const productId = p?._id || p?.id;
-            const cleanId = normalizeProductId(productId);
-            const slotInfo =
-              slotsMap[String(productId)] ||
-              slotsMap[cleanId] ||
-              slotsMap[`products/${cleanId}`];
-            return (slotInfo && slotInfo.quantity > 0) || Number(p?.quantity ?? 0) > 0;
-          });
+          const hasAvailable = catProducts.some((p: any) =>
+            (getSlotInfoForProduct(p, slotsMap)?.quantity ?? 0) > 0
+          );
 
           if (hasAvailable) {
             availableIds.add(cat._id);
@@ -378,24 +306,21 @@ export default function VendingProducts({ data }: Props) {
 
   // Sort products - available first, then by quantity
   const sortedProducts = useMemo(() => {
-    const decorated = products.map((product: any) => {
-      const slotInfo = getSlotInfo(product);
-      const quantity = slotInfo?.quantity ?? Number(product?.quantity ?? 0);
-      const isAvailable = quantity > 0;
-      return { product, slotInfo, isAvailable, quantity };
+    const decorated = machineProducts.map((product: any) => {
+      const slotInfo = getSlotInfoForProduct(product, slotsMap);
+      const quantity = slotInfo?.quantity ?? 0;
+      return { product, slotInfo, isAvailable: quantity > 0, quantity };
     });
 
-    const availableOnly = decorated.filter((item) => item.isAvailable);
-
-    availableOnly.sort((a, b) => {
-      if (a.quantity !== b.quantity) return b.quantity - a.quantity;
-      return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
-        sensitivity: "base",
+    return decorated
+      .filter((item) => item.isAvailable)
+      .sort((a, b) => {
+        if (a.quantity !== b.quantity) return b.quantity - a.quantity;
+        return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
+          sensitivity: "base",
+        });
       });
-    });
-
-    return availableOnly;
-  }, [products, slotsMap]);
+  }, [machineProducts, slotsMap]);
 
   // Process personalized recommendations from cloud API (data prop)
   // Group by category, show up to 4 products per category (minimum 2 if available)
@@ -416,16 +341,13 @@ export default function VendingProducts({ data }: Props) {
           if (id && !seenIds.has(id)) {
             seenIds.add(id);
             // Check if available in vending machine
-            const slotInfo =
-              slotsMap[String(id)] ||
-              slotsMap[normalizeProductId(id)] ||
-              slotsMap[`products/${normalizeProductId(id)}`];
-            if ((slotInfo && slotInfo.quantity > 0) || Number(p?.quantity ?? 0) > 0) {
+            const slotInfo = getSlotInfoForProduct(p, slotsMap);
+            if ((slotInfo?.quantity ?? 0) > 0) {
               availableProducts.push({
                 product: p,
                 slotInfo,
                 isAvailable: true,
-                quantity: slotInfo.quantity,
+                quantity: slotInfo!.quantity,
                 category: categoryTitle,
               });
             }

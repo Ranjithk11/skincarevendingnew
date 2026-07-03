@@ -50,6 +50,8 @@ export const adminDb = {
   updateSlotQuantity: sqliteDb.updateSlotQuantity.bind(sqliteDb),
   setSlotQuantity: sqliteDb.setSlotQuantity.bind(sqliteDb),
   getSlotsForProduct: sqliteDb.getSlotsForProduct.bind(sqliteDb),
+  updateSlotsRetailPriceForProduct: sqliteDb.updateSlotsRetailPriceForProduct.bind(sqliteDb),
+  syncProductInventoryFromSlots: sqliteDb.syncProductInventoryFromSlots.bind(sqliteDb),
 
   // Sync product quantities (placeholder)
   syncProductQuantities: sqliteDb.syncProductQuantities.bind(sqliteDb),

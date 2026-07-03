@@ -30,21 +30,22 @@ async function applyOverrides(products: any[]) {
       const slotIds = slots.map((slot) => slot.slot_id).sort((a, b) => a - b);
       
       if (override) {
-        // Use override quantity if explicitly set, otherwise use slot calculation
-        const quantity = override.quantity !== undefined ? override.quantity : (totalQuantity > 0 ? totalQuantity : product.quantity);
+        const quantity = totalQuantity;
         return {
           ...product,
           name: override.name ?? product.name,
           category: override.category ?? product.category,
           retail_price: override.retail_price ?? product.retail_price,
-          quantity: quantity,
+          quantity,
+          in_stock: quantity > 0,
           slot_ids: slotIds,
           discount: (override as any).discount ?? product.discount,
         };
       }
       return {
         ...product,
-        quantity: totalQuantity > 0 ? totalQuantity : product.quantity,
+        quantity: totalQuantity,
+        in_stock: totalQuantity > 0,
         slot_ids: slotIds,
       };
     });

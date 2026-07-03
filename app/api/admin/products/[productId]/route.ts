@@ -87,15 +87,22 @@ export async function PUT(
     }
 
     // For external products, save override to local storage (like Flask's SQLite)
-    const override = adminDb.setProductOverride(productId, {
+    const cleanProductId = productId.replace(/^products\//, '');
+    const totalQty = adminDb.getTotalQuantityForProduct(cleanProductId);
+
+    const override = adminDb.setProductOverride(cleanProductId, {
       name: body.name,
       category: body.category,
       retail_price: body.retail_price,
-      quantity: body.quantity,
+      quantity: totalQty,
     });
 
+    if (body.retail_price !== undefined && body.retail_price !== null) {
+      adminDb.updateSlotsRetailPriceForProduct(cleanProductId, Number(body.retail_price), body.name);
+    }
+
     // Send webhook for product modification
-    sendProductUpdateWebhook(productId, override);
+    sendProductUpdateWebhook(cleanProductId, override);
 
     return NextResponse.json({
       success: true,

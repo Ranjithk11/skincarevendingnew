@@ -24,6 +24,8 @@ interface Product {
   name: string;
   category: string;
   price: string;
+  originalPrice?: number;
+  retailPrice?: number;
   amount: number;
   image?: string;
 }
@@ -35,7 +37,7 @@ interface SlotAssignmentModalProps {
   products: Product[];
   currentProduct?: Product | null;
   currentQuantity?: number;
-  onAssign: (slotNumber: number, productId: string, quantity: number) => void;
+  onAssign: (slotNumber: number, productId: string, quantity: number, retailPrice: number) => void;
   onRemove: (slotNumber: number) => void;
   onUpdateQuantity?: (slotNumber: number, quantity: number) => void;
 }
@@ -54,6 +56,8 @@ export default function SlotAssignmentModal({
   const KEYBOARD_HEIGHT_PX = 340;
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [quantity, setQuantity] = useState<number>(10);
+  const [originalPrice, setOriginalPrice] = useState<number>(0);
+  const [slotPrice, setSlotPrice] = useState<number>(0);
   const [quantityAdjustment, setQuantityAdjustment] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
@@ -70,6 +74,14 @@ export default function SlotAssignmentModal({
     product.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const parsePrice = (value: string | number | undefined) => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    const parsed = parseFloat(String(value ?? "").replace(/[^\d.]/g, ""));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const selectedProduct = products.find((p) => p.id === selectedProductId);
+
   useEffect(() => {
     if (open) {
       setSelectedProductId(currentProduct?.id || "");
@@ -77,11 +89,39 @@ export default function SlotAssignmentModal({
       // Only default to 10 for brand-new assignments (no product currently assigned).
       setQuantity(currentProduct ? currentQuantity : 10);
       setQuantityAdjustment(0);
-      setSearchQuery(""); // Reset search when modal opens
+      setSearchQuery("");
       setIsKeyboardOpen(false);
       setIsProductMenuOpen(false);
+      if (currentProduct) {
+        setSlotPrice(parsePrice(currentProduct.price));
+      } else {
+        setSlotPrice(0);
+        setOriginalPrice(0);
+      }
     }
   }, [open, currentProduct, currentQuantity]);
+
+  useEffect(() => {
+    if (!selectedProduct) {
+      return;
+    }
+
+    const catalogPrice =
+      selectedProduct.originalPrice ??
+      parsePrice(selectedProduct.price);
+    setOriginalPrice(catalogPrice);
+
+    if (currentProduct?.id === selectedProductId) {
+      setSlotPrice(parsePrice(currentProduct.price));
+      return;
+    }
+
+    setSlotPrice(
+      selectedProduct.retailPrice ??
+      selectedProduct.originalPrice ??
+      parsePrice(selectedProduct.price)
+    );
+  }, [selectedProductId, selectedProduct, currentProduct]);
 
 
   const focusSearchInput = () => {
@@ -120,8 +160,6 @@ export default function SlotAssignmentModal({
     focusSearchInput();
   };
 
-  const selectedProduct = products.find((p) => p.id === selectedProductId);
-
   const clampQuantity = (next: number) => {
     let q = Number.isFinite(next) ? Math.max(0, Math.min(10, Math.trunc(next))) : 0;
     return q;
@@ -140,8 +178,8 @@ export default function SlotAssignmentModal({
   };
 
   const handleAssign = () => {
-    if (selectedProductId && quantity > 0) {
-      onAssign(slotNumber, selectedProductId, quantity);
+    if (selectedProductId && quantity > 0 && slotPrice >= 0) {
+      onAssign(slotNumber, selectedProductId, quantity, slotPrice);
       onClose();
     }
   };
@@ -273,6 +311,16 @@ export default function SlotAssignmentModal({
                     }}
                   >
                     Quantity: {currentQuantity}
+                  </Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 24,
+                      fontFamily: "Roboto, sans-serif",
+                      color: "#22c55e",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Price: {currentProduct?.price}
                   </Typography>
                 </Box>
               </Box>
@@ -603,6 +651,69 @@ export default function SlotAssignmentModal({
             </Box>
           )}
 
+          {/* Price Input */}
+          {selectedProduct && (
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                sx={{
+                  fontSize: 24,
+                  fontWeight: 500,
+                  fontFamily: "Roboto, sans-serif",
+                  color: "#000",
+                  mb: 0.5,
+                }}
+              >
+                Price
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: 20,
+                  fontFamily: "Roboto, sans-serif",
+                  color: "#9ca3af",
+                  mb: 1,
+                }}
+              >
+                Original price: ₹{originalPrice}
+              </Typography>
+              <TextField
+                type="number"
+                value={slotPrice}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setSlotPrice(0);
+                    return;
+                  }
+                  const parsed = parseFloat(val);
+                  if (!Number.isNaN(parsed) && parsed >= 0) {
+                    setSlotPrice(parsed);
+                  }
+                }}
+                fullWidth
+                inputProps={{ min: 0, step: "0.01" }}
+                placeholder="Enter slot price"
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    height: 48,
+                    borderRadius: "8px",
+                    fontSize: 24,
+                    fontFamily: "Roboto, sans-serif",
+                    "& fieldset": {
+                      borderColor: "#22c55e",
+                      borderWidth: 2,
+                    },
+                    "&:hover fieldset": {
+                      borderColor: "#16a34a",
+                    },
+                    "&.Mui-focused fieldset": {
+                      borderColor: "#16a34a",
+                    },
+                  },
+                }}
+              />
+            </Box>
+          )}
+
           {/* Quantity Input */}
           <Box sx={{ mb: 3 }}>
             <Typography
@@ -736,7 +847,7 @@ export default function SlotAssignmentModal({
             <Button
               variant="contained"
               onClick={handleAssign}
-              disabled={!selectedProductId || quantity <= 0}
+              disabled={!selectedProductId || quantity <= 0 || slotPrice < 0}
               sx={{
                 flex: 1,
                 height: 48,

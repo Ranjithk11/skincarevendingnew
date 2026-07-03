@@ -152,27 +152,20 @@ export default function AdminDashboardPage() {
   }, [router]);
 
   // Helper function to get total quantity from slots for a product
-  const getProductQuantityFromSlots = (productId: string, productName: string): number => {
+  const getProductQuantityFromSlots = (productId: string): number => {
     if (!slotsData) return 0;
     let totalQuantity = 0;
     const cleanProductId = productId.replace(/^products\//, '');
-    const searchName = productName?.toUpperCase().trim();
-    
+
     Object.values(slotsData).forEach((slot: any) => {
       if (!slot.product_id) return;
       const slotProductId = slot.product_id?.toString().replace(/^products\//, '');
-      const slotProductName = slot.product_name?.toUpperCase().trim();
-      
-      // Match by ID or by name prefix
-      const idMatch = slotProductId === cleanProductId || slot.product_id?.toString() === productId;
-      let nameMatch = false;
-      if (searchName && slotProductName) {
-        const searchPrefix = searchName.substring(0, 15);
-        const slotPrefix = slotProductName.substring(0, 15);
-        nameMatch = slotProductName.includes(searchPrefix) || searchName.includes(slotPrefix);
-      }
-      
-      if (idMatch || nameMatch) {
+
+      const idMatch =
+        slotProductId === cleanProductId ||
+        slot.product_id?.toString() === productId;
+
+      if (idMatch) {
         totalQuantity += slot.quantity || 0;
       }
     });
@@ -187,7 +180,7 @@ export default function AdminDashboardPage() {
     retail_price: product.retail_price,
     discount: product.discount || null,
     price: `Rs.${product.retail_price}`,
-    amount: product.quantity || getProductQuantityFromSlots(product.id.toString(), product.name),
+    amount: product.quantity || getProductQuantityFromSlots(product.id.toString()),
     image: product.image_url,
   })) || [];
 
@@ -209,7 +202,7 @@ export default function AdminDashboardPage() {
       retail_price: adminMatch?.retail_price ?? (p.retailPrice || p.retail_price || 0),
       discount: adminMatch?.discount ?? (p.discount || null),
       price: adminMatch?.price ?? `Rs.${p.retailPrice || p.retail_price || 0}`,
-      amount: adminMatch?.amount ?? getProductQuantityFromSlots(productId, productName),
+      amount: adminMatch?.amount ?? getProductQuantityFromSlots(String(productId)),
       image: adminMatch?.image ?? (p.images?.[0]?.url || p.image_url || ""),
     };
   });
@@ -327,7 +320,12 @@ export default function AdminDashboardPage() {
     setModalOpen(false);
   };
 
-  const handleAssignProduct = async (slotNumber: number, productId: string, quantity: number) => {
+  const handleAssignProduct = async (
+    slotNumber: number,
+    productId: string,
+    quantity: number,
+    retailPrice: number
+  ) => {
     try {
       // Find the product in admin products first
       let product = productsData?.find((p: Product) => p.id.toString() === productId);
@@ -335,7 +333,6 @@ export default function AdminDashboardPage() {
       // If not found, search in browse products (allCategoryProducts)
       let productName = product?.name;
       let category = product?.category;
-      let retailPrice = product?.retail_price;
       let imageUrl = product?.image_url;
       let discountValue = product?.discount?.value;
 
@@ -344,7 +341,6 @@ export default function AdminDashboardPage() {
         if (browseProduct) {
           productName = browseProduct.name;
           category = browseProduct.productCategory?.title || browseProduct.category || "Uncategorized";
-          retailPrice = browseProduct.retailPrice || browseProduct.retail_price || 0;
           imageUrl = browseProduct.images?.[0]?.url || browseProduct.image_url || "";
           // Extract discount from browse product
           if (browseProduct.discount) {
@@ -402,46 +398,67 @@ export default function AdminDashboardPage() {
       id: currentSlotData.product_id.toString(),
       name: currentSlotData.product_name,
       category: currentSlotData.category || "",
-      retail_price: currentSlotData.retail_price || 0,
+      retail_price: currentSlotData.retail_price ?? 0,
       image_url: (currentSlotData as any).image_url || "",
       quantity: currentSlotData.quantity || 0,
       in_stock: true,
     };
+  } else if (currentProduct && currentSlotData) {
+    currentProduct = {
+      ...currentProduct,
+      retail_price: currentProduct.retail_price ?? currentSlotData.retail_price ?? 0,
+    };
   }
 
+  const getCatalogPrice = (productId: string) => {
+    const browseProduct = allCategoryProducts.find(
+      (p: any) => String(p._id || p.id) === productId || String(p._id || p.id).replace(/^products\//, "") === productId.replace(/^products\//, "")
+    );
+    return Number(browseProduct?.retailPrice || browseProduct?.retail_price || 0);
+  };
+
   // Transform products for modal - include admin products, browse products, and slot-assigned products
-  const apiProducts = productsData?.map((product: Product) => ({
-    id: product.id.toString(),
-    name: product.name,
-    category: product.category || "Uncategorized",
-    price: `₹${product.retail_price}`,
-    amount: product.quantity,
-    image: product.image_url,
-  })) || [];
+  const apiProducts = productsData?.map((product: Product) => {
+    const productId = product.id.toString();
+    const catalogPrice = getCatalogPrice(productId) || product.retail_price;
+    return {
+      id: productId,
+      name: product.name,
+      category: product.category || "Uncategorized",
+      price: `₹${product.retail_price}`,
+      originalPrice: catalogPrice,
+      retailPrice: product.retail_price,
+      amount: product.quantity,
+      image: product.image_url,
+    };
+  }) || [];
   
   // Add browse products (from ALL categories) to modal
-  const browseModalProducts = allCategoryProducts.map((p: any) => ({
-    id: p._id || p.id,
-    name:
-      (adminProductsById.get(String(p._id || p.id)) ||
-        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.name ?? p.name,
-    category:
-      (adminProductsById.get(String(p._id || p.id)) ||
-        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.category ??
-      (p.productCategory?.title || p.category || "Uncategorized"),
-    price:
-      (adminProductsById.get(String(p._id || p.id)) ||
-        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.price ??
-      `₹${p.retailPrice || p.retail_price || 0}`,
-    amount:
-      (adminProductsById.get(String(p._id || p.id)) ||
-        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.amount ??
-      (p.quantity || 0),
-    image:
-      (adminProductsById.get(String(p._id || p.id)) ||
-        adminProductsById.get(String(p._id || p.id).replace(/^products\//, "")))?.image ??
-      (p.images?.[0]?.url || p.image_url || ""),
-  }));
+  const browseModalProducts = allCategoryProducts.map((p: any) => {
+    const productId = String(p._id || p.id);
+    const adminMatch =
+      adminProductsById.get(productId) ||
+      adminProductsById.get(productId.replace(/^products\//, ""));
+    const catalogPrice = Number(p.retailPrice || p.retail_price || 0);
+    const effectivePrice = adminMatch?.retail_price ?? catalogPrice;
+
+    return {
+      id: productId,
+      name: adminMatch?.name ?? p.name,
+      category:
+        adminMatch?.category ??
+        (p.productCategory?.title || p.category || "Uncategorized"),
+      price: `₹${effectivePrice}`,
+      originalPrice: catalogPrice,
+      retailPrice: effectivePrice,
+      amount:
+        adminMatch?.amount ??
+        (p.quantity || 0),
+      image:
+        adminMatch?.image ??
+        (p.images?.[0]?.url || p.image_url || ""),
+    };
+  });
   
   // Add slot-assigned products that aren't in the API list (for slots 1-10 with local products)
   const slotProducts: typeof apiProducts = [];
@@ -456,7 +473,9 @@ export default function AdminDashboardPage() {
             id: slot.product_id.toString(),
             name: slot.product_name,
             category: slot.category || "Uncategorized",
-            price: `₹${slot.retail_price || 0}`,
+            price: `₹${slot.retail_price ?? 0}`,
+            originalPrice: getCatalogPrice(slot.product_id.toString()) || Number(slot.retail_price ?? 0),
+            retailPrice: Number(slot.retail_price ?? 0),
             amount: slot.quantity || 0,
             image: slot.image_url || "",
           });
@@ -534,12 +553,12 @@ export default function AdminDashboardPage() {
           name: data.name,
           category: data.category,
           retail_price: data.price,
-          quantity: data.quantity,
         }),
       });
       
-      // Refetch products to show updated data
+      // Refetch products and slots to show updated data
       await refetchProducts();
+      await refetchSlots();
       setSnackbar({ open: true, message: "Product updated successfully!", severity: "success" });
     } catch (error) {
       console.error("Error saving product:", error);

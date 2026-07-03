@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import {
   Card,
   Box,
@@ -13,7 +13,7 @@ import { capitalizeWords, shouldForwardProp } from "@/utils/func";
 import { Icon } from "@iconify/react";
 import Dialog from "@mui/material/Dialog";
 import posthog from "posthog-js";
-import { useSession } from "next-auth/react";
+import { SessionContext } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { url } from "inspector";
 import { useMediaQuery, useTheme } from "@mui/material";
@@ -213,7 +213,8 @@ const ProductCard = ({
   isAvailable = true,
   quantity,
 }: ProductCardProps) => {
-  const { data: session } = useSession();
+  const sessionContext = useContext(SessionContext);
+  const session = sessionContext?.data;
   const pathName = usePathname();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
@@ -227,12 +228,12 @@ const ProductCard = ({
   };
 
   const handlePostHogEvent = (eventName: string) => {
-    posthog.capture(session?.user.firstName + "_" + eventName, {
+    posthog.capture((session?.user?.firstName ?? "guest") + "_" + eventName, {
       buttonName: "CallToUs",
       location: pathName,
       userId: session?.user?.id,
-      userName: session?.user.firstName,
-      gender: session?.user.gender,
+      userName: session?.user?.firstName,
+      gender: session?.user?.gender,
       phone: session?.user?.mobileNumber,
       userImage: session?.user?.selfyImagePath,
       productName: name,

@@ -1234,7 +1234,7 @@ export const sqliteDb = {
         String(productId),
         productInfo?.name || null,
         productInfo?.category || null,
-        productInfo?.retail_price || null,
+        productInfo?.retail_price ?? null,
         productInfo?.image_url || null,
         productInfo?.discount_value ?? null,
         quantity,
@@ -1281,16 +1281,16 @@ export const sqliteDb = {
 
     console.log("[getSlotsForProduct] ID match rows:", rows);
 
-    // If no ID match and productName provided, try name match
+    // If no ID match and productName provided, try exact name match only
     if (rows.length === 0 && productName) {
       const searchName = productName.toUpperCase().trim();
-      console.log("[getSlotsForProduct] Trying name match with:", searchName.substring(0, 15));
+      console.log("[getSlotsForProduct] Trying exact name match with:", searchName);
       rows = db.prepare(`
         SELECT slot_id, quantity, product_id, product_name FROM vending_slots 
-        WHERE UPPER(product_name) LIKE ?
+        WHERE UPPER(TRIM(product_name)) = ?
         ORDER BY slot_id DESC
-      `).all(`%${searchName.substring(0, 15)}%`) as any[];
-      console.log("[getSlotsForProduct] Name match rows:", rows);
+      `).all(searchName) as any[];
+      console.log("[getSlotsForProduct] Exact name match rows:", rows);
     }
 
     return rows.map(row => ({ slot_id: row.slot_id, quantity: row.quantity }));
@@ -1300,7 +1300,10 @@ export const sqliteDb = {
 
   setProductOverride(productId: string, updates: { name?: string; category?: string; retail_price?: number; quantity?: number }): ProductOverride {
     const updatedAt = new Date().toISOString();
-    
+    const cleanId = String(productId).replace(/^products\//, '');
+    const retailPrice = updates.retail_price !== undefined ? updates.retail_price : null;
+    const quantity = updates.quantity !== undefined ? updates.quantity : null;
+
     db.prepare(`
       INSERT INTO product_overrides (id, name, category, retail_price, quantity, updated_at)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -1310,9 +1313,51 @@ export const sqliteDb = {
         retail_price = COALESCE(excluded.retail_price, retail_price),
         quantity = COALESCE(excluded.quantity, quantity),
         updated_at = excluded.updated_at
-    `).run(productId, updates.name || null, updates.category || null, updates.retail_price || null, updates.quantity || null, updatedAt);
+    `).run(cleanId, updates.name ?? null, updates.category ?? null, retailPrice, quantity, updatedAt);
 
-    return this.getProductOverride(productId)!;
+    return this.getProductOverride(cleanId)!;
+  },
+
+  updateSlotsRetailPriceForProduct(productId: string, retailPrice: number, productName?: string): void {
+    const searchId = String(productId).replace(/^products\//, '');
+    const lastUpdated = new Date().toISOString();
+
+    db.prepare(`
+      UPDATE vending_slots
+      SET retail_price = ?, last_updated = ?
+      WHERE product_id = ? OR product_id = ? OR product_id = ?
+    `).run(retailPrice, lastUpdated, searchId, `products/${searchId}`, String(productId));
+
+    if (productName) {
+      const exactName = productName.toUpperCase().trim();
+      db.prepare(`
+        UPDATE vending_slots
+        SET retail_price = ?, last_updated = ?
+        WHERE UPPER(TRIM(product_name)) = ?
+      `).run(retailPrice, lastUpdated, exactName);
+    }
+  },
+
+  syncProductInventoryFromSlots(productId: string, productName?: string): number {
+    const cleanId = String(productId).replace(/^products\//, '');
+    const totalQuantity = this.getTotalQuantityForProduct(cleanId);
+    const updatedAt = new Date().toISOString();
+
+    const existing = this.getProductOverride(cleanId);
+    if (existing) {
+      db.prepare(`
+        UPDATE product_overrides
+        SET quantity = ?, updated_at = ?
+        WHERE id = ?
+      `).run(totalQuantity, updatedAt, cleanId);
+    } else if (totalQuantity > 0) {
+      db.prepare(`
+        INSERT INTO product_overrides (id, name, quantity, updated_at)
+        VALUES (?, ?, ?, ?)
+      `).run(cleanId, productName ?? null, totalQuantity, updatedAt);
+    }
+
+    return totalQuantity;
   },
 
   getProductOverride(productId: string): ProductOverride | undefined {
@@ -1493,8 +1538,8 @@ export const sqliteDb = {
   // ==================== UTILITY ====================
 
   syncProductQuantities(): { productId: string; totalQuantity: number }[] {
-    // Calculate total quantity for each product by summing all slot quantities
     const results: { productId: string; totalQuantity: number }[] = [];
+    const syncedIds = new Set<string>();
 
     const productSlots = db.prepare(`
       SELECT product_id, SUM(quantity) as total_quantity
@@ -1504,10 +1549,22 @@ export const sqliteDb = {
     `).all() as any[];
 
     for (const row of productSlots) {
-      results.push({
-        productId: row.product_id,
-        totalQuantity: row.total_quantity || 0,
-      });
+      const cleanId = String(row.product_id).replace(/^products\//, '');
+      const totalQuantity = this.syncProductInventoryFromSlots(cleanId);
+      syncedIds.add(cleanId);
+      results.push({ productId: cleanId, totalQuantity });
+    }
+
+    const overrideRows = db.prepare(`
+      SELECT id FROM product_overrides
+      WHERE quantity IS NOT NULL AND quantity > 0
+    `).all() as any[];
+
+    for (const row of overrideRows) {
+      const cleanId = String(row.id).replace(/^products\//, '');
+      if (syncedIds.has(cleanId)) continue;
+      const totalQuantity = this.syncProductInventoryFromSlots(cleanId);
+      results.push({ productId: cleanId, totalQuantity });
     }
 
     console.log('[SQLite] Synced product quantities:', results.length, 'products');

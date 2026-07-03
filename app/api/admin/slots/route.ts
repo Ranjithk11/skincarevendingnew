@@ -54,6 +54,16 @@ export async function GET() {
 
     const { adminDb } = await import("@/lib/admin-db");
     const slots = adminDb.getAllSlots();
+    const overrides = adminDb.getAllProductOverrides();
+
+    for (const slot of Object.values(slots)) {
+      if (!slot.product_id) continue;
+      const cleanId = String(slot.product_id).replace(/^products\//, "");
+      const override = overrides[cleanId] || overrides[String(slot.product_id)];
+      if (override?.retail_price !== undefined && override?.retail_price !== null) {
+        slot.retail_price = override.retail_price;
+      }
+    }
 
     // Perform startup sync on first GET request
     if (!startupSyncDone) {
@@ -198,6 +208,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const parsedSlotId = parseInt(slot_id);
+    const existingSlot = adminDb.getSlot(parsedSlotId);
+    const previousProductId = existingSlot?.product_id ?? null;
+    const previousProductName = existingSlot?.product_name ?? undefined;
+
+    const parsedRetailPrice =
+      retail_price !== undefined && retail_price !== null && retail_price !== ""
+        ? parseFloat(String(retail_price))
+        : undefined;
+
     // Auto-fetch discount from API if not provided and product_id is given
     let finalDiscountValue = discount_value !== undefined && discount_value !== null && discount_value !== "" ? parseFloat(discount_value) : undefined;
 
@@ -220,13 +240,13 @@ export async function POST(request: NextRequest) {
     const productInfo = {
       name: product_name,
       category: category,
-      retail_price: retail_price ? parseFloat(retail_price) : undefined,
+      retail_price: parsedRetailPrice,
       image_url: image_url,
       discount_value: finalDiscountValue,
     };
 
     const slot = adminDb.assignProductToSlot(
-      parseInt(slot_id),
+      parsedSlotId,
       product_id ?? null,
       parseInt(quantity),
       productInfo
@@ -237,6 +257,18 @@ export async function POST(request: NextRequest) {
         { success: false, message: "Slot not found" },
         { status: 404 }
       );
+    }
+
+    const cleanProductId = product_id ? String(product_id).replace(/^products\//, '') : null;
+
+    if (cleanProductId) {
+      if (parsedRetailPrice !== undefined && !Number.isNaN(parsedRetailPrice)) {
+        adminDb.setProductOverride(cleanProductId, { retail_price: parsedRetailPrice });
+        adminDb.updateSlotsRetailPriceForProduct(cleanProductId, parsedRetailPrice, product_name);
+      }
+      adminDb.syncProductInventoryFromSlots(cleanProductId, product_name);
+    } else if (previousProductId) {
+      adminDb.syncProductInventoryFromSlots(String(previousProductId), previousProductName);
     }
 
     // Send webhook with all slot information after assignment

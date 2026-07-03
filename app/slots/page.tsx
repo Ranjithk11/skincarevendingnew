@@ -364,7 +364,7 @@ export default function SlotsPage() {
       product?.images?.[0] ||
       "";
     const imageUrl = typeof imageUrlRaw === "string" ? imageUrlRaw : "";
-    const retailPrice = product?.retail_price ?? slot.retail_price;
+    const retailPrice = product?.retail_price ?? slot.retail_price ?? 0;
     
     // Get discount from product data or slot data
     const productDiscount = Number(product?.discount?.value) || Number(slot.discount_value) || 0;
