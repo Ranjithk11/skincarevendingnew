@@ -41,6 +41,25 @@ async function applyOverrides(products: any[]) {
       return maxDiscount;
     };
 
+    const getSlotRetailPriceForProduct = (productId: string, productName?: string) => {
+      const cleanId = productId.replace(/^products\//, "");
+      for (const slot of Object.values(allSlots) as any[]) {
+        if (!slot?.product_id) continue;
+        const slotCleanId = String(slot.product_id).replace(/^products\//, "");
+        const idMatch =
+          slotCleanId === cleanId || String(slot.product_id) === productId;
+        const nameMatch =
+          productName &&
+          slot.product_name &&
+          String(slot.product_name).toUpperCase().trim() ===
+            String(productName).toUpperCase().trim();
+        if (!idMatch && !nameMatch) continue;
+        const price = Number(slot.retail_price);
+        if (Number.isFinite(price)) return price;
+      }
+      return undefined;
+    };
+
     return products.map((product) => {
       const productId = product.id?.toString() || "";
       // Try both with and without 'products/' prefix
@@ -52,10 +71,15 @@ async function applyOverrides(products: any[]) {
       const totalQuantity = slots.reduce((sum, slot) => sum + slot.quantity, 0);
       const slotIds = slots.map((slot) => slot.slot_id).sort((a, b) => a - b);
       const slotDiscount = getSlotDiscountForProduct(productId, product.name);
+      const slotRetailPrice = getSlotRetailPriceForProduct(productId, product.name);
       const resolvedDiscount =
         (override as any)?.discount ??
         product.discount ??
         (slotDiscount > 0 ? { value: slotDiscount } : null);
+      const resolvedRetailPrice =
+        override?.retail_price !== undefined && override?.retail_price !== null
+          ? override.retail_price
+          : slotRetailPrice ?? product.retail_price;
       
       if (override) {
         const quantity = totalQuantity;
@@ -63,7 +87,7 @@ async function applyOverrides(products: any[]) {
           ...product,
           name: override.name ?? product.name,
           category: override.category ?? product.category,
-          retail_price: override.retail_price ?? product.retail_price,
+          retail_price: resolvedRetailPrice,
           quantity,
           in_stock: quantity > 0,
           slot_ids: slotIds,
@@ -72,6 +96,7 @@ async function applyOverrides(products: any[]) {
       }
       return {
         ...product,
+        retail_price: resolvedRetailPrice,
         quantity: totalQuantity,
         in_stock: totalQuantity > 0,
         slot_ids: slotIds,

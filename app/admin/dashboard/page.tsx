@@ -17,7 +17,11 @@ import {
   Product,
 } from "@/redux/api/adminApi";
 import { useGetFilteredProductsQuery, useGetProductCategoriesQuery } from "@/redux/api/products";
-import { normalizeProductId } from "@/lib/product-slot-utils";
+import {
+  normalizeProductId,
+  productIdKeys,
+  getSlotRetailPriceForProduct,
+} from "@/lib/product-slot-utils";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -169,45 +173,94 @@ export default function AdminDashboardPage() {
     return totalQuantity;
   };
 
-  // Transform admin products data for the table
-  const adminProducts = productsData?.map((product: Product) => ({
-    id: product.id.toString(),
-    name: product.name,
-    category: product.category || "Uncategorized",
-    retail_price: product.retail_price,
-    discount: product.discount || null,
-    price: `Rs.${product.retail_price}`,
-    amount: product.quantity || getProductQuantityFromSlots(product.id.toString()),
-    image: product.image_url,
-  })) || [];
+  type InventoryProductRow = {
+    id: string;
+    name: string;
+    category: string;
+    retail_price: number;
+    discount?: { value: number };
+    price: string;
+    amount: number;
+    image?: string;
+  };
 
-  const adminProductsById = new Map<string, (typeof adminProducts)[number]>();
-  adminProducts.forEach((p) => {
-    adminProductsById.set(p.id, p);
-    adminProductsById.set(String(p.id).replace(/^products\//, ""), p);
+  const resolveInventoryPrice = (
+    productId: string,
+    catalogPrice: number,
+    adminMatch?: InventoryProductRow
+  ): number => {
+    const slotPrice = getSlotRetailPriceForProduct(productId, slotsData);
+    if (slotPrice !== undefined) return slotPrice;
+    if (adminMatch?.retail_price !== undefined && adminMatch.retail_price !== null) {
+      return adminMatch.retail_price;
+    }
+    return catalogPrice;
+  };
+
+  const findAdminProductMatch = (productId: string): InventoryProductRow | undefined => {
+    for (const key of productIdKeys(productId)) {
+      const match = adminProductsById.get(key);
+      if (match) return match;
+    }
+    return undefined;
+  };
+
+  // Transform admin products data for the table
+  const adminProducts: InventoryProductRow[] = productsData?.map((product: Product) => {
+    const productId = product.id.toString();
+    const catalogPrice = Number(product.retail_price ?? 0);
+    const retailPrice = resolveInventoryPrice(productId, catalogPrice);
+    return {
+      id: productId,
+      name: product.name,
+      category: product.category || "Uncategorized",
+      retail_price: retailPrice,
+      discount: product.discount || undefined,
+      price: `Rs.${retailPrice}`,
+      amount: product.quantity || getProductQuantityFromSlots(productId),
+      image: product.image_url,
+    };
+  }) || [];
+
+  const adminProductsById = new Map<string, InventoryProductRow>();
+  adminProducts.forEach((p: InventoryProductRow) => {
+    for (const key of productIdKeys(p.id)) {
+      adminProductsById.set(key, p);
+    }
   });
   
   // Transform ALL browse products (from all categories) and merge with admin products
   const browseProducts = allCategoryProducts.map((p: any) => {
     const productId = p._id || p.id;
     const productName = p.name;
-    const adminMatch = adminProductsById.get(String(productId)) || adminProductsById.get(String(productId).replace(/^products\//, ""));
+    const catalogPrice = Number(p.retailPrice || p.retail_price || 0);
+    const adminMatch = findAdminProductMatch(String(productId));
+    const retailPrice = resolveInventoryPrice(String(productId), catalogPrice, adminMatch);
     return {
       id: productId,
       name: adminMatch?.name ?? productName,
       category: adminMatch?.category ?? (p.productCategory?.title || p.category || "Uncategorized"),
-      retail_price: adminMatch?.retail_price ?? (p.retailPrice || p.retail_price || 0),
-      discount: adminMatch?.discount ?? (p.discount || null),
-      price: adminMatch?.price ?? `Rs.${p.retailPrice || p.retail_price || 0}`,
+      retail_price: retailPrice,
+      discount: adminMatch?.discount ?? (p.discount || undefined),
+      price: `Rs.${retailPrice}`,
       amount: adminMatch?.amount ?? getProductQuantityFromSlots(String(productId)),
       image: adminMatch?.image ?? (p.images?.[0]?.url || p.image_url || ""),
     };
   });
   
-  // Merge products - browse products first, then admin products (avoiding duplicates)
-  const adminProductIds = new Set(adminProducts.map((p: any) => p.id));
-  const uniqueBrowseProducts = browseProducts.filter((p: any) => !adminProductIds.has(p.id));
-  const transformedProducts = [...browseProducts, ...adminProducts.filter((p: any) => !browseProducts.some((bp: any) => bp.id === p.id))];
+  // One row per product — slot/custom price wins over catalog
+  const transformedProducts = (() => {
+    const byKey = new Map<string, InventoryProductRow>();
+    [...browseProducts, ...adminProducts].forEach((p) => {
+      const key = normalizeProductId(p.id);
+      if (!key) return;
+      const existing = byKey.get(key);
+      if (!existing || (p.amount ?? 0) >= (existing.amount ?? 0)) {
+        byKey.set(key, p);
+      }
+    });
+    return Array.from(byKey.values());
+  })();
 
   const handleCartClick = () => {
     router.push("/products");
@@ -417,14 +470,15 @@ export default function AdminDashboardPage() {
   // Transform products for modal - include admin products, browse products, and slot-assigned products
   const apiProducts = productsData?.map((product: Product) => {
     const productId = product.id.toString();
-    const catalogPrice = getCatalogPrice(productId) || product.retail_price;
+    const catalogPrice = getCatalogPrice(productId) || Number(product.retail_price ?? 0);
+    const retailPrice = resolveInventoryPrice(productId, catalogPrice);
     return {
       id: productId,
       name: product.name,
       category: product.category || "Uncategorized",
-      price: `₹${product.retail_price}`,
+      price: `₹${retailPrice}`,
       originalPrice: catalogPrice,
-      retailPrice: product.retail_price,
+      retailPrice,
       amount: product.quantity,
       image: product.image_url,
     };
@@ -433,11 +487,9 @@ export default function AdminDashboardPage() {
   // Add browse products (from ALL categories) to modal
   const browseModalProducts = allCategoryProducts.map((p: any) => {
     const productId = String(p._id || p.id);
-    const adminMatch =
-      adminProductsById.get(productId) ||
-      adminProductsById.get(productId.replace(/^products\//, ""));
+    const adminMatch = findAdminProductMatch(productId);
     const catalogPrice = Number(p.retailPrice || p.retail_price || 0);
-    const effectivePrice = adminMatch?.retail_price ?? catalogPrice;
+    const effectivePrice = resolveInventoryPrice(productId, catalogPrice, adminMatch);
 
     return {
       id: productId,

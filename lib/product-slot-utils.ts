@@ -90,6 +90,28 @@ export function isProductInMachine(product: any, slotsMap: SlotsMap): boolean {
   return (getSlotInfoForProduct(product, slotsMap)?.quantity ?? 0) > 0;
 }
 
+/** Machine slot price (includes override enrichment from slots GET). */
+export function getSlotRetailPriceForProduct(
+  productId: unknown,
+  slotsData: unknown
+): number | undefined {
+  const cleanId = normalizeProductId(productId);
+  if (!cleanId) return undefined;
+
+  const slotsArray = Array.isArray(slotsData)
+    ? slotsData
+    : Object.values((slotsData as Record<string, unknown>) || {});
+
+  for (const slot of slotsArray as any[]) {
+    if (!slot?.product_id) continue;
+    if (normalizeProductId(slot.product_id) !== cleanId) continue;
+    const price = Number(slot.retail_price);
+    if (Number.isFinite(price)) return price;
+  }
+
+  return undefined;
+}
+
 export function getSlotDiscountMap(slotsData: unknown): Record<string, number> {
   const map: Record<string, number> = {};
   const slotsArray = Array.isArray(slotsData)
