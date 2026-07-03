@@ -15,7 +15,9 @@ import CartProduct from "@/containers/skinanalysis-home/Recommendations/cartProd
 import {
   buildSlotsMap,
   getSlotInfoForProduct,
+  getSlotDiscountMap,
   mergeCatalogWithSlotProducts,
+  normalizeProductDiscount,
   type SlotsMap,
 } from "@/lib/product-slot-utils";
 
@@ -55,7 +57,7 @@ const PageBackground = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-const mapProductToCardProps = (product: any) => {
+const mapProductToCardProps = (product: any, slotDiscountMap?: Record<string, number>) => {
   const imageUrl =
     product?.images?.[0]?.url ||
     product?.image_url ||
@@ -79,12 +81,12 @@ const mapProductToCardProps = (product: any) => {
     images: imageUrl ? [{ url: imageUrl }] : [],
     shopifyUrl: product?.shopifyUrl || product?.shopify_url || "#buy",
     isShopifyAvailable: product?.isShopifyAvailable ?? product?.in_stock ?? true,
-    discount: product?.discount || null,
+    discount: normalizeProductDiscount(product, slotDiscountMap),
     enabledMask: false,
     category: product?.productCategory?.title || product?.category || "",
     compact: false,
     horizontalLayout: true,
-    cardSx: { width: "100%" },
+    cardSx: { width: "100%", overflow: "visible" },
   };
 };
 
@@ -125,6 +127,8 @@ export default function BrowseProductsPage() {
     () => mergeCatalogWithSlotProducts(products, rawSlotsData),
     [products, rawSlotsData]
   );
+
+  const slotDiscountMap = useMemo(() => getSlotDiscountMap(rawSlotsData), [rawSlotsData]);
 
   const sortedProducts = useMemo(() => {
     const decorated = machineProducts.map((product: any) => {
@@ -641,7 +645,7 @@ export default function BrowseProductsPage() {
                       key={`${String(productId)}-${(slotInfo?.slotNumbers || []).join("-") || "na"}-${idx}`}
                     >
                       <ProductCard
-                        {...mapProductToCardProps(product)}
+                        {...mapProductToCardProps(product, slotDiscountMap)}
                         slotNumbers={slotInfo?.slotNumbers ?? null}
                         isAvailable={true}
                         quantity={productQty}

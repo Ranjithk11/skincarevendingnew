@@ -18,6 +18,29 @@ async function applyOverrides(products: any[]) {
     const { adminDb } = await import("@/lib/admin-db");
     
     const overrides = adminDb.getAllProductOverrides();
+    const allSlots = adminDb.getAllSlots();
+
+    const getSlotDiscountForProduct = (productId: string, productName?: string) => {
+      const cleanId = productId.replace(/^products\//, "");
+      let maxDiscount = 0;
+      Object.values(allSlots).forEach((slot: any) => {
+        if (!slot?.product_id) return;
+        const slotCleanId = String(slot.product_id).replace(/^products\//, "");
+        const idMatch =
+          slotCleanId === cleanId ||
+          String(slot.product_id) === productId;
+        const nameMatch =
+          productName &&
+          slot.product_name &&
+          String(slot.product_name).toUpperCase().trim() ===
+            String(productName).toUpperCase().trim();
+        if (!idMatch && !nameMatch) return;
+        const dv = Number(slot.discount_value);
+        if (Number.isFinite(dv) && dv > maxDiscount) maxDiscount = dv;
+      });
+      return maxDiscount;
+    };
+
     return products.map((product) => {
       const productId = product.id?.toString() || "";
       // Try both with and without 'products/' prefix
@@ -28,6 +51,11 @@ async function applyOverrides(products: any[]) {
       const slots = adminDb.getSlotsForProduct(productId, product.name);
       const totalQuantity = slots.reduce((sum, slot) => sum + slot.quantity, 0);
       const slotIds = slots.map((slot) => slot.slot_id).sort((a, b) => a - b);
+      const slotDiscount = getSlotDiscountForProduct(productId, product.name);
+      const resolvedDiscount =
+        (override as any)?.discount ??
+        product.discount ??
+        (slotDiscount > 0 ? { value: slotDiscount } : null);
       
       if (override) {
         const quantity = totalQuantity;
@@ -39,7 +67,7 @@ async function applyOverrides(products: any[]) {
           quantity,
           in_stock: quantity > 0,
           slot_ids: slotIds,
-          discount: (override as any).discount ?? product.discount,
+          discount: resolvedDiscount,
         };
       }
       return {
@@ -47,6 +75,7 @@ async function applyOverrides(products: any[]) {
         quantity: totalQuantity,
         in_stock: totalQuantity > 0,
         slot_ids: slotIds,
+        discount: resolvedDiscount,
       };
     });
   } catch (e) {

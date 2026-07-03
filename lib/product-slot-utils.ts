@@ -90,15 +90,62 @@ export function isProductInMachine(product: any, slotsMap: SlotsMap): boolean {
   return (getSlotInfoForProduct(product, slotsMap)?.quantity ?? 0) > 0;
 }
 
+export function getSlotDiscountMap(slotsData: unknown): Record<string, number> {
+  const map: Record<string, number> = {};
+  const slotsArray = Array.isArray(slotsData)
+    ? slotsData
+    : Object.values((slotsData as Record<string, unknown>) || {});
+
+  slotsArray.forEach((slot: any) => {
+    if (!slot?.product_id) return;
+    const key = normalizeProductId(slot.product_id);
+    const discountValue = Number(slot.discount_value);
+    if (key && Number.isFinite(discountValue) && discountValue > 0) {
+      map[key] = discountValue;
+    }
+  });
+
+  return map;
+}
+
+export function normalizeProductDiscount(
+  product: any,
+  slotDiscountMap?: Record<string, number>
+): { value: number } | null {
+  const raw = product?.discount;
+  if (raw?.value && Number(raw.value) > 0) return { value: Number(raw.value) };
+  if (typeof raw === "number" && raw > 0) return { value: raw };
+  if (typeof raw === "string") {
+    const parsed = parseFloat(raw);
+    if (Number.isFinite(parsed) && parsed > 0) return { value: parsed };
+  }
+
+  const key = normalizeProductId(product?.id ?? product?._id);
+  const slotDiscount = key ? slotDiscountMap?.[key] : undefined;
+  if (slotDiscount && slotDiscount > 0) return { value: slotDiscount };
+
+  const slotFieldDiscount = Number(product?.discount_value);
+  if (Number.isFinite(slotFieldDiscount) && slotFieldDiscount > 0) {
+    return { value: slotFieldDiscount };
+  }
+
+  return null;
+}
+
 /** Include catalog products plus slot-assigned products missing from the API response. */
 export function mergeCatalogWithSlotProducts(
   catalogProducts: any[],
   slotsData: unknown
 ): any[] {
+  const slotDiscountMap = getSlotDiscountMap(slotsData);
   const byId = new Map<string, any>();
   catalogProducts.forEach((product) => {
     const key = normalizeProductId(product?.id ?? product?._id);
-    if (key) byId.set(key, product);
+    if (!key) return;
+    byId.set(key, {
+      ...product,
+      discount: normalizeProductDiscount(product, slotDiscountMap) ?? product?.discount ?? null,
+    });
   });
 
   const slotsArray = Array.isArray(slotsData)
@@ -108,7 +155,21 @@ export function mergeCatalogWithSlotProducts(
   slotsArray.forEach((slot: any) => {
     if (!slot?.product_id || Number(slot.quantity || 0) <= 0) return;
     const key = normalizeProductId(slot.product_id);
-    if (!key || byId.has(key)) return;
+    if (!key) return;
+
+    if (byId.has(key)) {
+      const existing = byId.get(key)!;
+      if (!normalizeProductDiscount(existing, slotDiscountMap)) {
+        const slotDiscount = normalizeProductDiscount(
+          { discount_value: slot.discount_value },
+          slotDiscountMap
+        );
+        if (slotDiscount) {
+          byId.set(key, { ...existing, discount: slotDiscount });
+        }
+      }
+      return;
+    }
 
     byId.set(key, {
       id: slot.product_id,
@@ -117,6 +178,11 @@ export function mergeCatalogWithSlotProducts(
       category: slot.category || "",
       image_url: slot.image_url || "",
       quantity: Number(slot.quantity || 0),
+      discount_value: slot.discount_value,
+      discount: normalizeProductDiscount(
+        { id: slot.product_id, discount_value: slot.discount_value },
+        slotDiscountMap
+      ),
       in_stock: true,
     });
   });

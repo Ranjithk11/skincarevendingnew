@@ -9,8 +9,10 @@ import {
 } from "@/redux/api/products";
 import {
   buildSlotsMap,
+  getSlotDiscountMap,
   getSlotInfoForProduct,
   mergeCatalogWithSlotProducts,
+  normalizeProductDiscount,
   type SlotsMap,
 } from "@/lib/product-slot-utils";
 
@@ -18,7 +20,7 @@ type Props = {
   data: any;
 };
 
-const mapProductToCardProps = (product: any) => {
+const mapProductToCardProps = (product: any, slotDiscountMap?: Record<string, number>) => {
   const imageUrl =
     product?.images?.[0]?.url ||
     product?.image_url ||
@@ -42,7 +44,7 @@ const mapProductToCardProps = (product: any) => {
     images: imageUrl ? [{ url: imageUrl }] : [],
     shopifyUrl: product?.shopifyUrl || product?.shopify_url || "#buy",
     isShopifyAvailable: product?.isShopifyAvailable ?? product?.in_stock ?? true,
-    discount: product?.discount || null,
+    discount: normalizeProductDiscount(product, slotDiscountMap),
     category: product?.productCategory?.title || product?.category || "",
   };
 };
@@ -132,6 +134,8 @@ export default function VendingProducts({ data }: Props) {
     () => mergeCatalogWithSlotProducts(products, rawSlotsData),
     [products, rawSlotsData]
   );
+
+  const slotDiscountMap = useMemo(() => getSlotDiscountMap(rawSlotsData), [rawSlotsData]);
 
   const isAllBrandName = (name: unknown) => {
     const n = String(name ?? "").trim().toLowerCase();
@@ -395,7 +399,7 @@ export default function VendingProducts({ data }: Props) {
                   {catGroup.products.map((row: any, idx: number) => {
                     const product = row?.product;
                     const slotInfo = row?.slotInfo;
-                    const mappedProduct = mapProductToCardProps(product);
+                    const mappedProduct = mapProductToCardProps(product, slotDiscountMap);
                     const productQty = slotInfo?.quantity ?? 0;
                     return (
                       <Grid item xs={6} md={3} key={`personalized-${String(mappedProduct._id)}-${idx}`} sx={{ display: "flex", justifyContent: "center" }}>
@@ -585,7 +589,7 @@ export default function VendingProducts({ data }: Props) {
             (selectedCategory === "all" ? sortedProducts : sortedProducts.slice(0, 4)).map((row: any, idx: number) => {
               const product = row?.product;
               const slotInfo = row?.slotInfo;
-              const mappedProduct = mapProductToCardProps(product);
+              const mappedProduct = mapProductToCardProps(product, slotDiscountMap);
               const productQty = row?.quantity ?? slotInfo?.quantity ?? 0;
               const isAvailable = productQty > 0;
               return (

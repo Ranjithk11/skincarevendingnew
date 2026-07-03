@@ -227,6 +227,9 @@ const ProductCard = ({
     setOpenBuyNow(true);
   };
 
+  const discountValue = Number(discount?.value ?? 0);
+  const hasDiscount = Number.isFinite(discountValue) && discountValue > 0;
+
   const handlePostHogEvent = (eventName: string) => {
     posthog.capture((session?.user?.firstName ?? "guest") + "_" + eventName, {
       buttonName: "CallToUs",
@@ -276,6 +279,7 @@ const ProductCard = ({
             flexDirection: "row",
             alignItems: "center",
             gap: 2,
+            overflow: "visible",
             "& .product_image": {
               width: 80,
               minWidth: 80,
@@ -349,9 +353,9 @@ const ProductCard = ({
       )}
 
       {/* Discount Ribbon */}
-      {discount?.value ? (
+      {hasDiscount ? (
         <Box component="div" className="ribbon">
-          {discount.value}% Flat Discount
+          {discountValue}% Flat Discount
         </Box>
       ) : null}
       <Box
@@ -416,24 +420,24 @@ const ProductCard = ({
               </Box>
             )} */}
             <Box mt={1}>
-              {calculateDiscount(retailPrice, discount?.value) ===
+              {calculateDiscount(retailPrice, discountValue) ===
                 retailPrice && (
                   <Typography color="primary" variant="subtitle1" sx={{ fontSize: "24px" }}>
                     INR.{retailPrice}/-
                   </Typography>
                 )}
-              {calculateDiscount(retailPrice, discount?.value) !==
+              {calculateDiscount(retailPrice, discountValue) !==
                 retailPrice && (
-                  <Box display="flex">
+                  <Box display="flex" flexDirection="column" alignItems="flex-start">
                     <Typography
                       style={{ textDecoration: "line-through" }}
                       variant="subtitle2"
-                      sx={{ fontSize: "12px" }}
+                      sx={{ fontSize: "16px", color: "#6b7280" }}
                     >
-                      RS.{retailPrice}/-
+                      INR.{retailPrice}/-
                     </Typography>
-                    <Typography variant="subtitle2" color="#872121" sx={{ fontSize: "24px" }}>
-                      {calculateDiscount(retailPrice, discount?.value)}/-
+                    <Typography variant="subtitle2" color="#872121" sx={{ fontSize: "24px", fontWeight: 700 }}>
+                      INR.{calculateDiscount(retailPrice, discountValue)}/-
                     </Typography>
                   </Box>
                 )}
@@ -513,7 +517,7 @@ const ProductCard = ({
         id={_id}
         name={name}
         retailPrice={retailPrice}
-        discountValue={discount?.value}
+        discountValue={hasDiscount ? discountValue : undefined}
         matchLabel={matches?.[0]?.name?.replace("_", " ")}
         productUse={productUse}
         productBenefits={productBenefits}
