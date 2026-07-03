@@ -40,6 +40,7 @@ interface AdminDashboardProps {
   onSyncClick?: () => void;
   onSlotClick?: (slotNumber: number) => void;
   onProductEditClick?: (productId: string) => void;
+  onInventoryUpdated?: () => void;
   selectedSlot?: number | null;
   isSyncing?: boolean;
 }
@@ -63,6 +64,7 @@ export default function AdminDashboard({
   onSyncClick,
   onSlotClick,
   onProductEditClick,
+  onInventoryUpdated,
   selectedSlot,
   isSyncing = false,
 }: AdminDashboardProps) {
@@ -166,6 +168,7 @@ export default function AdminDashboard({
         <ProductInventoryTable
           products={products}
           onEditClick={onProductEditClick}
+          onInventoryUpdated={onInventoryUpdated}
         />
       </Box>
     </Box>

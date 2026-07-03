@@ -298,41 +298,26 @@ export default function EditProductModal({
             />
           </Box>
 
-          {/* Quantity */}
+          {/* Quantity (read-only total — edit per slot via View Slots) */}
           <Box sx={{ mb: 3 }}>
-            <Typography sx={{ mb: 1, fontWeight: 500,fontSize: 24, color: "#374151" }}>
-              Quantity
+            <Typography sx={{ mb: 1, fontWeight: 500, fontSize: 24, color: "#374151" }}>
+              Total Quantity (all slots)
             </Typography>
             <TextField
-              inputRef={quantityRef}
               fullWidth
               type="number"
-              value={qty === 0 ? "" : qty}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "") {
-                  setQty(0);
-                } else {
-                  const parsed = parseInt(val, 10);
-                  if (!isNaN(parsed) && parsed >= 0) {
-                    setQty(parsed);
-                  }
-                }
-              }}
-              onClick={() => focusField("quantity")}
-              onFocus={() => focusField("quantity")}
-              InputProps={{
-                inputProps: {
-                  inputMode: "numeric",
-                },
-              }}
+              value={qty}
+              disabled
+              helperText="To change quantity, use View Slots and edit each slot with the pen icon."
               sx={{
                 "& .MuiOutlinedInput-root": {
                   borderRadius: "8px",
+                  backgroundColor: "#f9fafb",
                   "& fieldset": {
                     borderColor: "#e0e0e0",
                   },
                 },
+                "& .MuiFormHelperText-root": { fontSize: 14 },
               }}
             />
           </Box>

@@ -599,6 +599,10 @@ export default function AdminDashboardPage() {
         onSyncClick={handleSyncClick}
         onSlotClick={handleSlotClick}
         onProductEditClick={handleProductEditClick}
+        onInventoryUpdated={() => {
+          refetchSlots();
+          refetchProducts();
+        }}
         selectedSlot={selectedSlot}
         isSyncing={isSyncing}
       />

@@ -21,6 +21,7 @@ interface Product {
 interface ProductInventoryTableProps {
   products: Product[];
   onEditClick?: (productId: string) => void;
+  onInventoryUpdated?: () => void;
 }
 
 const defaultProducts: Product[] = [];
@@ -28,6 +29,7 @@ const defaultProducts: Product[] = [];
 export default function ProductInventoryTable({
   products = defaultProducts,
   onEditClick,
+  onInventoryUpdated,
 }: ProductInventoryTableProps) {
   const [slotsModalOpen, setSlotsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -72,6 +74,7 @@ export default function ProductInventoryTable({
         onClose={handleCloseModal}
         productId={selectedProduct?.id || ""}
         productName={selectedProduct?.name || ""}
+        onUpdated={onInventoryUpdated}
       />
     <Box
       sx={{

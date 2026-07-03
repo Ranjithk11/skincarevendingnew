@@ -46,6 +46,13 @@ export async function PATCH(
       );
     }
 
+    if (quantity !== undefined && parseInt(quantity) > 10) {
+      return NextResponse.json(
+        { success: false, message: "Maximum quantity per slot is 10" },
+        { status: 400 }
+      );
+    }
+
     const slotIdNum = parseInt(slotId);
     const slot =
       quantity !== undefined
@@ -57,6 +64,10 @@ export async function PATCH(
         { success: false, message: "Slot not found" },
         { status: 404 }
       );
+    }
+
+    if (slot.product_id) {
+      adminDb.syncProductInventoryFromSlots(String(slot.product_id), slot.product_name);
     }
 
     return NextResponse.json({
