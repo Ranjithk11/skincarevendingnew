@@ -17,6 +17,7 @@ import {
   Product,
 } from "@/redux/api/adminApi";
 import { useGetFilteredProductsQuery, useGetProductCategoriesQuery } from "@/redux/api/products";
+import { normalizeProductId } from "@/lib/product-slot-utils";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -154,18 +155,14 @@ export default function AdminDashboardPage() {
   // Helper function to get total quantity from slots for a product
   const getProductQuantityFromSlots = (productId: string): number => {
     if (!slotsData) return 0;
-    let totalQuantity = 0;
-    const cleanProductId = productId.replace(/^products\//, '');
+    const cleanProductId = normalizeProductId(productId);
+    if (!cleanProductId) return 0;
 
+    let totalQuantity = 0;
     Object.values(slotsData).forEach((slot: any) => {
       if (!slot.product_id) return;
-      const slotProductId = slot.product_id?.toString().replace(/^products\//, '');
-
-      const idMatch =
-        slotProductId === cleanProductId ||
-        slot.product_id?.toString() === productId;
-
-      if (idMatch) {
+      const slotCleanId = normalizeProductId(slot.product_id);
+      if (slotCleanId === cleanProductId) {
         totalQuantity += slot.quantity || 0;
       }
     });
@@ -515,24 +512,30 @@ export default function AdminDashboardPage() {
   // Debug: Log modal products count
   console.log("[Admin] Modal products count:", modalProducts.length, "browse:", browseModalProducts.length, "admin:", apiProducts.length);
 
-  const handleProductHideClick = (productId: string) => {
-    // TODO: Implement hide/show product visibility
-    console.log(`Hide product ${productId}`);
-  };
-
   const handleProductEditClick = (productId: string) => {
-    // Find the product to edit
-    const product = productsData?.find((p: Product) => p.id.toString() === productId);
-    if (product) {
-      setEditingProduct({
-        id: productId,
-        name: product.name,
-        category: product.category || "",
-        price: product.retail_price,
-        quantity: product.quantity,
+    const cleanId = normalizeProductId(productId);
+    const product = transformedProducts.find((p: any) => {
+      const pid = String(p.id ?? "");
+      return pid === productId || normalizeProductId(pid) === cleanId;
+    });
+
+    if (!product) {
+      setSnackbar({
+        open: true,
+        message: "Could not open this product for editing.",
+        severity: "error",
       });
-      setEditProductModalOpen(true);
+      return;
     }
+
+    setEditingProduct({
+      id: cleanId || String(product.id),
+      name: product.name,
+      category: product.category || "",
+      price: Number(product.retail_price ?? 0),
+      quantity: Number(product.amount ?? 0),
+    });
+    setEditProductModalOpen(true);
   };
 
   const handleSaveProduct = async (data: {
@@ -595,7 +598,6 @@ export default function AdminDashboardPage() {
         onSettingsClick={handleSettingsClick}
         onSyncClick={handleSyncClick}
         onSlotClick={handleSlotClick}
-        onProductHideClick={handleProductHideClick}
         onProductEditClick={handleProductEditClick}
         selectedSlot={selectedSlot}
         isSyncing={isSyncing}

@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Box, IconButton, InputAdornment, TextField, Typography, Link } from "@mui/material";
-import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Close";
@@ -21,7 +20,6 @@ interface Product {
 
 interface ProductInventoryTableProps {
   products: Product[];
-  onHideClick?: (productId: string) => void;
   onEditClick?: (productId: string) => void;
 }
 
@@ -29,7 +27,6 @@ const defaultProducts: Product[] = [];
 
 export default function ProductInventoryTable({
   products = defaultProducts,
-  onHideClick,
   onEditClick,
 }: ProductInventoryTableProps) {
   const [slotsModalOpen, setSlotsModalOpen] = useState(false);
@@ -38,12 +35,22 @@ export default function ProductInventoryTable({
 
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter((p) => {
-      const name = (p.name || "").toLowerCase();
-      const category = (p.category || "").toLowerCase();
-      const id = (p.id || "").toLowerCase();
-      return name.includes(q) || category.includes(q) || id.includes(q);
+    const list = q
+      ? products.filter((p) => {
+          const name = (p.name || "").toLowerCase();
+          const category = (p.category || "").toLowerCase();
+          const id = (p.id || "").toLowerCase();
+          return name.includes(q) || category.includes(q) || id.includes(q);
+        })
+      : products;
+
+    return [...list].sort((a, b) => {
+      const aSlotted = (a.amount ?? 0) > 0;
+      const bSlotted = (b.amount ?? 0) > 0;
+      if (aSlotted !== bSlotted) return aSlotted ? -1 : 1;
+      return String(a.name ?? "").localeCompare(String(b.name ?? ""), undefined, {
+        sensitivity: "base",
+      });
     });
   }, [products, searchQuery]);
 
@@ -230,7 +237,7 @@ export default function ProductInventoryTable({
 
       {filteredProducts.map((product, index) => (
         <Box
-          key={product.id || index}
+          key={`${product.id}-${index}`}
           sx={{
             display: "grid",
             gridTemplateColumns: "70px 1fr 100px 100px 100px 100px",
@@ -321,24 +328,21 @@ export default function ProductInventoryTable({
             sx={{
               display: "flex",
               alignItems: "center",
-              justifyContent: "flex-end",
+              justifyContent: "flex-start",
               gap: { xs: 1, md: 2.5 },
             }}
           >
             <IconButton
-              onClick={() => onHideClick?.(product.id)}
-              sx={{ p: 0.5 }}
-            >
-              <VisibilityOffOutlinedIcon
-                sx={{ fontSize: 24, color: "#323232" }}
-              />
-            </IconButton>
-            <IconButton
-              onClick={() => onEditClick?.(product.id)}
-              sx={{ p: 0.5 }}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditClick?.(product.id);
+              }}
+              aria-label={`Edit ${product.name}`}
+              sx={{ p: 1 ,alignItems: "center",justifyContent: "center"}}
             >
               <EditOutlinedIcon
-                sx={{ fontSize: 24, color: "#323232" }}
+                sx={{ fontSize: 30, color: "rgb(249, 35, 11)" }}
               />
             </IconButton>
           </Box>
