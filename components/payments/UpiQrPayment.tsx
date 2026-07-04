@@ -42,6 +42,7 @@ export default function UpiQrPayment({
 }: UpiQrPaymentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [qrImageUrl, setQrImageUrl] = useState("");
   const [qrCodeId, setQrCodeId] = useState("");
   const [orderId, setOrderId] = useState("");
@@ -69,12 +70,18 @@ export default function UpiQrPayment({
     (qrId: string, oId: string) => {
       cleanup();
 
+      const pollBody = {
+        qrCodeId: qrId,
+        ...(oId ? { orderId: oId } : {}),
+        mode,
+      };
+
       pollingRef.current = setInterval(async () => {
         try {
           const res = await fetch("/api/razorpay/check-payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ qrCodeId: qrId, orderId: oId, mode }),
+            body: JSON.stringify(pollBody),
           });
           const data = await res.json();
 
@@ -87,7 +94,7 @@ export default function UpiQrPayment({
                 const retry = await fetch("/api/razorpay/check-payment", {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ qrCodeId: qrId, orderId: oId, mode }),
+                  body: JSON.stringify(pollBody),
                 });
                 const retryData = await retry.json();
                 if (retryData.success) {
@@ -108,7 +115,7 @@ export default function UpiQrPayment({
             verifiedRef.current = true;
 
             cleanup();
-            toast.success("Payment successful!");
+            setIsCompleting(true);
             setShowQR(false);
             setIsLoading(false);
             onVerified?.({
@@ -138,16 +145,16 @@ export default function UpiQrPayment({
   const generateQR = useCallback(async () => {
     if (isLoading) return;
     verifiedRef.current = false;
+
+    if (typeof amountPaise !== "number" || !Number.isFinite(amountPaise) || amountPaise <= 0) {
+      reportError("Invalid amount");
+      return;
+    }
+
     setIsLoading(true);
     onProcessingStart?.();
 
     try {
-      if (typeof amountPaise !== "number" || !Number.isFinite(amountPaise) || amountPaise <= 0) {
-        reportError("Invalid amount");
-        setIsLoading(false);
-        return;
-      }
-
       const res = await fetch("/api/razorpay/create-qr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -196,8 +203,33 @@ export default function UpiQrPayment({
     cleanup();
     setShowQR(false);
     setIsLoading(false);
+    setIsCompleting(false);
     onError?.("Payment cancelled");
   };
+
+  if (isCompleting) {
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          p: 4,
+          width: "100%",
+          maxWidth: 600,
+          mx: "auto",
+          minHeight: 400,
+        }}
+      >
+        <CircularProgress size={56} sx={{ color: "#316D52" }} />
+        <Typography sx={{ fontSize: 28, fontWeight: 600, color: "#111827" }}>
+          Processing your order...
+        </Typography>
+      </Box>
+    );
+  }
 
   if (showQR) {
     return (

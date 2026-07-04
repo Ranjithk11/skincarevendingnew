@@ -64,16 +64,17 @@ export async function POST(req: Request) {
       payment_capture: true,
     });
 
-    // Create QR code for UPI payment
-    const closeby = Math.floor(Date.now() / 1000) + 600; // 10 minutes from now
+    // Create QR code for UPI payment.
+    // Per Razorpay support (#19692902): use "multiple_use" and DO NOT send close_by;
+    // the single_use + close_by combination was failing at the bank/wallet gateway.
+    // Keeps fixed_amount so the customer still pays the exact cart total.
     const qrCode = await (razorpay as any).qrCode.create({
       type: "upi_qr",
-      name: "Leafwater",
-      usage: "single_use",
+      name: "LeafWater",
+      usage: "multiple_use",
       fixed_amount: true,
       payment_amount: Math.round(amount),
       description: receipt,
-      close_by: closeby,
       notes: {
         razorpay_order_id: order.id,
       },
