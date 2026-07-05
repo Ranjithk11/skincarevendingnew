@@ -419,29 +419,46 @@ export default function AdminDashboardPage() {
     slotNumber: number,
     productId: string,
     quantity: number,
-    retailPrice: number
+    retailPrice: number,
+    productDetails?: { name?: string; category?: string; image?: string }
   ) => {
     try {
-      // Find the product in admin products first
-      let product = productsData?.find((p: Product) => p.id.toString() === productId);
+      const targetKey = normalizeProductId(productId);
 
-      // If not found, search in browse products (allCategoryProducts)
-      let productName = product?.name;
-      let category = product?.category;
-      let imageUrl = product?.image_url;
+      // Match against catalog/browse data using normalized IDs so a "products/"
+      // prefix mismatch never drops the name (which would make the slot show "none").
+      const product = productsData?.find(
+        (p: Product) => normalizeProductId(p.id) === targetKey
+      );
+      const browseProduct = allCategoryProducts.find(
+        (p: any) => normalizeProductId(p._id || p.id) === targetKey
+      );
+
+      // Prefer the details the modal already resolved (what the admin actually
+      // selected), then fall back to catalog/browse lookups.
+      const productName =
+        productDetails?.name ||
+        product?.name ||
+        browseProduct?.name;
+      const category =
+        productDetails?.category ||
+        product?.category ||
+        browseProduct?.productCategory?.title ||
+        browseProduct?.category ||
+        "Uncategorized";
+      const imageUrl =
+        productDetails?.image ||
+        product?.image_url ||
+        browseProduct?.images?.[0]?.url ||
+        browseProduct?.image_url ||
+        "";
+
       let discountValue = product?.discount?.value;
-
-      if (!product) {
-        const browseProduct = allCategoryProducts.find((p: any) => (p._id || p.id) === productId);
-        if (browseProduct) {
-          productName = browseProduct.name;
-          category = browseProduct.productCategory?.title || browseProduct.category || "Uncategorized";
-          imageUrl = browseProduct.images?.[0]?.url || browseProduct.image_url || "";
-          // Extract discount from browse product
-          if (browseProduct.discount) {
-            discountValue = browseProduct.discount.value || browseProduct.discount.percentage || browseProduct.discount;
-          }
-        }
+      if (discountValue === undefined && browseProduct?.discount) {
+        discountValue =
+          browseProduct.discount.value ||
+          browseProduct.discount.percentage ||
+          browseProduct.discount;
       }
 
       await assignProduct({

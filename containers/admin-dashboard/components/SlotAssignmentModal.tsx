@@ -37,7 +37,13 @@ interface SlotAssignmentModalProps {
   products: Product[];
   currentProduct?: Product | null;
   currentQuantity?: number;
-  onAssign: (slotNumber: number, productId: string, quantity: number, retailPrice: number) => void;
+  onAssign: (
+    slotNumber: number,
+    productId: string,
+    quantity: number,
+    retailPrice: number,
+    productDetails?: { name?: string; category?: string; image?: string }
+  ) => void;
   onRemove: (slotNumber: number) => void;
   onUpdateQuantity?: (slotNumber: number, quantity: number) => void;
 }
@@ -179,7 +185,11 @@ export default function SlotAssignmentModal({
 
   const handleAssign = () => {
     if (selectedProductId && quantity > 0 && slotPrice >= 0) {
-      onAssign(slotNumber, selectedProductId, quantity, slotPrice);
+      onAssign(slotNumber, selectedProductId, quantity, slotPrice, {
+        name: selectedProduct?.name,
+        category: selectedProduct?.category,
+        image: selectedProduct?.image,
+      });
       onClose();
     }
   };

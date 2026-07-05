@@ -70,7 +70,9 @@ export async function GET() {
       performStartupSync();
     }
 
-    return NextResponse.json(slots);
+    return NextResponse.json(slots, {
+      headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+    });
   } catch (error) {
     console.error("Error fetching slots:", error);
     return NextResponse.json(
