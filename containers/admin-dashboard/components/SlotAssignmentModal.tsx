@@ -46,6 +46,11 @@ interface SlotAssignmentModalProps {
   ) => void;
   onRemove: (slotNumber: number) => void;
   onUpdateQuantity?: (slotNumber: number, quantity: number) => void;
+  /** Notifies the parent of the current search text so it can fetch matching
+   *  products from the backend (the local list may not contain every product). */
+  onSearchChange?: (query: string) => void;
+  /** Whether the parent is currently fetching search results. */
+  isSearching?: boolean;
 }
 
 export default function SlotAssignmentModal({
@@ -58,6 +63,8 @@ export default function SlotAssignmentModal({
   onAssign,
   onRemove,
   onUpdateQuantity,
+  onSearchChange,
+  isSearching = false,
 }: SlotAssignmentModalProps) {
   const KEYBOARD_HEIGHT_PX = 340;
   const [selectedProductId, setSelectedProductId] = useState<string>("");
@@ -75,10 +82,43 @@ export default function SlotAssignmentModal({
 
   const hasCurrentProduct = !!currentProduct;
 
-  // Filter products based on search query
-  const filteredProducts = products.filter((product) =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Normalize text for tolerant matching: lowercase and collapse any run of
+  // non-alphanumeric characters (spaces, hyphens, %, &, etc.) to a single space.
+  const normalizeText = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+  // Token-based fuzzy search. Rather than requiring an exact contiguous match,
+  // we score each product by how many query words appear in its name and show
+  // the best matches. This tolerates punctuation, spacing ("30 ml" vs "30ml"),
+  // word order, and a few spelling variants/typos (e.g. "Salicylic" vs the
+  // DB's "Salicyclic") that would otherwise hide a product.
+  const queryTokens = normalizeText(searchQuery).split(" ").filter(Boolean);
+  const filteredProducts = (() => {
+    if (queryTokens.length === 0) return products;
+
+    const scored = products
+      .map((product) => {
+        const name = normalizeText(product.name);
+        const matches = queryTokens.reduce(
+          (count, token) => (name.includes(token) ? count + 1 : count),
+          0
+        );
+        return { product, matches };
+      })
+      .filter(({ matches }) => matches > 0);
+
+    // Short queries (1-2 words) must match fully; longer queries only need a
+    // strong majority so a single mismatched word doesn't exclude the product.
+    const threshold =
+      queryTokens.length <= 2
+        ? queryTokens.length
+        : Math.ceil(queryTokens.length * 0.6);
+    const strong = scored.filter(({ matches }) => matches >= threshold);
+
+    return (strong.length > 0 ? strong : scored)
+      .sort((a, b) => b.matches - a.matches)
+      .map(({ product }) => product);
+  })();
 
   const parsePrice = (value: string | number | undefined) => {
     if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -129,6 +169,11 @@ export default function SlotAssignmentModal({
     );
   }, [selectedProductId, selectedProduct, currentProduct]);
 
+
+  useEffect(() => {
+    if (!open) return;
+    onSearchChange?.(searchQuery);
+  }, [searchQuery, open, onSearchChange]);
 
   const focusSearchInput = () => {
     if (typeof queueMicrotask === "function") {
@@ -567,7 +612,9 @@ export default function SlotAssignmentModal({
                     }}
                   />
                   <Typography sx={{ fontSize: 16, color: "#666", mt: 0.5, textAlign: "right" }}>
-                    {searchQuery
+                    {isSearching
+                      ? "Searching..."
+                      : searchQuery
                       ? `${filteredProducts.length} of ${products.length} products`
                       : `Total: ${products.length} products`}
                   </Typography>

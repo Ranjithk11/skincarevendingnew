@@ -16,7 +16,6 @@ import {
   VendingSlot,
   Product,
 } from "@/redux/api/adminApi";
-import { useGetFilteredProductsQuery, useGetProductCategoriesQuery } from "@/redux/api/products";
 import {
   normalizeProductId,
   productIdKeys,
@@ -61,85 +60,133 @@ export default function AdminDashboardPage() {
   const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetVendingSlotsQuery();
   const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useGetProductsQuery();
   
-  // Fetch product categories
-  const { data: categoriesData } = useGetProductCategoriesQuery({});
-  
-  // Fetch Browse Products (same as /products page) - auto-fetches on mount
-  const { data: browseProductsData, isLoading: browseProductsLoading } = useGetFilteredProductsQuery({
-    page: 1,
-    limit: 1000,
-    hasBrand: true,
-    isShopifyAvailable: true,
-  });
-  
-  // State to hold all products from all categories
+  // State to hold every product fetched from the DB
   const [allCategoryProducts, setAllCategoryProducts] = useState<any[]>([]);
   const [hasFetchedAllProducts, setHasFetchedAllProducts] = useState(false);
+
+  // Backend search results for the slot-assignment modal. The pre-fetched
+  // category list may not contain every product (e.g. brand-only products), so
+  // when the admin searches we query the backend directly for matches.
+  const [modalSearchQuery, setModalSearchQuery] = useState("");
+  const [modalSearchResults, setModalSearchResults] = useState<any[]>([]);
+  const [isModalSearching, setIsModalSearching] = useState(false);
   
-  // Fetch products for each category and merge them - runs only once when data is ready
+  // Fetch EVERY product in the DB by paginating the catalog endpoint.
+  // The backend caps `limit` at 100 per page and reports `totalCounts`, so a
+  // single request only returns a slice. We page through all of them (no brand
+  // / shopify filters) so every product can be assigned to a slot.
   useEffect(() => {
-    const fetchAllCategoryProducts = async () => {
-      // Only fetch once when categories and browse products are loaded
-      if (hasFetchedAllProducts || !categoriesData?.data || !browseProductsData) return;
-      
-      setHasFetchedAllProducts(true);
-      const categories = categoriesData.data.filter((cat: any) => cat._id !== "all");
-      const allProducts: any[] = [];
-      const seenIds = new Set<string>();
-      
-      // Add products from the main query first
-      const mainProducts = browseProductsData?.data?.[0]?.products || [];
-      mainProducts.forEach((p: any) => {
-        const id = p._id || p.id;
-        if (!seenIds.has(id)) {
-          seenIds.add(id);
-          allProducts.push(p);
-        }
-      });
-      
-      // Fetch products for each category
+    const fetchAllProducts = async () => {
+      if (hasFetchedAllProducts) return;
+
       const API_BASE = process.env.NEXT_PUBLIC_API_URL;
+      if (!API_BASE) return;
+      setHasFetchedAllProducts(true);
+
       const DB_TOKEN = process.env.NEXT_PUBLIC_DB_TOKEN;
-      
-      for (const category of categories) {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (DB_TOKEN) headers["x-db-token"] = DB_TOKEN;
+
+      const PAGE_SIZE = 100;
+
+      const fetchPage = async (page: number, attempt = 0): Promise<{ products: any[]; total: number }> => {
         try {
-          const params = new URLSearchParams({
-            page: "1",
-            limit: "500",
-            hasBrand: "true",
-            isShopifyAvailable: "true",
-            catId: category._id || category._key,
+          const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+          const res = await fetch(`${API_BASE}/product/fetch-by-filter?${params}`, {
+            headers,
+            cache: "no-store",
           });
-          
-          const headers: Record<string, string> = { "Content-Type": "application/json" };
-          if (DB_TOKEN) headers["x-db-token"] = DB_TOKEN;
-          
-          const response = await fetch(`${API_BASE}/product/fetch-by-filter?${params}`, { headers });
-          if (response.ok) {
-            const result = await response.json();
-            const categoryProducts = result?.data?.[0]?.products || [];
-            
-            categoryProducts.forEach((p: any) => {
-              const id = p._id || p.id;
-              if (!seenIds.has(id)) {
-                seenIds.add(id);
-                allProducts.push(p);
-              }
-            });
-          }
+          if (!res.ok) throw new Error(`page ${page} -> ${res.status}`);
+          const result = await res.json();
+          const products = result?.data?.[0]?.products || result?.data || [];
+          const total = Number(result?.totalCounts ?? 0);
+          return { products, total };
         } catch (err) {
-          console.error(`Error fetching category ${category.title}:`, err);
+          if (attempt < 2) return fetchPage(page, attempt + 1);
+          console.error(`[Admin] Failed to fetch products page ${page}:`, err);
+          return { products: [], total: 0 };
         }
+      };
+
+      try {
+        const allProducts: any[] = [];
+        const seenIds = new Set<string>();
+        const addAll = (list: any[]) =>
+          list.forEach((p: any) => {
+            const id = p._id || p.id;
+            if (id && !seenIds.has(id)) {
+              seenIds.add(id);
+              allProducts.push(p);
+            }
+          });
+
+        const first = await fetchPage(1);
+        addAll(first.products);
+
+        const total = first.total || first.products.length;
+        const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+        if (totalPages > 1) {
+          const pages = [];
+          for (let page = 2; page <= totalPages; page++) {
+            pages.push(fetchPage(page).then((r) => r.products));
+          }
+          (await Promise.all(pages)).forEach(addAll);
+        }
+
+        console.log(`[Admin] Fetched ${allProducts.length} of ${total} products (${totalPages} pages)`);
+
+        // If nothing came back (e.g. network outage), allow a later retry.
+        if (allProducts.length === 0) {
+          setHasFetchedAllProducts(false);
+        } else {
+          setAllCategoryProducts(allProducts);
+        }
+      } catch (err) {
+        console.error("[Admin] Error fetching all products:", err);
+        setHasFetchedAllProducts(false);
       }
-      
-      console.log("[Admin] Total products from all categories:", allProducts.length);
-      console.log("[Admin] Categories fetched:", categories.length);
-      console.log("[Admin] Main products count:", mainProducts.length);
-      setAllCategoryProducts(allProducts);
     };
-    
-    fetchAllCategoryProducts();
-  }, [categoriesData, browseProductsData, hasFetchedAllProducts]);
+
+    fetchAllProducts();
+  }, [hasFetchedAllProducts]);
+
+  // Debounced backend search for the slot-assignment modal so any product in
+  // the DB can be found and assigned, even if it wasn't in the pre-fetched list.
+  useEffect(() => {
+    const query = modalSearchQuery.trim();
+    if (query.length < 2) {
+      setModalSearchResults([]);
+      setIsModalSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsModalSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ search: query, page: "1", limit: "1000" });
+        const res = await fetch(`/api/admin/products?${params.toString()}`, {
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error(`Search failed: ${res.status}`);
+        const json = await res.json();
+        const results = Array.isArray(json) ? json : json?.data?.[0]?.products || [];
+        if (!cancelled) setModalSearchResults(results);
+      } catch (err) {
+        console.error("[Admin] Modal product search error:", err);
+        if (!cancelled) setModalSearchResults([]);
+      } finally {
+        if (!cancelled) setIsModalSearching(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [modalSearchQuery]);
 
   // Redux mutations
   const [syncQuantities, { isLoading: isSyncing }] = useSyncProductQuantitiesMutation();
@@ -413,6 +460,9 @@ export default function AdminDashboardPage() {
 
   const handleModalClose = () => {
     setModalOpen(false);
+    setModalSearchQuery("");
+    setModalSearchResults([]);
+    setIsModalSearching(false);
   };
 
   const handleAssignProduct = async (
@@ -595,11 +645,43 @@ export default function AdminDashboardPage() {
     });
   }
   
-  // Merge all products - browse products first (priority), then admin, then slot products
+  // Products returned by the backend search (covers products missing from the
+  // pre-fetched list, e.g. brand-only products) mapped to modal shape.
+  const searchModalProducts = modalSearchResults
+    .map((p: any) => {
+      const productId = String(p.id ?? p._id ?? "");
+      if (!productId) return null;
+      const adminMatch = findAdminProductMatch(productId);
+      const catalogPrice = Number(p.retail_price ?? p.retailPrice ?? 0);
+      const effectivePrice = resolveInventoryPrice(productId, catalogPrice, adminMatch);
+      return {
+        id: productId,
+        name: adminMatch?.name ?? p.name,
+        category:
+          adminMatch?.category ??
+          (p.category || p.productCategory?.title || "Uncategorized"),
+        price: `₹${effectivePrice}`,
+        originalPrice: catalogPrice,
+        retailPrice: effectivePrice,
+        amount: getProductQuantityFromSlots(productId),
+        image: adminMatch?.image ?? (p.image_url || p.images?.[0]?.url || ""),
+      };
+    })
+    .filter(Boolean) as any[];
+
+  // Merge all products - search results first, then browse, admin, slot products
   const allProductIds = new Set<string>();
   const modalProducts: typeof apiProducts = [];
-  
-  // Add browse products first
+
+  // Add backend search results first so a searched product is always present
+  searchModalProducts.forEach((p: any) => {
+    if (!allProductIds.has(p.id)) {
+      allProductIds.add(p.id);
+      modalProducts.push(p);
+    }
+  });
+
+  // Add browse products
   browseModalProducts.forEach((p: any) => {
     if (!allProductIds.has(p.id)) {
       allProductIds.add(p.id);
@@ -738,6 +820,8 @@ export default function AdminDashboardPage() {
         onAssign={handleAssignProduct}
         onRemove={handleRemoveProduct}
         onUpdateQuantity={handleUpdateSlotQuantity}
+        onSearchChange={setModalSearchQuery}
+        isSearching={isModalSearching}
       />
       
       {/* Machine Homing Status Modal */}

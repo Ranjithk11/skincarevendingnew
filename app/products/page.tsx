@@ -190,8 +190,8 @@ export default function BrowseProductsPage() {
   const [brandImagesLoaded, setBrandImagesLoaded] = useState(false);
 
   const categoryStripRef = useRef<HTMLDivElement | null>(null);
-  const categoryDragRef = useRef<{ dragging: boolean; startX: number; startScrollLeft: number }>(
-    { dragging: false, startX: 0, startScrollLeft: 0 }
+  const categoryDragRef = useRef<{ dragging: boolean; moved: boolean; startX: number; startScrollLeft: number }>(
+    { dragging: false, moved: false, startX: 0, startScrollLeft: 0 }
   );
 
   // Fetch products for selected category
@@ -416,22 +416,31 @@ export default function BrowseProductsPage() {
               const el = categoryStripRef.current;
               if (!el) return;
               categoryDragRef.current.dragging = true;
+              categoryDragRef.current.moved = false;
               categoryDragRef.current.startX = e.clientX;
               categoryDragRef.current.startScrollLeft = el.scrollLeft;
-              (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+              // Note: intentionally NOT calling setPointerCapture here — capturing
+              // the pointer retargets the click to this container and prevents the
+              // category items' onClick from firing on desktop (mouse).
             }}
             onPointerMove={(e) => {
               const el = categoryStripRef.current;
               if (!el) return;
               if (!categoryDragRef.current.dragging) return;
               const dx = e.clientX - categoryDragRef.current.startX;
-              el.scrollLeft = categoryDragRef.current.startScrollLeft - dx;
+              // Only treat it as a drag once the pointer moves past a small
+              // threshold, so a normal click still selects the category.
+              if (Math.abs(dx) > 5) {
+                categoryDragRef.current.moved = true;
+                el.scrollLeft = categoryDragRef.current.startScrollLeft - dx;
+              }
             }}
             onPointerUp={() => {
               categoryDragRef.current.dragging = false;
             }}
             onPointerCancel={() => {
               categoryDragRef.current.dragging = false;
+              categoryDragRef.current.moved = false;
             }}
             sx={{
               mt: 2,
@@ -456,7 +465,14 @@ export default function BrowseProductsPage() {
               return (
                 <Box
                   key={category._id}
-                  onClick={() => setSelectedCategory(category._id)}
+                  onClick={() => {
+                    // Ignore the click that ends a drag-scroll gesture.
+                    if (categoryDragRef.current.moved) {
+                      categoryDragRef.current.moved = false;
+                      return;
+                    }
+                    setSelectedCategory(category._id);
+                  }}
                   sx={{
                     flex: "0 0 auto",
                     cursor: "pointer",
