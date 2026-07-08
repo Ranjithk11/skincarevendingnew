@@ -70,6 +70,10 @@ export async function PATCH(
       adminDb.syncProductInventoryFromSlots(String(slot.product_id), slot.product_name);
     }
 
+    // Notify the webhook of the quantity change (fire-and-forget).
+    const { sendAllSlotsUpdate } = await import("@/lib/slot-webhook");
+    sendAllSlotsUpdate([slotIdNum], "quantity_update");
+
     return NextResponse.json({
       success: true,
       message: `Slot ${slotId} quantity updated`,

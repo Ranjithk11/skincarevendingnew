@@ -185,6 +185,14 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                 .trim()
                 .replace(/\b\w/g, (c) => c.toUpperCase());
 
+        // Display-name overrides for Key Concerns metrics.
+        const LABEL_OVERRIDES: Record<string, string> = {
+            texture: "Skin Quality",
+            moisture: "Hydration",
+        };
+        const applyLabelOverride = (label: string) =>
+            LABEL_OVERRIDES[label.toLowerCase().trim()] ?? label;
+
         const toLevelColor = (lvl?: unknown) => {
             const level = typeof lvl === "string" ? lvl.toUpperCase() : "";
             if (level === "EXCELLENT" || level.includes("EXCELLENT")) return "#22c55e"; // green
@@ -206,7 +214,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                 const score = m?.score;
                 const level = m?.level;
                 return {
-                    label,
+                    label: applyLabelOverride(label),
                     value: typeof score === "number" ? `${score}%` : "--",
                     level: typeof level === "string" ? level : undefined,
                     levelColor: toLevelColor(level),
@@ -219,7 +227,7 @@ const NewUiInner: React.FC<NewUiProps> = ({ analysisData, publicUserProfile, use
                 const score = val?.score ?? val;
                 const level = val?.level;
                 return {
-                    label: toLabel(key),
+                    label: applyLabelOverride(toLabel(key)),
                     value: typeof score === "number" ? `${score}%` : "--",
                     level: typeof level === "string" ? level : undefined,
                     levelColor: toLevelColor(level),

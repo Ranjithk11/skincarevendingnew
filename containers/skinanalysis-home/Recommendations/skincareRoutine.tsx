@@ -241,6 +241,8 @@ const ROUTINE_STEP_MATCHERS: Record<
       "day creme",
       "moisturizer",
       "moisturiser",
+      "moisturis",
+      "moisturiz",
       "moisturizing cream",
       "moisturising cream",
       "face moisturizer",
@@ -430,44 +432,63 @@ export default function SkincareRoutinePage({ recommendationData }: Props) {
         setSlotsMap(map);
         setSlotsNameMap(nameMap);
 
-        if (!productsRes.ok) return;
-
-        const productsPayload = await productsRes.json();
+        // The catalog fetch is only used to ENRICH slot products (benefits,
+        // shopify url, images). It is capped by the backend (max ~100 items)
+        // and filtered by brand/shopify, so it must NOT be the source of truth
+        // for what's in the machine — otherwise slotted products outside that
+        // window (e.g. night cream, sunscreen, cleanser, moisturizer) would be
+        // silently dropped from the routine.
+        const productsPayload = productsRes.ok ? await productsRes.json() : null;
         const allProducts = Array.isArray(productsPayload)
           ? productsPayload
           : productsPayload?.data || [];
 
-        const resolveSlotInfo = (product: any): SlotInfo | undefined => {
-          const productId = product?.id ?? product?._id;
-          const rawId = String(productId ?? "").trim();
-          const cleanId = normalizeProductId(productId);
-          const keys = [rawId, cleanId, cleanId ? `products/${cleanId}` : ""].filter(Boolean);
+        const catalogById = new Map<string, any>();
+        const catalogByName = new Map<string, any>();
+        allProducts.forEach((product: any) => {
+          const cleanId = normalizeProductId(product?.id ?? product?._id);
+          if (cleanId && !catalogById.has(cleanId)) catalogById.set(cleanId, product);
+          const nameKey = normalizeProductName(product?.name);
+          if (nameKey && !catalogByName.has(nameKey)) catalogByName.set(nameKey, product);
+        });
 
-          for (const key of keys) {
-            if (map[key]) return map[key];
-          }
-
-          const fullNameKey = normalizeProductName(product?.name);
-          const prefixNameKey = normalizeNamePrefix(product?.name);
-          if (fullNameKey && nameMap[fullNameKey]) return nameMap[fullNameKey];
-          if (prefixNameKey && nameMap[`prefix:${prefixNameKey}`]) {
-            return nameMap[`prefix:${prefixNameKey}`];
-          }
-
-          return undefined;
-        };
-
-        const inMachine = allProducts
-          .map((product: any) => {
-            const slotInfo = resolveSlotInfo(product);
-            const quantity = Number(product?.quantity ?? slotInfo?.quantity ?? 0);
-            if (!slotInfo || quantity <= 0) return null;
-            return mapProductToCardProps({
-              ...product,
-              quantity,
-            });
+        // Build the machine product list directly from the slots. Every product
+        // physically loaded into a slot is included, regardless of the catalog
+        // window, so each routine step can find its match.
+        const inMachine = slotsArray
+          .filter((slot: any) => {
+            const hasProduct = slot?.product_id || slot?.product_name;
+            return hasProduct && Number(slot?.quantity || 0) > 0;
           })
-          .filter(Boolean);
+          .map((slot: any) => {
+            const cleanId = normalizeProductId(slot?.product_id);
+            const nameKey = normalizeProductName(slot?.product_name);
+            const catalog =
+              (cleanId && catalogById.get(cleanId)) ||
+              (nameKey && catalogByName.get(nameKey)) ||
+              {};
+
+            const resolvedId =
+              cleanId ||
+              normalizeProductId(catalog?._id ?? catalog?.id) ||
+              `slot-${slot.slot_id}`;
+
+            return mapProductToCardProps({
+              ...catalog,
+              _id: resolvedId,
+              id: resolvedId,
+              name: catalog?.name || slot?.product_name,
+              category:
+                slot?.category ||
+                catalog?.category ||
+                catalog?.productCategory?.title ||
+                "",
+              image_url: slot?.image_url || catalog?.image_url,
+              retail_price:
+                slot?.retail_price ?? catalog?.retail_price ?? catalog?.retailPrice,
+              quantity: Number(slot?.quantity || 0),
+            });
+          });
 
         setVendingProducts(inMachine as any[]);
       } catch (err) {

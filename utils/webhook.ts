@@ -34,7 +34,7 @@ const DEFAULT_DISPENSE_WEBHOOK_URL =
   "https://hook.eu1.make.com/bel61vvl1lpvleljhuzpyc5osor8fnz3";
 
 const DEFAULT_SLOT_UPDATE_WEBHOOK_URL =
-  "https://hook.eu1.make.com/2g5m8urqau04sgnynlxk4i7cdvjgdmoc";
+  "https://hook.eu1.make.com/5x7cho9eq99j2chogcjedhd3bj0959lg";
 
 const DEFAULT_RESULT_BASE_URL = "https://skincare.leafwater.in";
 
@@ -709,8 +709,9 @@ export interface SlotUpdatePayload {
   slots?: SlotUpdateSlotInfo[];
   /** Updated product information (if product modification occurred) */
   product?: SlotUpdateProductInfo;
-  /** Type of update: 'slot_assignment' or 'product_modification' */
-  updateType?: 'slot_assignment' | 'product_modification';
+  /** Type of update, e.g. 'slot_assignment', 'slot_removed', 'quantity_update',
+   *  'product_modification', 'daily_full_sync', 'manual_sync'. */
+  updateType?: string;
   /** Slot IDs affected by this update */
   affectedSlotIds?: number[];
   /** Timestamp of the update */
@@ -719,6 +720,8 @@ export interface SlotUpdatePayload {
   machineLocation?: string;
   /** Machine name where the update occurred */
   machineName?: string;
+  /** Machine identifier (analytics backend id) */
+  machineId?: string;
 }
 
 /**
@@ -738,14 +741,26 @@ export async function sendSlotUpdateWebhook(
       process.env.NEXT_PUBLIC_SLOT_UPDATE_WEBHOOK_URL ||
       DEFAULT_SLOT_UPDATE_WEBHOOK_URL;
 
+    const machineName = payload.machineName || process.env.NEXT_PUBLIC_MACHINE_NAME || "";
+    const machineLocation = payload.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine";
+    const machineId = payload.machineId || process.env.NEXT_PUBLIC_MACHINE_ID || "";
+
     const body = {
       event: payload.updateType || "slot_update",
       occurred_at: payload.timestamp || new Date().toISOString(),
+      total_slots: (payload.slots || []).length,
       slots: payload.slots || [],
       product: payload.product || null,
       affected_slot_ids: payload.affectedSlotIds || [],
-      machine_location: payload.machineLocation || process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine",
-      machine_name: payload.machineName || "",
+      // Machine identity (flat fields kept for backward compatibility)
+      machine_name: machineName,
+      machine_location: machineLocation,
+      machine_id: machineId,
+      machine: {
+        name: machineName,
+        location: machineLocation,
+        id: machineId,
+      },
     };
 
     console.log("[slot_update webhook] Sending webhook to:", url);
