@@ -16,6 +16,7 @@ interface DispenseReporterProps {
   products?: DispenseSuccessProductInfo[];
   transaction?: DispenseSuccessTransactionInfo;
   command?: DispenseSuccessCommandInfo;
+  agentName?: string;
   machineLocation?: string;
   machineName?: string;
 }
@@ -26,6 +27,7 @@ export default function DispenseReporter({
   products,
   transaction,
   command,
+  agentName,
   machineLocation,
   machineName,
 }: DispenseReporterProps) {
@@ -52,6 +54,7 @@ export default function DispenseReporter({
         products,
         transaction: resolvedTx,
         command,
+        agentName,
         machineLocation,
         machineName,
         dedupeKey: key,
@@ -61,7 +64,7 @@ export default function DispenseReporter({
     return () => {
       cancelled = true;
     };
-  }, [active, user, products, transaction, command, machineLocation, machineName]);
+  }, [active, user, products, transaction, command, agentName, machineLocation, machineName]);
 
   return null;
 }

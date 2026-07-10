@@ -397,6 +397,8 @@ export interface PaymentTransactionInfo {
   currency?: string;
   status?: string;
   method?: string;
+  /** Agent who authorized a cash sale */
+  agentName?: string;
 }
 
 export interface PaymentPayload {
@@ -468,11 +470,15 @@ export async function sendPaymentWebhook(
       return;
     }
 
+    const agentName = payload.transaction?.agentName || "";
+
     const body = {
       event: "payment_success",
       occurred_at: new Date().toISOString(),
       machine_location: payload.machineLocation || "",
       machine_name: payload.machineName || "",
+      agent_name: agentName,
+      amount: payload.transaction?.amount ?? null,
       selected_slots: payload.selectedSlots || [],
       user: {
         user_id: payload.user?.userId || "",
@@ -495,6 +501,7 @@ export async function sendPaymentWebhook(
         currency: payload.transaction?.currency || "INR",
         status: payload.transaction?.status || "",
         method: payload.transaction?.method || "",
+        agent_name: agentName,
       },
     };
 
@@ -544,6 +551,7 @@ export interface DispenseSuccessTransactionInfo {
   currency?: string;
   status?: string;
   method?: string;
+  agentName?: string;
 }
 
 export interface DispenseSuccessCommandInfo {
@@ -560,6 +568,8 @@ export interface DispenseSuccessPayload {
   transaction?: DispenseSuccessTransactionInfo;
   /** Command info - which product was dispensed and from which slot */
   command?: DispenseSuccessCommandInfo;
+  /** Agent name (set for cash sales authorized by an agent) */
+  agentName?: string;
   /** Machine location where dispense occurred */
   machineLocation?: string;
   /** Machine name where dispense occurred */
@@ -624,11 +634,16 @@ export async function sendDispenseSuccessWebhook(
       return;
     }
 
+    const agentName =
+      payload.agentName || payload.transaction?.agentName || "";
+
     const body = {
       event: "dispense_success",
       occurred_at: new Date().toISOString(),
       machine_location: payload.machineLocation || "",
       machine_name: payload.machineName || "",
+      agent_name: agentName,
+      amount: payload.transaction?.amount ?? null,
       user: {
         user_id: payload.user?.userId || "",
         name: payload.user?.name || "",
@@ -650,6 +665,7 @@ export async function sendDispenseSuccessWebhook(
         currency: payload.transaction?.currency || "INR",
         status: payload.transaction?.status || "",
         method: payload.transaction?.method || "",
+        agent_name: agentName,
       },
       command: {
         product_id: payload.command?.productId || "",

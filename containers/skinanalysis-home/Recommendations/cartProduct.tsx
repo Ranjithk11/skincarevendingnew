@@ -15,6 +15,8 @@ import { Icon } from "@iconify/react";
 import { capitalizeWords } from "@/utils/func";
 import { useCart, CartItem } from "./CartContext";
 import UpiQrPayment from "@/components/payments/UpiQrPayment";
+import PaymentMethodChooser, { type PaymentMethod } from "@/components/payments/PaymentMethodChooser";
+import CashAgentPayment from "@/components/payments/CashAgentPayment";
 import { ProductPrice } from "./components";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -58,6 +60,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const { data: session } = useSession();
     const [showPriceDetails, setShowPriceDetails] = useState(false);
     const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [couponApplied, setCouponApplied] = useState(false);
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
     const [isDispensing, setIsDispensing] = useState(false);
@@ -331,6 +334,11 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
 
     const handleBack = () => {
         if (step === "payment") {
+            // If a method is chosen, step back to the method chooser first.
+            if (paymentMethod) {
+                setPaymentMethod(null);
+                return;
+            }
             setStep("checkout");
             return;
         }
@@ -340,6 +348,115 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
         }
         onClose();
     };
+
+    // Cash payment: agent already validated in CashAgentPayment. Record the sale
+    // and hand off to the feedback page which performs the dispense (same path as
+    // UPI). The agent name + amount + method="cash" travel in the checkout summary
+    // so the dispense-success webhook can include them.
+    const handleCashConfirmed = useCallback(
+        async (agentName: string) => {
+            const txnId = `CASH-${Date.now()}`;
+            if (paymentRecordedRef.current === txnId) return;
+
+            if (typeof window !== "undefined") {
+                const storageKey = `kiosk_order_recorded::${txnId}`;
+                if (window.sessionStorage.getItem(storageKey)) return;
+                window.sessionStorage.setItem(storageKey, "1");
+            }
+            paymentRecordedRef.current = txnId;
+
+            const itemsToDispense = [...items];
+            const amount = payableTotal;
+
+            const cashPayment = {
+                orderId: txnId,
+                paymentId: txnId,
+                amount,
+                currency: "INR",
+                status: "paid",
+                method: "cash",
+                agentName,
+                machineId,
+                machineName,
+                machineLocation,
+            };
+
+            setPaymentSuccess(true);
+            setPaymentPayload(cashPayment);
+
+            if (typeof window !== "undefined") {
+                try {
+                    window.sessionStorage.setItem(
+                        "kiosk_checkout_summary",
+                        JSON.stringify({
+                            items: itemsToDispense,
+                            total,
+                            discount,
+                            payableTotal,
+                            createdAt: Date.now(),
+                            payment: cashPayment,
+                        })
+                    );
+                } catch {
+                }
+            }
+
+            router.push(APP_ROUTES.FEEDBACK);
+
+            void (async () => {
+                try {
+                    const orderItems = itemsToDispense.map((item) => ({
+                        productId: item.id || "",
+                        productName: item.name,
+                        quantity: item.quantity || 1,
+                        price: parsePrice(item.priceText),
+                        slotId: item.slotId,
+                    }));
+
+                    const orderResponse = await fetch("/api/admin/orders", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            items: orderItems,
+                            totalAmount: amount,
+                            paymentId: txnId,
+                            razorpayOrderId: txnId,
+                            paymentMode: "cash",
+                        }),
+                    });
+                    const orderData = await orderResponse.json();
+
+                    await fetch("/api/admin/transactions", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            transactionId: txnId,
+                            amount,
+                            paymentId: txnId,
+                            status: "completed",
+                        }),
+                    }).catch((err) => console.warn("[CashPayment] Failed to record transaction:", err));
+
+                    await fetch("/api/posifly/bills", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            orderId: orderData?.order?.id || `order_${Date.now()}`,
+                            items: orderItems,
+                            totalAmount: amount,
+                            discountAmount: discount,
+                            paymentId: txnId,
+                            razorpayOrderId: txnId,
+                            paymentMode: "cash",
+                        }),
+                    }).catch((err) => console.warn("[CashPayment] Failed to save POSIFLY bill:", err));
+                } catch (err) {
+                    console.error("[CashPayment] Failed to record order:", err);
+                }
+            })();
+        },
+        [items, payableTotal, total, discount, machineId, machineName, machineLocation, router]
+    );
 
     return (
         <>
@@ -483,6 +600,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                 <Button
                                     variant="contained"
                                     onClick={() => {
+                                        setPaymentMethod(null);
                                         setStep("payment");
                                         speakMessage('payment');
                                     }}
@@ -517,6 +635,21 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                     py: 4,
                                 }}
                             >
+                                {paymentMethod === null ? (
+                                    <PaymentMethodChooser
+                                        amount={couponApplied ? payableTotal : total}
+                                        onSelect={(m) => {
+                                            setPaymentMethod(m);
+                                            speakMessage("payment");
+                                        }}
+                                    />
+                                ) : paymentMethod === "cash" ? (
+                                    <CashAgentPayment
+                                        amount={couponApplied ? payableTotal : total}
+                                        onBack={() => setPaymentMethod(null)}
+                                        onConfirmed={handleCashConfirmed}
+                                    />
+                                ) : (
                                 <UpiQrPayment
                                     amountPaise={amountPaise}
                                     currency="INR"
@@ -656,6 +789,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                     }}
                                     label="Pay with UPI"
                                 />
+                                )}
                             </Box>
                         ) : step === "checkout" ? (
                             <>

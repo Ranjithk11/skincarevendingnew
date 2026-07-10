@@ -4,18 +4,23 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Box, Grid, Typography, useMediaQuery, useTheme } from "@mui/material";
 import ProductCard from "./ProductCard";
 import {
-  useGetProductCategoriesQuery,
-  useGetAllBrandsQuery,
-} from "@/redux/api/products";
-import {
   buildSlotsMap,
   getSlotDiscountMap,
   getSlotInfoForProduct,
   mergeCatalogWithSlotProducts,
   normalizeProductDiscount,
   productMatchesBrandFilter,
+  productMatchesCategoryFilter,
   type SlotsMap,
 } from "@/lib/product-slot-utils";
+import {
+  fetchCatalogBrands,
+  fetchCatalogCategories,
+  fetchCategoryImages,
+  fetchBrandImages,
+  type CatalogBrand,
+  type CatalogCategory,
+} from "@/lib/catalog-metadata";
 
 type Props = {
   data: any;
@@ -90,12 +95,30 @@ export default function VendingProducts({ data }: Props) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
 
-  // Fetch categories and brands from cloud API (same as /products page)
-  const { data: categoriesData } = useGetProductCategoriesQuery({});
-  const { data: brandsData } = useGetAllBrandsQuery({});
+  const [cloudCategories, setCloudCategories] = useState<CatalogCategory[]>([
+    { _id: "all", title: "All" },
+  ]);
+  const [cloudBrands, setCloudBrands] = useState<CatalogBrand[]>([]);
 
-  const cloudCategories = categoriesData?.data || [];
-  const cloudBrands = brandsData?.data || [];
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [cats, brs, catImgs, brandImgs] = await Promise.all([
+        fetchCatalogCategories(),
+        fetchCatalogBrands(),
+        fetchCategoryImages(),
+        fetchBrandImages(),
+      ]);
+      if (cancelled) return;
+      setCloudCategories(cats);
+      setCloudBrands(brs);
+      setCategoryImages(catImgs);
+      setBrandImages(brandImgs);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // State for filters
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -131,17 +154,30 @@ export default function VendingProducts({ data }: Props) {
     fetchSlots();
   }, []);
 
-  const machineProducts = useMemo(() => {
-    const hasCatalogFilter = selectedCategory !== "all" || selectedBrand !== "all";
-    return mergeCatalogWithSlotProducts(products, rawSlotsData, {
-      includeUnlistedSlotProducts: !hasCatalogFilter,
-    });
-  }, [products, rawSlotsData, selectedCategory, selectedBrand]);
-
   const selectedBrandName = useMemo(() => {
     if (selectedBrand === "all") return undefined;
-    return cloudBrands.find((b: any) => b._id === selectedBrand)?.name as string | undefined;
+    return cloudBrands.find((b) => b._id === selectedBrand)?.name;
   }, [selectedBrand, cloudBrands]);
+
+  const selectedCategoryTitle = useMemo(() => {
+    if (selectedCategory === "all") return undefined;
+    return cloudCategories.find((c) => c._id === selectedCategory)?.title;
+  }, [selectedCategory, cloudCategories]);
+
+  const catalogFilters = useMemo(
+    () => ({
+      brandId: selectedBrand !== "all" ? selectedBrand : undefined,
+      brandName: selectedBrandName,
+      categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
+      categoryTitle: selectedCategoryTitle,
+    }),
+    [selectedBrand, selectedBrandName, selectedCategory, selectedCategoryTitle]
+  );
+
+  const machineProducts = useMemo(
+    () => mergeCatalogWithSlotProducts(products, rawSlotsData, { catalogFilters }),
+    [products, rawSlotsData, catalogFilters]
+  );
 
   const slotDiscountMap = useMemo(() => getSlotDiscountMap(rawSlotsData), [rawSlotsData]);
 
@@ -247,74 +283,23 @@ export default function VendingProducts({ data }: Props) {
     return () => { cancelled = true; };
   }, [selectedCategory, selectedBrand]);
 
-  // Fetch category images
+  // Refresh icons when slot inventory loads/changes.
   useEffect(() => {
-    if (cloudCategories.length === 0) return;
-
-    const fetchCategoryImages = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
-
-      const fetchPromises = cloudCategories
-        .filter((cat: any) => cat._id !== "all")
-        .map(async (cat: any) => {
-          try {
-            const res = await fetch(
-              `${apiUrl}/product/fetch-by-filter?catId=${cat._id}&limit=1&isShopifyAvailable=true&hasBrand=true`,
-              { headers: { "x-db-token": dbToken } }
-            );
-            const data = await res.json();
-            return { catId: cat._id, imgUrl: data?.data?.[0]?.products?.[0]?.images?.[0]?.url };
-          } catch {
-            return { catId: cat._id, imgUrl: undefined };
-          }
-        });
-
-      const results = await Promise.all(fetchPromises);
-      const images: Record<string, string | undefined> = {};
-      results.forEach(({ catId, imgUrl }) => {
-        if (imgUrl) images[catId] = imgUrl;
-      });
-      setCategoryImages(images);
+    if (Object.keys(slotsMap).length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const [catImgs, brandImgs] = await Promise.all([
+        fetchCategoryImages(),
+        fetchBrandImages(),
+      ]);
+      if (cancelled) return;
+      setCategoryImages((prev) => ({ ...prev, ...catImgs }));
+      setBrandImages((prev) => ({ ...prev, ...brandImgs }));
+    })();
+    return () => {
+      cancelled = true;
     };
-
-    fetchCategoryImages();
-  }, [cloudCategories]);
-
-  // Fetch brand images
-  useEffect(() => {
-    if (cloudBrands.length === 0) return;
-
-    const fetchBrandImages = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
-      if (!apiUrl) return;
-
-      const fetchPromises = cloudBrands
-        .filter((b: any) => b?._id && b._id !== "all")
-        .map(async (b: any) => {
-          try {
-            const res = await fetch(
-              `${apiUrl}/product/fetch-by-filter?brandId=${b._id}&limit=1&isShopifyAvailable=true&hasBrand=true`,
-              { headers: { "x-db-token": dbToken } }
-            );
-            const data = await res.json();
-            return { brandId: b._id, imgUrl: data?.data?.[0]?.products?.[0]?.images?.[0]?.url };
-          } catch {
-            return { brandId: b._id, imgUrl: undefined };
-          }
-        });
-
-      const results = await Promise.all(fetchPromises);
-      const images: Record<string, string | undefined> = {};
-      results.forEach(({ brandId, imgUrl }) => {
-        if (imgUrl) images[brandId] = imgUrl;
-      });
-      setBrandImages(images);
-    };
-
-    fetchBrandImages();
-  }, [cloudBrands]);
+  }, [slotsMap]);
 
   // Sort products - available first, then by quantity
   const sortedProducts = useMemo(() => {
@@ -325,8 +310,14 @@ export default function VendingProducts({ data }: Props) {
     });
 
     return decorated
-      .filter((item) =>
-        productMatchesBrandFilter(item.product, selectedBrand, selectedBrandName)
+      .filter(
+        (item) =>
+          productMatchesCategoryFilter(
+            item.product,
+            selectedCategory,
+            selectedCategoryTitle
+          ) &&
+          productMatchesBrandFilter(item.product, selectedBrand, selectedBrandName)
       )
       .sort((a, b) => {
         if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
@@ -337,7 +328,7 @@ export default function VendingProducts({ data }: Props) {
           sensitivity: "base",
         });
       });
-  }, [machineProducts, slotsMap, selectedBrand, selectedBrandName]);
+  }, [machineProducts, slotsMap, selectedBrand, selectedBrandName, selectedCategory, selectedCategoryTitle]);
 
   // Process personalized recommendations from cloud API (data prop)
   // Group by category, show up to 4 products per category (minimum 2 if available)

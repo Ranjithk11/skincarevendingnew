@@ -3,10 +3,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Box, Typography, Grid, useMediaQuery, useTheme } from "@mui/material";
 import { useRouter } from "next/navigation";
-import {
-  useGetProductCategoriesQuery,
-  useGetAllBrandsQuery
-} from "@/redux/api/products";
 import { APP_ROUTES } from "@/utils/routes";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import ProductCard from "@/containers/skinanalysis-home/Recommendations/ProductCard";
@@ -19,8 +15,17 @@ import {
   mergeCatalogWithSlotProducts,
   normalizeProductDiscount,
   productMatchesBrandFilter,
+  productMatchesCategoryFilter,
   type SlotsMap,
 } from "@/lib/product-slot-utils";
+import {
+  fetchCatalogBrands,
+  fetchCatalogCategories,
+  fetchCategoryImages,
+  fetchBrandImages,
+  type CatalogBrand,
+  type CatalogCategory,
+} from "@/lib/catalog-metadata";
 
 const PageBackground = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -107,10 +112,28 @@ export default function BrowseProductsPage() {
   const [rawSlotsData, setRawSlotsData] = useState<unknown>({});
   const [slotsMap, setSlotsMap] = useState<SlotsMap>({});
 
-  const { data: categoriesData } = useGetProductCategoriesQuery({});
-  const { data: brandsData } = useGetAllBrandsQuery({});
-  const categories = categoriesData?.data || [];
-  const brands = brandsData?.data || [];
+  const [categories, setCategories] = useState<CatalogCategory[]>([{ _id: "all", title: "All" }]);
+  const [brands, setBrands] = useState<CatalogBrand[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const [cats, brs, catImgs, brandImgs] = await Promise.all([
+        fetchCatalogCategories(),
+        fetchCatalogBrands(),
+        fetchCategoryImages(),
+        fetchBrandImages(),
+      ]);
+      if (cancelled) return;
+      setCategories(cats);
+      setBrands(brs);
+      setCategoryImages(catImgs);
+      setBrandImages(brandImgs);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Fetch all slots once on mount
   useEffect(() => {
@@ -129,19 +152,29 @@ export default function BrowseProductsPage() {
     fetchSlots();
   }, []);
 
-  const hasCatalogFilter = selectedCategory !== "all" || selectedBrand !== "all";
-
   const selectedBrandName = useMemo(() => {
     if (selectedBrand === "all") return undefined;
-    return brands.find((b: any) => b._id === selectedBrand)?.name as string | undefined;
+    return brands.find((b) => b._id === selectedBrand)?.name;
   }, [selectedBrand, brands]);
 
+  const selectedCategoryTitle = useMemo(() => {
+    if (selectedCategory === "all") return undefined;
+    return categories.find((c) => c._id === selectedCategory)?.title;
+  }, [selectedCategory, categories]);
+
+  const catalogFilters = useMemo(
+    () => ({
+      brandId: selectedBrand !== "all" ? selectedBrand : undefined,
+      brandName: selectedBrandName,
+      categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
+      categoryTitle: selectedCategoryTitle,
+    }),
+    [selectedBrand, selectedBrandName, selectedCategory, selectedCategoryTitle]
+  );
+
   const machineProducts = useMemo(
-    () =>
-      mergeCatalogWithSlotProducts(products, rawSlotsData, {
-        includeUnlistedSlotProducts: !hasCatalogFilter,
-      }),
-    [products, rawSlotsData, hasCatalogFilter]
+    () => mergeCatalogWithSlotProducts(products, rawSlotsData, { catalogFilters }),
+    [products, rawSlotsData, catalogFilters]
   );
 
   const slotDiscountMap = useMemo(() => getSlotDiscountMap(rawSlotsData), [rawSlotsData]);
@@ -154,8 +187,14 @@ export default function BrowseProductsPage() {
     });
 
     return decorated
-      .filter((item) =>
-        productMatchesBrandFilter(item.product, selectedBrand, selectedBrandName)
+      .filter(
+        (item) =>
+          productMatchesCategoryFilter(
+            item.product,
+            selectedCategory,
+            selectedCategoryTitle
+          ) &&
+          productMatchesBrandFilter(item.product, selectedBrand, selectedBrandName)
       )
       .sort((a, b) => {
         if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
@@ -166,7 +205,7 @@ export default function BrowseProductsPage() {
           sensitivity: "base",
         });
       });
-  }, [machineProducts, slotsMap, selectedBrand, selectedBrandName]);
+  }, [machineProducts, slotsMap, selectedBrand, selectedBrandName, selectedCategory, selectedCategoryTitle]);
 
   const isAllBrandName = (name: unknown) => {
     const n = String(name ?? "").trim().toLowerCase();
@@ -186,8 +225,6 @@ export default function BrowseProductsPage() {
   // State to store category images
   const [categoryImages, setCategoryImages] = useState<Record<string, string | undefined>>({});
   const [brandImages, setBrandImages] = useState<Record<string, string | undefined>>({});
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [brandImagesLoaded, setBrandImagesLoaded] = useState(false);
 
   const categoryStripRef = useRef<HTMLDivElement | null>(null);
   const categoryDragRef = useRef<{ dragging: boolean; moved: boolean; startX: number; startScrollLeft: number }>(
@@ -242,107 +279,23 @@ export default function BrowseProductsPage() {
     };
   }, [selectedCategory, selectedBrand]);
 
-  // Fetch all category images in parallel once categories are loaded
+  // Refresh category/brand icons when machine inventory changes (slot images).
   useEffect(() => {
-    if (imagesLoaded || categories.length === 0) return;
-
-    const fetchAllCategoryImages = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
-
-      // Create fetch promises for all categories (except "all")
-      const fetchPromises = categories
-        .filter((cat: any) => cat._id !== "all")
-        .map(async (cat: any) => {
-          try {
-            const res = await fetch(
-              `${apiUrl}/product/fetch-by-filter?catId=${cat._id}&limit=1&isShopifyAvailable=true&hasBrand=true`,
-              { headers: { "x-db-token": dbToken } }
-            );
-            const data = await res.json();
-            const imgUrl = data?.data?.[0]?.products?.[0]?.images?.[0]?.url;
-            return { catId: cat._id, imgUrl };
-          } catch {
-            return { catId: cat._id, imgUrl: undefined };
-          }
-        });
-
-      // Also fetch for "all" category
-      fetchPromises.push(
-        fetch(`${apiUrl}/product/fetch-by-filter?limit=1&isShopifyAvailable=true&hasBrand=true`, {
-          headers: { "x-db-token": dbToken }
-        })
-          .then(res => res.json())
-          .then(data => ({ catId: "all", imgUrl: data?.data?.[0]?.products?.[0]?.images?.[0]?.url }))
-          .catch(() => ({ catId: "all", imgUrl: undefined }))
-      );
-
-      // Execute all in parallel
-      const results = await Promise.all(fetchPromises);
-
-      // Build images map
-      const images: Record<string, string | undefined> = {};
-      results.forEach(({ catId, imgUrl }) => {
-        if (imgUrl) images[catId] = imgUrl;
-      });
-
-      setCategoryImages(images);
-      setImagesLoaded(true);
+    if (Object.keys(slotsMap).length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      const [catImgs, brandImgs] = await Promise.all([
+        fetchCategoryImages(),
+        fetchBrandImages(),
+      ]);
+      if (cancelled) return;
+      setCategoryImages((prev) => ({ ...prev, ...catImgs }));
+      setBrandImages((prev) => ({ ...prev, ...brandImgs }));
+    })();
+    return () => {
+      cancelled = true;
     };
-
-    fetchAllCategoryImages();
-  }, [categories, imagesLoaded]);
-
-  // Fetch all brand images in parallel once brands are loaded
-  useEffect(() => {
-    if (brandImagesLoaded || brands.length === 0) return;
-
-    const fetchAllBrandImages = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      const dbToken = process.env.NEXT_PUBLIC_DB_TOKEN || "";
-      if (!apiUrl) return;
-
-      const fetchPromises = brands
-        .filter((b: any) => b?._id && b._id !== "all")
-        .map(async (b: any) => {
-          try {
-            const res = await fetch(
-              `${apiUrl}/product/fetch-by-filter?brandId=${b._id}&limit=1&isShopifyAvailable=true&hasBrand=true`,
-              { headers: { "x-db-token": dbToken } }
-            );
-            const data = await res.json();
-            const imgUrl = data?.data?.[0]?.products?.[0]?.images?.[0]?.url;
-            return { brandId: b._id, imgUrl };
-          } catch {
-            return { brandId: b._id, imgUrl: undefined };
-          }
-        });
-
-      // Also fetch for "all" brand
-      fetchPromises.push(
-        fetch(`${apiUrl}/product/fetch-by-filter?limit=1&isShopifyAvailable=true&hasBrand=true`, {
-          headers: { "x-db-token": dbToken },
-        })
-          .then((res) => res.json())
-          .then((data) => ({
-            brandId: "all",
-            imgUrl: data?.data?.[0]?.products?.[0]?.images?.[0]?.url,
-          }))
-          .catch(() => ({ brandId: "all", imgUrl: undefined }))
-      );
-
-      const results = await Promise.all(fetchPromises);
-      const images: Record<string, string | undefined> = {};
-      results.forEach(({ brandId, imgUrl }) => {
-        if (imgUrl) images[brandId] = imgUrl;
-      });
-
-      setBrandImages(images);
-      setBrandImagesLoaded(true);
-    };
-
-    fetchAllBrandImages();
-  }, [brands, brandImagesLoaded]);
+  }, [slotsMap]);
 
   const handleGoBack = () => {
     router.push(APP_ROUTES.HOME);

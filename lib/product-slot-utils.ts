@@ -154,6 +154,15 @@ export function normalizeProductDiscount(
   return null;
 }
 
+export function normalizeBrandToken(value: string): string {
+  let token = String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  // Handle catalog typos like "Cetaphill" vs product "Cetaphil".
+  token = token.replace(/([a-z])\1+$/g, "$1");
+  return token;
+}
+
 export function getProductBrandId(product: unknown): string {
   const p = product as Record<string, unknown>;
   const brand = p?.brand as Record<string, unknown> | undefined;
@@ -174,23 +183,103 @@ export function productMatchesBrandFilter(
 ): boolean {
   if (!selectedBrandId || selectedBrandId === "all") return true;
 
-  const productBrandId = getProductBrandId(product);
-  if (productBrandId && productBrandId === String(selectedBrandId)) return true;
+  const productName = String((product as any)?.name ?? "");
+  const firstWord = normalizeBrandToken(productName.split(/\s+/)[0] ?? "");
+  const brandToken = selectedBrandName
+    ? normalizeBrandToken(selectedBrandName)
+    : "";
 
-  if (selectedBrandName) {
-    const normalizedBrand = selectedBrandName.toLowerCase().replace(/[^a-z0-9]/g, "");
-    const normalizedName = String((product as any)?.name ?? "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "");
-    if (normalizedBrand && normalizedName.includes(normalizedBrand)) return true;
+  const nameMatchesBrand = (): boolean => {
+    if (!brandToken || !firstWord) return false;
+    if (firstWord === brandToken) return true;
+    // Prefix match only for tokens with 4+ chars (Cetaphill/Cetaphil), not loose substring.
+    if (firstWord.length >= 4 && brandToken.length >= 4) {
+      return firstWord.startsWith(brandToken) || brandToken.startsWith(firstWord);
+    }
+    return false;
+  };
+
+  if (nameMatchesBrand()) return true;
+
+  const productBrandId = getProductBrandId(product);
+  if (productBrandId && productBrandId === String(selectedBrandId)) {
+    // Reject mis-tagged catalog rows (e.g. Plix carrying Cetaphil brandId).
+    if (brandToken && firstWord && !nameMatchesBrand()) return false;
+    return true;
   }
 
   return false;
 }
 
+export function productMatchesCategoryFilter(
+  product: unknown,
+  selectedCategoryId: string,
+  selectedCategoryTitle?: string
+): boolean {
+  if (!selectedCategoryId || selectedCategoryId === "all") return true;
+
+  const p = product as Record<string, unknown>;
+  const productCategory = p?.productCategory as Record<string, unknown> | undefined;
+  const categoryId = String(productCategory?._id ?? p?.categoryId ?? "").trim();
+  if (categoryId && categoryId === String(selectedCategoryId)) return true;
+
+  const categoryTitle = String(
+    productCategory?.title ?? p?.category ?? ""
+  ).trim();
+  if (selectedCategoryTitle && categoryTitle) {
+    return (
+      categoryTitle.toLowerCase() === selectedCategoryTitle.toLowerCase()
+    );
+  }
+
+  return false;
+}
+
+export type CatalogFilterOptions = {
+  brandId?: string;
+  brandName?: string;
+  categoryId?: string;
+  categoryTitle?: string;
+};
+
+function slotOnlyProductMatchesFilters(
+  slotProduct: Record<string, unknown>,
+  filters?: CatalogFilterOptions
+): boolean {
+  const hasBrand = Boolean(filters?.brandId && filters.brandId !== "all");
+  const hasCategory = Boolean(filters?.categoryId && filters.categoryId !== "all");
+  if (!hasBrand && !hasCategory) return true;
+
+  if (
+    hasBrand &&
+    !productMatchesBrandFilter(
+      slotProduct,
+      filters!.brandId!,
+      filters?.brandName
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    hasCategory &&
+    !productMatchesCategoryFilter(
+      slotProduct,
+      filters!.categoryId!,
+      filters?.categoryTitle
+    )
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export type MergeCatalogOptions = {
-  /** When false, only enrich catalog rows — do not inject slot-only products (keeps brand/category filters). */
+  /** @deprecated Use catalogFilters — kept for backwards compatibility */
   includeUnlistedSlotProducts?: boolean;
+  /** When set, slot-only products are included if they match these filters. */
+  catalogFilters?: CatalogFilterOptions;
 };
 
 /** Include catalog products plus slot-assigned products missing from the API response. */
@@ -199,12 +288,13 @@ export function mergeCatalogWithSlotProducts(
   slotsData: unknown,
   options: MergeCatalogOptions = {}
 ): any[] {
-  const { includeUnlistedSlotProducts = true } = options;
+  const { catalogFilters } = options;
   const slotDiscountMap = getSlotDiscountMap(slotsData);
   const byId = new Map<string, any>();
   catalogProducts.forEach((product) => {
     const key = normalizeProductId(product?.id ?? product?._id);
     if (!key) return;
+    if (!slotOnlyProductMatchesFilters(product, catalogFilters)) return;
     byId.set(key, {
       ...product,
       discount: normalizeProductDiscount(product, slotDiscountMap) ?? product?.discount ?? null,
@@ -234,9 +324,7 @@ export function mergeCatalogWithSlotProducts(
       return;
     }
 
-    if (!includeUnlistedSlotProducts) return;
-
-    byId.set(key, {
+    const slotProduct = {
       id: slot.product_id,
       name: slot.product_name || "Product",
       retail_price: slot.retail_price ?? 0,
@@ -249,7 +337,11 @@ export function mergeCatalogWithSlotProducts(
         slotDiscountMap
       ),
       in_stock: true,
-    });
+    };
+
+    if (!slotOnlyProductMatchesFilters(slotProduct, catalogFilters)) return;
+
+    byId.set(key, slotProduct);
   });
 
   return Array.from(byId.values());

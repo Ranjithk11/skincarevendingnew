@@ -248,6 +248,7 @@ const ROUTINE_STEP_MATCHERS: Record<
       "face moisturizer",
       "face moisturiser",
       "hydration",
+      "hydrating",
     ],
     negatives: [
       "cleanser",

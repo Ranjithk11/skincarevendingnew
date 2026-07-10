@@ -6,6 +6,7 @@ export type CheckoutPayment = {
   currency?: string;
   status?: string;
   method?: string;
+  agentName?: string;
   machineId?: string;
   machineName?: string;
   machineLocation?: string;

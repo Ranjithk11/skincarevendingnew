@@ -252,42 +252,45 @@ export default function IdleVideoOverlay({
         }}
       />
 
-      {/* The background container now acts as the global dismiss layer */}
+      {/* Overlay: title at top, action boxes pinned to bottom */}
       <Box
-        onClick={handleBackgroundClick} 
+        onClick={handleBackgroundClick}
         sx={{
           position: "absolute",
           inset: 0,
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
           px: 3,
+          pt: { xs: 5, md: 7 },
+          pb: { xs: 4, md: 5 },
         }}
       >
-        <Typography
-          sx={{
-            fontSize: { xs: 48, md: 52 },
-            fontWeight: 700,
-            color: "white",
-            textAlign: "center",
-            mb: 2,
-            textShadow: "0 2px 8px rgba(0,0,0,0.5)",
-          }}
-        >
-          Leafwater AI Beauty Pod
-        </Typography>
-        <Typography
-          sx={{
-            fontSize: { xs: 24, md: 24 },
-            color: "rgba(255,255,255,0.9)",
-            textAlign: "center",
-            mb: 5,
-            textShadow: "0 1px 4px rgba(0,0,0,0.4)",
-          }}
-        >
-          Your personalized skincare journey starts here
-        </Typography>
+        <Box sx={{ textAlign: "center" }}>
+          <Typography
+            sx={{
+              fontSize: { xs: 48, md: 52 },
+              fontWeight: 700,
+              color: "white",
+              textAlign: "center",
+              mb: 2,
+              textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+            }}
+          >
+            Leafwater AI Beauty Pod
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: { xs: 24, md: 24 },
+              color: "rgba(255,255,255,0.9)",
+              textAlign: "center",
+              textShadow: "0 1px 4px rgba(0,0,0,0.4)",
+            }}
+          >
+            Your personalized skincare journey starts here
+          </Typography>
+        </Box>
+
+        <Box sx={{ flex: 1, minHeight: 24 }} />
 
         <Box
           sx={{
@@ -296,7 +299,7 @@ export default function IdleVideoOverlay({
             gap: 3,
             width: "100%",
             maxWidth: 900,
-            px: 2,
+            mx: "auto",
           }}
         >
           <Box

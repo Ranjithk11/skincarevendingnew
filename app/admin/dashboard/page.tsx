@@ -861,7 +861,6 @@ export default function AdminDashboardPage() {
         successSubMessage="The tray door has been reopened"
         errorSubMessage="Failed to connect to the machine"
       />
-
       {/* Edit Product Modal */}
       <EditProductModal
         open={editProductModalOpen}

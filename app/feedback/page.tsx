@@ -810,6 +810,7 @@ export default function FeedbackPage() {
                   }))}
                   transaction={checkoutSummary?.payment}
                   command={dispenseSuccessCommand || undefined}
+                  agentName={checkoutSummary?.payment?.agentName}
                   machineLocation={mergedMachine.machineLocation}
                   machineName={mergedMachine.machineName || "Vending Machine"}
                 />
