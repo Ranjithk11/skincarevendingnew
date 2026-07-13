@@ -24,15 +24,16 @@ import { useAppDispatch } from "@/redux/store/store";
 import { clearCart } from "@/redux/reducers/cartSlice";
 import { SOCIAL_LINKS } from "@/utils/constants";
 import { AiFillFacebook, AiFillInstagram, AiFillYoutube } from "react-icons/ai";
-import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
 import IdleRedirect from "@/components/ui/IdleRedirect";
 import StartupSync from "@/components/StartupSync";
 
-const IDLE_VIDEO_PLAYLIST = [
-  "/videos/airport.mp4",
-  "/videos/leafwater kavya reel .mp4",
-  "/videos/leaf water  f 28th.mp4",
-];
+// Idle videos disabled — kept for easy restore
+// import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
+// const IDLE_VIDEO_PLAYLIST = [
+//   "/videos/airport.mp4",
+//   "/videos/leafwater kavya reel .mp4",
+//   "/videos/leaf water  f 28th.mp4",
+// ];
 
 interface DefaultLayoutProps {
   children?: React.ReactNode;
@@ -243,7 +244,9 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
       >
         <SideMenuComponent />
       </Drawer> */}
+      {/* Idle videos disabled — home should always show NewPromoLanding (incl. refresh).
       <IdleVideoOverlay reIdleMs={120_000} sources={IDLE_VIDEO_PLAYLIST} />
+      */}
       <IdleRedirect defaultIdleMs={120_000} feedbackIdleMs={180_000} excludePaths={["/"]} />
     </Fragment>
   );
