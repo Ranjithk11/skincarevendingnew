@@ -61,6 +61,10 @@ export default function NewPromoLanding() {
     router.push("/slots");
   };
 
+  const handleAdminDashboard = () => {
+    router.push("/admin/login");
+  };
+
   return (
     <Box
       sx={{
@@ -135,7 +139,7 @@ export default function NewPromoLanding() {
             component="img"
             src="/wending/productlog.svg"
             alt=""
-            sx={{ width: { xs: 26, sm: 30 }, height: { xs: 26, sm: 30 }, flexShrink: 0 ,color:"#fff",objectFit:"contain"}}
+            sx={{ width: { xs: 26, sm: 30 }, height: { xs: 26, sm: 30 }, flexShrink: 0, color: "#fff", objectFit: "contain" }}
           />
           <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
             <Typography
@@ -163,6 +167,28 @@ export default function NewPromoLanding() {
           </Box>
         </Button>
       </Box>
+      <Typography
+        onClick={handleAdminDashboard}
+        sx={{
+          position: "absolute",
+          right: { xs: 16, sm: 24, md: 32 },
+          bottom: { xs: 16, sm: 24, md: 32 },
+          zIndex: 10,
+          color: "rgba(219, 18, 18, 0.82)",
+          fontSize: 24,
+          fontWeight: 400,
+          textDecoration: "underline",
+          cursor: "pointer",
+          textAlign: "right",
+          pointerEvents: "auto",
+          textShadow: "0 1px 4px rgba(52, 219, 30, 0.45)",
+          "&:hover": {
+            color: "#00E5FF",
+          },
+        }}
+      >
+        Admin Dashboard
+      </Typography>
     </Box>
   );
 }

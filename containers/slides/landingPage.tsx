@@ -11,7 +11,6 @@ export default function LandingPage() {
   return (
     <>
       <NewPromoLanding />
-
       {/* Hidden previous landing — do not delete
       const router = useRouter();
       const handleStartScan = () => router.push("/questionnaire");
