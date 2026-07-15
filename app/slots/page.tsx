@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { useRouter } from "next/navigation";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
@@ -12,6 +12,12 @@ import { SlotProduct } from "@/components/slots/SlotAddToCartDialog";
 import ProductPrice from "@/containers/skinanalysis-home/Recommendations/components/ProductPrice";
 import ActionButton from "@/components/ui/ActionButton";
 import PageBackground from "@/components/ui/PageBackground";
+import {
+  findProductInMap,
+  indexProductsById,
+  mergeProductsIntoMap,
+  productIdsMatch,
+} from "@/lib/product-slot-utils";
 
 type VendingSlot = {
   slot_id: number;
@@ -24,13 +30,59 @@ type VendingSlot = {
   image_url?: string;
 };
 
-const normalizeProductId = (id: unknown) => {
-  const raw = String(id ?? "").trim();
-  if (!raw) return "";
-  const numericMatch = raw.match(/(\d{5,})\/?$/);
-  if (numericMatch?.[1]) return numericMatch[1];
-  return raw.replace(/^products\//, "");
+const parseProductsResponse = (json: unknown): any[] =>
+  Array.isArray(json)
+    ? json
+    : Array.isArray((json as any)?.data)
+      ? (json as any).data
+      : Array.isArray((json as any)?.data?.[0]?.products)
+        ? (json as any).data[0].products
+        : [];
+
+const getProductImageUrl = (product: any): string => {
+  const candidate =
+    product?.image_url ||
+    product?.images?.[0]?.url ||
+    product?.imageUrl ||
+    product?.images?.[0] ||
+    "";
+  return typeof candidate === "string" ? candidate.trim() : "";
 };
+
+/** Paginate the full catalog once instead of one request per product id. */
+async function fetchAllProducts(): Promise<any[]> {
+  const PAGE_SIZE = 100;
+  const allProducts: any[] = [];
+  const seenIds = new Set<string>();
+
+  for (let page = 1; page <= 50; page += 1) {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(PAGE_SIZE),
+    });
+    const res = await fetch(`/api/admin/products?${params.toString()}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) break;
+
+    const json = await res.json();
+    const batch = parseProductsResponse(json);
+    if (batch.length === 0) break;
+
+    batch.forEach((product) => {
+      const id = String(product?.id ?? product?._id ?? "");
+      if (!id || seenIds.has(id)) return;
+      seenIds.add(id);
+      allProducts.push(product);
+    });
+
+    if (batch.length < PAGE_SIZE) break;
+  }
+
+  return allProducts;
+}
 
 export default function SlotsPage() {
   const router = useRouter();
@@ -41,7 +93,10 @@ export default function SlotsPage() {
   const [productsMap, setProductsMap] = useState<Record<string, any>>({});
   const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const discountBackfillStarted = useRef(false);
+  const imageBackfillStarted = useRef<Set<number>>(new Set());
 
+  // Backfill a missing slot image only when the user opens that slot.
   useEffect(() => {
     let cancelled = false;
 
@@ -50,15 +105,29 @@ export default function SlotsPage() {
       const slot = slotsData[selectedSlotId];
       if (!slot?.product_id) return;
       if (typeof slot.image_url === "string" && slot.image_url.trim()) return;
+      if (imageBackfillStarted.current.has(selectedSlotId)) return;
 
-      const slotName = String(slot.product_name || "").trim();
-      if (!slotName) return;
+      const catalogProduct = findProductInMap(productsMap, slot.product_id);
+      const imageFromCatalog = getProductImageUrl(catalogProduct);
+      if (imageFromCatalog) {
+        setSlotsData((prev) => {
+          const cur = prev[selectedSlotId];
+          if (!cur || cur.image_url) return prev;
+          return {
+            ...prev,
+            [selectedSlotId]: { ...cur, image_url: imageFromCatalog },
+          };
+        });
+        return;
+      }
+
+      imageBackfillStarted.current.add(selectedSlotId);
 
       try {
         const params = new URLSearchParams();
         params.set("page", "1");
         params.set("limit", "50");
-        params.set("search", slotName);
+        params.set("search", String(slot.product_id));
 
         const res = await fetch(`/api/admin/products?${params.toString()}`, {
           method: "GET",
@@ -70,30 +139,15 @@ export default function SlotsPage() {
         const json = await res.json();
         if (cancelled) return;
 
-        const arr: any[] = Array.isArray(json)
-          ? json
-          : Array.isArray(json?.data)
-            ? json.data
-            : Array.isArray(json?.data?.[0]?.products)
-              ? json.data[0].products
-              : [];
-
-        const rawSlotProductId = String(slot.product_id);
-        const nId = normalizeProductId(rawSlotProductId);
-
-        const match =
-          arr.find((p) => normalizeProductId(p?.id ?? p?._id) === nId) ||
-          arr.find((p) => String(p?.id ?? p?._id) === rawSlotProductId) ||
-          arr.find((p) => String(p?.name ?? "").toUpperCase().includes(slotName.toUpperCase().substring(0, 15)));
-
-        const imageUrlCandidate =
-          match?.image_url ||
-          match?.images?.[0]?.url ||
-          match?.imageUrl ||
-          match?.images?.[0] ||
-          "";
-        const image_url = typeof imageUrlCandidate === "string" ? imageUrlCandidate.trim() : "";
+        const match = parseProductsResponse(json).find((p) =>
+          productIdsMatch(slot.product_id, p?.id ?? p?._id)
+        );
+        const image_url = getProductImageUrl(match);
         if (!image_url) return;
+
+        if (match) {
+          setProductsMap((prev) => mergeProductsIntoMap(prev, [match]));
+        }
 
         await fetch("/api/admin/slots", {
           method: "POST",
@@ -130,7 +184,7 @@ export default function SlotsPage() {
     return () => {
       cancelled = true;
     };
-  }, [addDialogOpen, selectedSlotId, slotsData]);
+  }, [addDialogOpen, selectedSlotId, slotsData, productsMap]);
 
   // Fetch slot assignments/quantity
   useEffect(() => {
@@ -176,46 +230,15 @@ export default function SlotsPage() {
     };
   }, []);
 
-  // Fetch products for mapping slot -> product image/discount/price
+  // Load the full product catalog once (paginated) for id-based enrichment.
   useEffect(() => {
     let cancelled = false;
 
     const run = async () => {
       try {
-        const params = new URLSearchParams();
-        params.set("page", "1");
-        params.set("limit", "1000");
-
-        const res = await fetch(`/api/admin/products?${params.toString()}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-          if (!cancelled) setProductsMap({});
-          return;
-        }
-
-        const json = await res.json();
+        const products = await fetchAllProducts();
         if (cancelled) return;
-
-        const arr: any[] = Array.isArray(json)
-          ? json
-          : Array.isArray(json?.data)
-            ? json.data
-            : Array.isArray(json?.data?.[0]?.products)
-              ? json.data[0].products
-              : [];
-        const map: Record<string, any> = {};
-        arr.forEach((p) => {
-          const rawId = p?.id ?? p?._id;
-          const nId = normalizeProductId(rawId);
-          if (rawId != null) map[String(rawId)] = p;
-          if (nId) map[nId] = p;
-        });
-
-        setProductsMap(map);
+        setProductsMap(indexProductsById(products));
       } catch {
         if (!cancelled) setProductsMap({});
       }
@@ -227,10 +250,12 @@ export default function SlotsPage() {
     };
   }, []);
 
-  // Backfill discount_value for existing slots from productsMap (runs once when both are loaded)
+  // Backfill discount_value once when slots + catalog are both available.
   useEffect(() => {
+    if (discountBackfillStarted.current) return;
     if (Object.keys(productsMap).length === 0 || Object.keys(slotsData).length === 0) return;
 
+    discountBackfillStarted.current = true;
     const updates: Record<number, number> = {};
 
     Object.values(slotsData).forEach((slot) => {
@@ -238,23 +263,7 @@ export default function SlotsPage() {
       // Only update if discount_value is missing or 0
       if (slot.discount_value !== undefined && slot.discount_value !== null && slot.discount_value !== 0) return;
 
-      const rawSlotProductId = String(slot.product_id);
-      const nId = normalizeProductId(rawSlotProductId);
-      const product =
-        productsMap[nId] ||
-        productsMap[rawSlotProductId] ||
-        (() => {
-          const slotName = (slot.product_name || "").toString().trim();
-          if (!slotName) return undefined;
-          const slotUpper = slotName.toUpperCase();
-          const slotPrefix = slotUpper.substring(0, 15);
-          return Object.values(productsMap).find((p: any) => {
-            const pName = (p?.name || "").toString().trim();
-            if (!pName) return false;
-            const pUpper = pName.toUpperCase();
-            return pUpper.includes(slotPrefix) || slotUpper.includes(pUpper.substring(0, 15));
-          });
-        })();
+      const product = findProductInMap(productsMap, slot.product_id);
 
       const discountVal = Number((product as any)?.discount?.value) || 0;
       if (discountVal > 0) {
@@ -330,62 +339,15 @@ export default function SlotsPage() {
     const slot = slotsData[selectedSlotId];
     if (!slot?.product_id) return null;
 
-    const rawSlotProductId = String(slot.product_id);
-    const nId = normalizeProductId(rawSlotProductId);
-    const productFromId =
-      productsMap[nId] ||
-      productsMap[rawSlotProductId] ||
-      productsMap[normalizeProductId(rawSlotProductId)];
+    // Catalog lookup is strictly by product_id — never by name.
+    const product = findProductInMap(productsMap, slot.product_id);
 
-    const productFromName = (() => {
-      const slotName = (slot.product_name || "").toString().trim();
-      if (!slotName) return undefined;
-      const slotUpper = slotName.toUpperCase();
-      const slotPrefix = slotUpper.substring(0, 15);
-
-      const values = Object.values(productsMap);
-      return values.find((p: any) => {
-        const pName = (p?.name || "").toString().trim();
-        if (!pName) return false;
-        const pUpper = pName.toUpperCase();
-        const pPrefix = pUpper.substring(0, 15);
-        return pUpper.includes(slotPrefix) || slotUpper.includes(pPrefix);
-      });
-    })();
-
-    const product = productFromId || productFromName;
-
-    const name = product?.name || slot.product_name || "Product";
-    const imageUrlRaw =
-      slot.image_url ||
-      product?.images?.[0]?.url ||
-      product?.image_url ||
-      product?.imageUrl ||
-      product?.images?.[0] ||
-      "";
-    const imageUrl = typeof imageUrlRaw === "string" ? imageUrlRaw : "";
-    const retailPrice = product?.retail_price ?? slot.retail_price ?? 0;
+    // Slot assignment is the source of truth for what the customer sees.
+    const name = slot.product_name || product?.name || "Product";
+    const imageUrl = slot.image_url || getProductImageUrl(product);
+    const retailPrice = slot.retail_price ?? product?.retail_price ?? 0;
     
-    // Get discount from product data or slot data
-    const productDiscount = Number(product?.discount?.value) || Number(slot.discount_value) || 0;
-
-    // If we found discount from productsMap but slot doesn't have it stored, persist it
-    if (product?.discount?.value && !slot.discount_value) {
-      fetch("/api/admin/slots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slot_id: selectedSlotId,
-          product_id: slot.product_id,
-          quantity: slot.quantity,
-          product_name: slot.product_name,
-          category: slot.category,
-          retail_price: slot.retail_price,
-          image_url: slot.image_url,
-          discount_value: Number(product.discount.value),
-        }),
-      }).catch(() => {});
-    }
+    const productDiscount = Number(slot.discount_value) || Number(product?.discount?.value) || 0;
     
     // Calculate discounted price for cart display
     const finalPrice = productDiscount > 0
@@ -394,7 +356,7 @@ export default function SlotsPage() {
     const priceText = `INR.${Math.round(Number(finalPrice ?? 0))}/-`;
 
     return {
-      id: product?.id ? String(product.id) : slot.product_id,
+      id: slot.product_id,
       name,
       imageUrl,
       retailPrice: Number(retailPrice ?? 0),

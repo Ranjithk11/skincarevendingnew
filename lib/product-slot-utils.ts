@@ -21,6 +21,47 @@ export function productIdKeys(id: unknown): string[] {
   );
 }
 
+/** True when two product ids refer to the same catalog product. */
+export function productIdsMatch(a: unknown, b: unknown): boolean {
+  const aKeys = new Set(productIdKeys(a));
+  return productIdKeys(b).some((key) => aKeys.has(key));
+}
+
+/** Build a lookup map keyed by every id variant (raw, normalized, products/ prefix). */
+export function indexProductsById(products: any[]): Record<string, any> {
+  const map: Record<string, any> = {};
+  products.forEach((product) => {
+    const rawId = product?.id ?? product?._id;
+    if (rawId == null) return;
+    productIdKeys(rawId).forEach((key) => {
+      map[key] = product;
+    });
+  });
+  return map;
+}
+
+/** Resolve a catalog product strictly by product id — never by name. */
+export function findProductInMap(
+  productsMap: Record<string, any>,
+  productId: unknown
+): any | undefined {
+  for (const key of productIdKeys(productId)) {
+    if (productsMap[key]) return productsMap[key];
+  }
+  return undefined;
+}
+
+export function mergeProductsIntoMap(
+  map: Record<string, any>,
+  products: any[]
+): Record<string, any> {
+  const next = { ...map };
+  Object.entries(indexProductsById(products)).forEach(([key, product]) => {
+    next[key] = product;
+  });
+  return next;
+}
+
 export function mergeSlotEntry(
   map: SlotsMap,
   key: string,

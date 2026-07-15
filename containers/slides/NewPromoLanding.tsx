@@ -187,7 +187,7 @@ export default function NewPromoLanding() {
           },
         }}
       >
-        Admin Dashboard
+        Stock Hub
       </Typography>
     </Box>
   );
