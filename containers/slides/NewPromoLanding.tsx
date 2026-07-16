@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 
+const FALLBACK_LANDING_IMAGE = "/logo/newLanding.png";
+const MACHINE_LOCATION_KEY = "kiosk_machine_location";
 const neonButtonSx = {
   display: "flex",
   alignItems: "center",
@@ -43,9 +45,62 @@ const neonButtonSx = {
 export default function NewPromoLanding() {
   const router = useRouter();
   const { speakMessage, speakSequence } = useVoiceMessages();
+  const [landingImageUrl, setLandingImageUrl] = useState(FALLBACK_LANDING_IMAGE);
 
   useEffect(() => {
-    const t = window.setTimeout(() => {
+    let cancelled = false;
+
+    const resolveLocation = async (): Promise<string> => {
+      const storedLocation =
+        typeof window !== "undefined"
+          ? localStorage.getItem(MACHINE_LOCATION_KEY)?.trim()
+          : "";
+      if (storedLocation) return storedLocation;
+
+      try {
+        const res = await fetch("/api/admin/machine-name", { cache: "no-store" });
+        if (res.ok) {
+          const json = await res.json();
+          const machineLocation = String(json?.machineLocation ?? "").trim();
+          if (machineLocation) return machineLocation;
+        }
+      } catch {
+        // Fall back to common image below.
+      }
+
+      return "common";
+    };
+
+    const loadLandingImage = async () => {
+      try {
+        const location = await resolveLocation();
+        const params = new URLSearchParams();
+        if (location) params.set("location", location);
+
+        const res = await fetch(`/api/landing-image?${params.toString()}`, {
+          cache: "no-store",
+        });
+        if (!res.ok || cancelled) return;
+
+        const json = await res.json();
+        const imageUrl = String(json?.imageUrl ?? "").trim();
+        if (!cancelled && imageUrl) {
+          setLandingImageUrl(imageUrl);
+        }
+      } catch {
+        if (!cancelled) {
+          setLandingImageUrl(FALLBACK_LANDING_IMAGE);
+        }
+      }
+    };
+
+    loadLandingImage();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {    const t = window.setTimeout(() => {
       speakSequence(["welcome", "homeStartScan"]);
     }, 500);
 
@@ -76,15 +131,32 @@ export default function NewPromoLanding() {
         overflow: "hidden",
       }}
     >
-      <Image
-        src="/logo/newLanding.png"
-        alt="Scan Discover Glow — AI skincare landing"
-        fill
-        priority
-        sizes="100vw"
-        style={{ objectFit: "cover", objectPosition: "center top" }}
-      />
-
+      {landingImageUrl.startsWith("http") ? (
+        <Box
+          component="img"
+          src={landingImageUrl}
+          alt="Scan Discover Glow — AI skincare landing"
+          onError={() => setLandingImageUrl(FALLBACK_LANDING_IMAGE)}
+          sx={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center top",
+          }}
+        />
+      ) : (
+        <Image
+          src={landingImageUrl || FALLBACK_LANDING_IMAGE}
+          alt="Scan Discover Glow — AI skincare landing"
+          fill
+          priority
+          sizes="100vw"
+          onError={() => setLandingImageUrl(FALLBACK_LANDING_IMAGE)}
+          style={{ objectFit: "cover", objectPosition: "center top" }}
+        />
+      )}
       {/* 
         Positioning adjusted to be narrower, higher up, and further to the right.
       */}

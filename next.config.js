@@ -30,6 +30,14 @@ const nextConfig = {
         protocol: "https",
         hostname: "cdn.shopify.com",
       },
+      {
+        protocol: "https",
+        hostname: "leafwater-location-images.s3.amazonaws.com",
+      },
+      {
+        protocol: "https",
+        hostname: "leafwater-location-images.s3.us-east-1.amazonaws.com",
+      },
     ],
   },
 };
