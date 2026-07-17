@@ -9,5 +9,7 @@ export const APP_ROUTES = {
   BROCHURE: "/skinanalysis/brochure",
   RECOMMENDATIONS: "/skinanalysis/recommendations",
   FEEDBACK: "/feedback",
+  SPIN_WHEEL: "/spin-wheel",
+  SLOTS: "/slots",
   VIEW_SKINCARE_REC_VIA_PUBLIC_URL:"/user/view-skincare-recommnedations",
 };

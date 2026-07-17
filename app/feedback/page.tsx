@@ -15,6 +15,7 @@ import PageBackground from "@/components/ui/PageBackground";
 import { HelpDialog } from "@/components/ui";
 import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 import { APP_ROUTES } from "@/utils/routes";
+import { clearSpinWheelSession } from "@/lib/spin-wheel/session";
 import { useAppDispatch } from "@/redux/store/store";
 import { clearCart } from "@/redux/reducers/cartSlice";
 import { persistor } from "@/redux/store/store";
@@ -181,6 +182,7 @@ export default function FeedbackPage() {
       }
       dispatch(clearCart());
       await persistor.purge();
+      clearSpinWheelSession();
       try {
         await signOut({ redirect: false });
       } catch {}

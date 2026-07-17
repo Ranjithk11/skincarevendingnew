@@ -594,7 +594,6 @@ const CoverInner: React.FC<CoverPageProps> = ({
             isKiosk={isKiosk}
             cartCount={cartCount}
             onCartClick={() => setOpenCart(true)}
-            onScanAgainClick={() => router.push(APP_ROUTES.HOME)}
           />
 
           <CartProduct open={openCart} onClose={() => setOpenCart(false)} />

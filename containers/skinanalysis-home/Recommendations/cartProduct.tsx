@@ -35,6 +35,7 @@ import {
     fetchMachineStockForProduct,
     getCartQuantityLimitMessage,
 } from "@/utils/cartQuantityLimits";
+import { useSpinWheel } from "@/contexts/SpinWheelContext";
 
 type CartProductProps = {
     open: boolean;
@@ -62,6 +63,8 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [couponApplied, setCouponApplied] = useState(false);
+    const [couponMessage, setCouponMessage] = useState("");
+    const { reward: spinReward, validateForCart, markRewardRedeemed } = useSpinWheel();
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
     const [isDispensing, setIsDispensing] = useState(false);
     const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -316,11 +319,53 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
         return Number.isFinite(sum) ? sum : 0;
     }, [items]);
 
+    const spinValidation = useMemo(() => validateForCart(total), [validateForCart, total]);
+
     const discount = useMemo(() => {
         if (!couponApplied) return 0;
-        if (!Number.isFinite(total) || total <= 0) return 0;
-        return Math.round(total * 0.05);
-    }, [couponApplied, total]);
+        return spinValidation.discount;
+    }, [couponApplied, spinValidation.discount]);
+
+    useEffect(() => {
+        if (!open || step !== "checkout") return;
+        if (!spinReward || spinReward.redeemed) {
+            setCouponApplied(false);
+            setCouponMessage("");
+            return;
+        }
+
+        const validation = validateForCart(total);
+        setCouponMessage(validation.message);
+        if (validation.canApply) {
+            setCouponApplied(true);
+        } else {
+            setCouponApplied(false);
+        }
+    }, [open, step, spinReward, total, validateForCart]);
+
+    const handleApplySpinCoupon = useCallback(() => {
+        if (!spinReward) {
+            toast.info("Spin the wheel first to win a reward.");
+            return;
+        }
+
+        const validation = validateForCart(total);
+        setCouponMessage(validation.message);
+
+        if (!validation.canApply) {
+            toast.info(validation.message);
+            setCouponApplied(false);
+            return;
+        }
+
+        setCouponApplied(true);
+        toast.success(validation.message);
+    }, [spinReward, total, validateForCart]);
+
+    const handleRemoveSpinCoupon = useCallback(() => {
+        setCouponApplied(false);
+        setCouponMessage("");
+    }, []);
 
     const payableTotal = useMemo(() => {
         const next = total - discount;
@@ -384,6 +429,10 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
             setPaymentSuccess(true);
             setPaymentPayload(cashPayment);
 
+            if (couponApplied && spinReward && !spinReward.redeemed) {
+                markRewardRedeemed();
+            }
+
             if (typeof window !== "undefined") {
                 try {
                     window.sessionStorage.setItem(
@@ -393,6 +442,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                             total,
                             discount,
                             payableTotal,
+                            spinWheelReward: spinReward,
                             createdAt: Date.now(),
                             payment: cashPayment,
                         })
@@ -455,7 +505,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 }
             })();
         },
-        [items, payableTotal, total, discount, machineId, machineName, machineLocation, router]
+        [items, payableTotal, total, discount, machineId, machineName, machineLocation, router, couponApplied, spinReward, markRewardRedeemed]
     );
 
     return (
@@ -697,6 +747,10 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             method: paymentMode,
                                         });
 
+                                        if (couponApplied && spinReward && !spinReward.redeemed) {
+                                            markRewardRedeemed();
+                                        }
+
                                         if (typeof window !== "undefined") {
                                             try {
                                                 window.sessionStorage.setItem(
@@ -706,6 +760,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                         total,
                                                         discount,
                                                         payableTotal,
+                                                        spinWheelReward: spinReward,
                                                         createdAt: Date.now(),
                                                         payment: {
                                                             orderId: payload?.orderId,
@@ -863,70 +918,88 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         <Typography sx={{ fontWeight: 700, fontSize: 24 }}>Rs.{Math.round(total)}/-</Typography>
                                     </Box>
                                 </Box>
-{/* 
-                                <Box sx={{ mt: 2, bgcolor: "#fff", borderRadius: 2, p: 2, border: "2px solid #316D52" }}>
+
+                                <Box sx={{ mt: 2, bgcolor: "#fff", borderRadius: 2, p: 2, border: "2px solid #9E1B3D" }}>
                                     <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                                        <Box sx={{ color: "#316D52", display: "flex", alignItems: "center" }}>
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.42l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.37-.36.59-.86.59-1.41s-.23-1.06-.59-1.42zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z" /></svg>
-                                        </Box>
-                                        <Typography sx={{ fontWeight: 600, fontSize: 28, color: "#316D52" }}>Coupon Code</Typography>
+                                        <Typography sx={{ fontWeight: 600, fontSize: 24, color: "#9E1B3D" }}>
+                                            Spin Wheel Reward
+                                        </Typography>
                                     </Box>
-                                    <Box sx={{ display: "flex", alignItems: "center", height: 48 }}>
-                                        <Box
-                                            sx={{
-                                                flex: "1 1 auto",
-                                                border: "1px solid #d1d5db",
-                                                borderRadius: "6px 0 0 6px",
-                                                borderRight: "none",
-                                                px: 2,
-                                                height: "100%",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                bgcolor: "#fff",
-                                                overflow: "hidden",
-                                            }}
-                                        >
-                                            <Typography sx={{ fontSize: 20, color: "#333", whiteSpace: "nowrap" }}>
-                                                T Hub Exclusive Prevailing Discount + <span style={{ color: "#316D52", fontWeight: 700 }}>Extra 5% Discount</span>
+                                    {spinReward ? (
+                                        <>
+                                            <Box sx={{ display: "flex", alignItems: "center", minHeight: 48 }}>
+                                                <Box
+                                                    sx={{
+                                                        flex: "1 1 auto",
+                                                        border: "1px solid #d1d5db",
+                                                        borderRadius: couponApplied ? "6px 0 0 6px" : "6px",
+                                                        borderRight: couponApplied ? "none" : "1px solid #d1d5db",
+                                                        px: 2,
+                                                        py: 1.25,
+                                                        bgcolor: "#fff",
+                                                    }}
+                                                >
+                                                    <Typography sx={{ fontSize: 18, color: "#333", fontWeight: 700 }}>
+                                                        {spinReward.code}
+                                                    </Typography>
+                                                    <Typography sx={{ fontSize: 16, color: "#6b7280", mt: 0.5 }}>
+                                                        {spinReward.title}
+                                                        {spinReward.redeemed ? " (used)" : ""}
+                                                    </Typography>
+                                                </Box>
+                                                {!couponApplied && !spinReward.redeemed ? (
+                                                    <Button
+                                                        variant="contained"
+                                                        disableElevation
+                                                        onClick={handleApplySpinCoupon}
+                                                        sx={{
+                                                            textTransform: "none",
+                                                            fontWeight: 600,
+                                                            fontSize: 18,
+                                                            borderRadius: "0 6px 6px 0",
+                                                            minWidth: 100,
+                                                            bgcolor: "#9E1B3D",
+                                                            "&:hover": { bgcolor: "#7C1230" },
+                                                        }}
+                                                    >
+                                                        Apply
+                                                    </Button>
+                                                ) : null}
+                                            </Box>
+                                            {couponMessage ? (
+                                                <Typography sx={{ fontSize: 16, color: "#6b7280", mt: 1 }}>
+                                                    {couponMessage}
+                                                </Typography>
+                                            ) : null}
+                                        </>
+                                    ) : (
+                                        <Typography sx={{ fontSize: 18, color: "#6b7280" }}>
+                                            Spin the wheel on the home screen to win a reward before checkout.
+                                        </Typography>
+                                    )}
+                                </Box>
+                                {couponApplied && discount > 0 ? (
+                                    <Box sx={{ mt: 1.5, display: "flex", alignItems: "flex-start", gap: 1, bgcolor: "#fdf2f8", borderRadius: 2, p: 1.5, border: "1px solid #fbcfe8" }}>
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography sx={{ fontWeight: 700, fontSize: 20, color: "#9E1B3D" }}>
+                                                Reward applied successfully!
+                                            </Typography>
+                                            <Typography sx={{ fontSize: 18, color: "#7A4757", mt: 0.3 }}>
+                                                {couponMessage || `You save Rs.${Math.round(discount)}/- on this order.`}
                                             </Typography>
                                         </Box>
-                                        <Button
-                                            variant="contained"
-                                            disableElevation
-                                            onClick={() => setCouponApplied((v) => !v)}
-                                            sx={{
-                                                textTransform: "none",
-                                                fontWeight: 600,
-                                                fontSize: 20,
-                                                borderRadius: "0 6px 6px 0",
-                                                width: 100,
-                                                minWidth: 100,
-                                                height: "100%",
-                                                
-                                                flexShrink: 0,
-                                                bgcolor: "#1e6343",
-                                                color: "#fff",
-                                                "&:hover": { bgcolor: "#164a32" },
-                                            }}
-                                        >
-                                            Apply
-                                        </Button>
-                                    </Box>
-                                </Box>
-                                {couponApplied && (
-                                    <Box sx={{ mt: 1.5, display: "flex", alignItems: "flex-start", gap: 1, bgcolor: "#f0fdf4", borderRadius: 2, p: 1.5, border: "1px solid #bbf7d0" }}>
-                                        <Box sx={{ color: "#316D52", display: "flex", alignItems: "center", mt: 0.2 }}>
-                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
-                                        </Box>
-                                        <Box sx={{ flex: 1 }}>
-                                            <Typography sx={{ fontWeight: 700, fontSize: 20, color: "#166534" }}>Coupon applied successfully!</Typography>
-                                            <Typography sx={{ fontSize: 18, color: "#166534", mt: 0.3 }}>You will get 5% off on this order.</Typography>
-                                        </Box>
-                                        <IconButton size="small" onClick={() => setCouponApplied(false)} sx={{ color: "#6b7280", p: 0.3 }}>
+                                        <IconButton size="small" onClick={handleRemoveSpinCoupon} sx={{ color: "#6b7280", p: 0.3 }}>
                                             <CloseIcon sx={{ fontSize: 20 }} />
                                         </IconButton>
                                     </Box>
-                                )} */}
+                                ) : null}
+                                {spinReward && !spinReward.redeemed && !couponApplied && spinValidation.reason === "min_order_not_met" ? (
+                                    <Box sx={{ mt: 1.5, bgcolor: "#fff7ed", borderRadius: 2, p: 1.5, border: "1px solid #fed7aa" }}>
+                                        <Typography sx={{ fontSize: 18, color: "#9a3412" }}>
+                                            {spinValidation.message}
+                                        </Typography>
+                                    </Box>
+                                ) : null}
                             </>
                         ) : items.length === 0 ? (
                             <Box sx={{ py: 2, textAlign: "center" }}>

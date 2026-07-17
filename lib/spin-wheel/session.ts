@@ -1,0 +1,88 @@
+import type { SpinWheelReward } from "./rewards";
+
+const SCOPE_KEY = "kiosk_spin_scope_id";
+const REWARD_PREFIX = "spin_wheel_reward_";
+export const SPIN_WHEEL_CLEAR_EVENT = "spin-wheel-session-cleared";
+
+function rewardKey(scopeId: string): string {
+  return `${REWARD_PREFIX}${scopeId}`;
+}
+
+function createWalkInScopeId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `walkin_${crypto.randomUUID()}`;
+  }
+  return `walkin_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * Each kiosk visitor gets an isolated scope:
+ * - logged-in scan users: NextAuth user id
+ * - walk-ins: a random id stored in sessionStorage for this browser session
+ */
+export function getSpinWheelScopeId(
+  session: { user?: Record<string, unknown> } | null | undefined
+): string {
+  if (typeof window === "undefined") return "server";
+
+  const sessionUserId = session?.user?.id;
+  if (sessionUserId && String(sessionUserId).includes("/")) {
+    return String(sessionUserId);
+  }
+
+  const existing = window.sessionStorage.getItem(SCOPE_KEY)?.trim();
+  if (existing) return existing;
+
+  const scopeId = createWalkInScopeId();
+  window.sessionStorage.setItem(SCOPE_KEY, scopeId);
+  return scopeId;
+}
+
+export function readSpinWheelReward(scopeId: string): SpinWheelReward | null {
+  if (typeof window === "undefined" || !scopeId) return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(rewardKey(scopeId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as SpinWheelReward;
+    if (!parsed?.segmentId || !parsed?.code) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function writeSpinWheelReward(scopeId: string, reward: SpinWheelReward): void {
+  if (typeof window === "undefined" || !scopeId) return;
+  window.sessionStorage.setItem(rewardKey(scopeId), JSON.stringify(reward));
+}
+
+export function markSpinWheelRewardRedeemed(scopeId: string): SpinWheelReward | null {
+  const reward = readSpinWheelReward(scopeId);
+  if (!reward || reward.redeemed) return reward;
+
+  const next = { ...reward, redeemed: true };
+  writeSpinWheelReward(scopeId, next);
+  return next;
+}
+
+/** Clears spin wheel state for the current browser session (call on logout / idle reset). */
+export function clearSpinWheelSession(): void {
+  if (typeof window === "undefined") return;
+
+  const scopeId = window.sessionStorage.getItem(SCOPE_KEY)?.trim();
+  if (scopeId) {
+    window.sessionStorage.removeItem(rewardKey(scopeId));
+  }
+
+  window.sessionStorage.removeItem(SCOPE_KEY);
+
+  for (let i = window.sessionStorage.length - 1; i >= 0; i -= 1) {
+    const key = window.sessionStorage.key(i);
+    if (key?.startsWith(REWARD_PREFIX)) {
+      window.sessionStorage.removeItem(key);
+    }
+  }
+
+  window.dispatchEvent(new Event(SPIN_WHEEL_CLEAR_EVENT));
+}

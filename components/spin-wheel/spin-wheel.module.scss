@@ -1,0 +1,303 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Montserrat:wght@400;600;700;800&display=swap");
+
+.stage {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 32px 28px;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    radial-gradient(600px 400px at 15% 8%, #e9f0e2 0%, transparent 60%),
+    radial-gradient(500px 400px at 90% 20%, #f6e8ec 0%, transparent 60%),
+    radial-gradient(700px 500px at 50% 100%, #f3e3e8 0%, transparent 65%),
+    linear-gradient(180deg, #fcf8f5, #f6ede9);
+  color: #5a3040;
+  user-select: none;
+  font-family: "Montserrat", system-ui, sans-serif;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(42px, 8vw, 66px);
+  line-height: 0.95;
+  letter-spacing: 2px;
+  color: #9e1b3d;
+  text-transform: uppercase;
+}
+
+.title span {
+  display: block;
+  font-size: clamp(30px, 6vw, 46px);
+  letter-spacing: 4px;
+}
+
+.ribbon {
+  margin: 14px auto 0;
+  display: inline-block;
+  padding: 9px 34px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #c2325a, #9e1b3d);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  box-shadow: 0 6px 16px rgba(158, 27, 61, 0.25);
+}
+
+.wheelWrap {
+  position: relative;
+  width: min(600px, 92vw);
+  height: min(600px, 92vw);
+  margin: 26px 0 10px;
+}
+
+.wheel {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: rotate(0deg);
+  filter: drop-shadow(0 18px 30px rgba(120, 30, 60, 0.25));
+}
+
+.wheelSpinning {
+  transition: transform 6s cubic-bezier(0.12, 0.7, 0.12, 1);
+}
+
+.pointer {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 46px;
+  height: 64px;
+  z-index: 4;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25));
+}
+
+.hub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(150px, 25vw);
+  height: min(150px, 25vw);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #c33357, #9e1b3d 60%, #7c1230);
+  border: 7px solid #e8b84b;
+  box-shadow:
+    0 0 0 4px #fff,
+    0 10px 22px rgba(0, 0, 0, 0.28),
+    inset 0 -6px 14px rgba(0, 0, 0, 0.25);
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(16px, 3vw, 23px);
+  line-height: 1.1;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  z-index: 3;
+  transition: transform 0.12s ease;
+}
+
+.hub:active {
+  transform: translate(-50%, -50%) scale(0.95);
+}
+
+.hubDisabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.steps {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  max-width: 720px;
+  margin-top: 6px;
+}
+
+.step {
+  flex: 1;
+  background: #fff;
+  border: 1px solid #f0dde2;
+  border-radius: 14px;
+  padding: 16px 12px;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(158, 27, 61, 0.06);
+}
+
+.step b {
+  display: block;
+  color: #9e1b3d;
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.step p {
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #7a4757;
+}
+
+.cta {
+  margin-top: 22px;
+  width: min(420px, 90vw);
+  height: 74px;
+  border: none;
+  border-radius: 40px;
+  background: linear-gradient(90deg, #c2325a, #8e1638);
+  border: 3px solid #e8b84b;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(158, 27, 61, 0.32);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.cta:active {
+  transform: translateY(3px);
+  box-shadow: 0 5px 14px rgba(158, 27, 61, 0.3);
+}
+
+.cta:disabled {
+  opacity: 0.5;
+  cursor: default;
+  transform: none;
+}
+
+.tc {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #a98292;
+  font-weight: 600;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(60, 15, 30, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.overlayShow {
+  display: flex;
+}
+
+.card {
+  width: min(520px, 92vw);
+  background: #fff;
+  border-radius: 24px;
+  padding: 44px 38px;
+  text-align: center;
+  border: 3px solid #e8b84b;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  animation: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes pop {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.cardEyebrow {
+  font-size: 14px;
+  letter-spacing: 4px;
+  color: #c2325a;
+  font-weight: 700;
+}
+
+.cardTitle {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(32px, 6vw, 44px);
+  line-height: 1.1;
+  color: #9e1b3d;
+  margin: 14px 0 12px;
+}
+
+.cardDesc {
+  font-size: 16px;
+  line-height: 1.5;
+  color: #7a4757;
+  font-weight: 600;
+}
+
+.cardButton {
+  margin-top: 26px;
+  padding: 14px 40px;
+  border: none;
+  border-radius: 30px;
+  background: #9e1b3d;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.existingReward {
+  margin-top: 16px;
+  width: min(520px, 92vw);
+  background: #fff;
+  border: 2px solid #e8b84b;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+}
+
+.existingRewardCode {
+  font-weight: 800;
+  color: #9e1b3d;
+  letter-spacing: 1px;
+  margin-top: 8px;
+}
+
+.backLink {
+  margin-top: 18px;
+  background: transparent;
+  border: none;
+  color: #9e1b3d;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheelSpinning {
+    transition: transform 0.3s linear;
+  }
+
+  .card {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .steps {
+    flex-direction: column;
+  }
+}

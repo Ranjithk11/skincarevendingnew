@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 
 const FALLBACK_LANDING_IMAGE = "/logo/newLanding.png";
@@ -114,6 +115,10 @@ export default function NewPromoLanding() {
 
   const handleBuyProducts = () => {
     router.push("/slots");
+  };
+
+  const handleSpinWheel = () => {
+    router.push(buildSpinWheelHref("/"));
   };
 
   const handleAdminDashboard = () => {
@@ -235,6 +240,47 @@ export default function NewPromoLanding() {
               }}
             >
               DIRECTLY
+            </Typography>
+          </Box>
+        </Button>
+
+        <Button onClick={handleSpinWheel} sx={neonButtonSx}>
+          <Box
+            component="span"
+            sx={{
+              width: { xs: 26, sm: 30 },
+              height: { xs: 26, sm: 30 },
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 22,
+            }}
+          >
+            🎡
+          </Box>
+          <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
+            <Typography
+              sx={{
+                fontWeight: 700,
+                fontSize: 24,
+                letterSpacing: "0.03em",
+                lineHeight: 1.2,
+                color: "#fff",
+              }}
+            >
+              SPIN &amp; WIN
+            </Typography>
+            <Typography
+              sx={{
+                fontWeight: 500,
+                fontSize: 20,
+                letterSpacing: "0.02em",
+                lineHeight: 1.2,
+                color: "rgba(255, 255, 255, 0.9)",
+              }}
+            >
+              EXCITING REWARDS
             </Typography>
           </Box>
         </Button>

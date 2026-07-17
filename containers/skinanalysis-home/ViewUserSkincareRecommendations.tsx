@@ -208,7 +208,6 @@ const ViewAdminSkincareReport = () => {
             isKiosk={isKiosk}
             cartCount={cartCount}
             onCartClick={() => setOpenCart(true)}
-            onScanAgainClick={() => router.push(APP_ROUTES.HOME)}
           />
 
           {/* Spacer for fixed TopLogo header */}

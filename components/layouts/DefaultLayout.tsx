@@ -26,6 +26,7 @@ import { SOCIAL_LINKS } from "@/utils/constants";
 import { AiFillFacebook, AiFillInstagram, AiFillYoutube } from "react-icons/ai";
 import IdleRedirect from "@/components/ui/IdleRedirect";
 import StartupSync from "@/components/StartupSync";
+import { clearSpinWheelSession } from "@/lib/spin-wheel/session";
 
 // Idle videos disabled — kept for easy restore
 // import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
@@ -173,6 +174,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
               <IconButton
                 onClick={() => {
                   dispatch(clearCart());
+                  clearSpinWheelSession();
                   signOut().then(() => {
                     router.push("https://leafwater.in/");
                   });
@@ -192,6 +194,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
                 variant="text"
                 onClick={() => {
                   dispatch(clearCart());
+                  clearSpinWheelSession();
                   signOut().then(() => {
                     router.push("https://leafwater.in/");
                   });
@@ -220,6 +223,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
                 <IconButton
                   onClick={() => {
                     dispatch(clearCart());
+                    clearSpinWheelSession();
                     signOut().then(() => {
                       router.push("/");
                     });

@@ -389,10 +389,6 @@ export default function SlotsPage() {
           isKiosk={false}
           cartCount={cartCount}
           onCartClick={() => setOpenCart(true)}
-          onScanAgainClick={() => router.push("/")}
-          firstButtonLabel="My cart"
-          secondButtonLabel="Back"
-          secondButtonIcon="/icons/face.png"
         />
 
         <Box

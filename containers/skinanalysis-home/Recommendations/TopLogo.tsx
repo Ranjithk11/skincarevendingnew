@@ -1,37 +1,104 @@
 import { Badge, Box, Button, IconButton } from "@mui/material";
 import { Icon } from "@iconify/react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import React from "react";
 import { APP_ROUTES } from "@/utils/routes";
+import { useSpinWheel } from "@/contexts/SpinWheelContext";
+import { clearSpinWheelSession } from "@/lib/spin-wheel/session";
+import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
 
 interface TopLogoProps {
   isKiosk: boolean;
   onCartClick: () => void;
-  onScanAgainClick: () => void;
+  /** @deprecated Use onSpinWheelClick */
+  onScanAgainClick?: () => void;
+  onSpinWheelClick?: () => void;
   cartCount?: number;
   firstButtonLabel?: string;
   secondButtonLabel?: string;
+  secondButtonSubLabel?: string;
   firstButtonIcon?: string;
+  /** Path (starts with /) or Iconify icon name */
   secondButtonIcon?: string;
   mode?: "actions" | "centered";
 }
+
+const ACTION_ICON_SIZE = 24;
+
+const renderSecondButtonIcon = (icon: string, size: number) => {
+  if (icon.startsWith("/")) {
+    return <Image src={icon} width={size} height={size} alt="" />;
+  }
+  return <Icon icon={icon} width={size} height={size} />;
+};
+
+const baseActionButtonSx = {
+  width: "fit-content",
+  minWidth: "unset",
+  px: 2,
+  py: 1.25,
+  borderRadius: "64px",
+  textTransform: "none" as const,
+  flexShrink: 0,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 1,
+  whiteSpace: "nowrap" as const,
+  fontSize:24,
+  fontWeight: 500,
+  lineHeight: 1.2,
+  borderWidth: "1px",
+  borderStyle: "solid",
+  borderColor: "#d1d5db",
+  color: "#111827",
+  backgroundColor: "#ffffff",
+  "&.MuiButton-root": {
+    minWidth: "unset",
+  },
+};
+
+const actionIconSx = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
+  lineHeight: 0,
+  width: ACTION_ICON_SIZE,
+  height: ACTION_ICON_SIZE,
+  "& img, & svg": {
+    width: ACTION_ICON_SIZE,
+    height: ACTION_ICON_SIZE,
+  },
+};
 
 const TopLogo: React.FC<TopLogoProps> = ({
   isKiosk,
   onCartClick,
   onScanAgainClick,
+  onSpinWheelClick,
   cartCount = 0,
   firstButtonLabel = "My cart",
-  secondButtonLabel = "Get AI Scan",
+  secondButtonLabel = "Spin & Win",
+  secondButtonSubLabel = "Rewards",
   firstButtonIcon = "/icons/cart.svg",
-  secondButtonIcon = "/icons/face.png",
+  secondButtonIcon = "mdi:ferris-wheel",
   mode = "actions",
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const { reward } = useSpinWheel();
+  const hasActiveReward = Boolean(reward && !reward.redeemed);
+
+  const handleSecondButtonClick =
+    onSpinWheelClick ??
+    onScanAgainClick ??
+    (() => router.push(buildSpinWheelHref(pathname)));
 
   const handleLogoClick = async () => {
+    clearSpinWheelSession();
     try {
       await signOut({ redirect: false });
     } catch {}
@@ -73,8 +140,8 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 px: { xs: 1.5, sm: 2.5 },
                 py: { xs: 0.5, sm: 1 },
                 borderRadius: 0,
-                width: { xs: "min(200px, 100%)", sm: "min(520px, 100%)" },
-                height: { xs: 40, sm: 64 },
+                width: { xs: "min(200px, 100%)", sm: "min(620px, 100%)" },
+                height: 64,
                 position: "relative",
                 cursor: "pointer",
               }}
@@ -111,17 +178,18 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 alignItems: "center",
                 justifyContent: "flex-start",
                 gap: 1,
-                minWidth: { xs: "auto", sm: 310 },
-                flex: { xs: 1, sm: "none" },
+                minWidth: 0,
+                flex: { xs: 1, sm: "0 1 auto" },
               }}
             >
               <Box
                 onClick={handleLogoClick}
-                sx={{ 
-                  position: "relative", 
-                  width: { xs: 140, sm: 270 }, 
-                  height: { xs: 36, sm: 69 }, 
-                  cursor: "pointer" 
+                sx={{
+                  position: "relative",
+                  width: 256,
+                  height: 64,
+                  flexShrink: 1,
+                  cursor: "pointer",
                 }}
               >
                 <Image
@@ -139,30 +207,15 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "flex-end",
-                width: { xs: "auto", sm: 340 },
-                gap: { xs: "6px", sm: "10px" },
-                flexWrap: "nowrap",
+                gap: 2,
+                flexShrink: 0,
+                minWidth: 0,
               }}
             >
               <Button
                 variant="outlined"
                 size="small"
-                sx={{
-                  width: { xs: 90, sm: 220 },
-                  height: { xs: "36px", sm: "60px" },
-                  px: { xs: "6px", sm: "10px" },
-                  py: { xs: "8px", sm: "19px" },
-                  fontSize: { xs: "12px", sm: "24px" },
-                  borderRadius: "64px",
-                  textTransform: "none",
-                  minWidth: 0,
-                  whiteSpace: "nowrap",
-                  borderColor: "#d1d5db",
-                  borderWidth: "1px",
-                  color: "#111827",
-                  fontWeight: 500,
-                  backgroundColor: "#ffffff",
-                }}
+                sx={baseActionButtonSx}
                 onClick={onCartClick}
               >
                 <Badge
@@ -171,35 +224,29 @@ const TopLogo: React.FC<TopLogoProps> = ({
                   invisible={!cartCount}
                   sx={{
                     "& .MuiBadge-badge": {
-                      fontSize: { xs: 12, sm: 24 },
-                      fontWeight: 500,
+                      fontSize: 10,
+                      fontWeight: 600,
+                      minWidth: 16,
+                      height: 16,
+                      padding: "0 4px",
                     },
                   }}
                 >
-                  <Box
-                    component="span"
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      "& img": {
-                        width: { xs: 16, sm: 24 },
-                        height: { xs: 16, sm: 24 },
-                      },
-                    }}
-                  >
-                    <Image src={firstButtonIcon} width={24} height={24} alt="" />
+                  <Box component="span" sx={actionIconSx}>
+                    <Image
+                      src={firstButtonIcon}
+                      width={ACTION_ICON_SIZE}
+                      height={ACTION_ICON_SIZE}
+                      alt=""
+                    />
                   </Box>
                 </Badge>
                 <Box
                   component="span"
                   sx={{
-                    ml: { xs: 0.5, sm: 1 },
-                    fontSize: { xs: "12px", sm: "24px" },
-                    fontWeight: 500,
+                    fontSize: "inherit",
+                    fontWeight: "inherit",
                     whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    display: { xs: "none", sm: "inline" },
                   }}
                 >
                   {firstButtonLabel}
@@ -210,37 +257,63 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 variant="outlined"
                 size="small"
                 sx={{
-                  width: { xs: 100, sm: 250 },
-                  height: { xs: "36px", sm: "60px" },
-                  px: { xs: "6px", sm: "10px" },
-                  py: { xs: "8px", sm: "19px" },
-                  fontSize: { xs: "12px", sm: "24px" },
-                  borderRadius: "64px",
-                  textTransform: "none",
-                  minWidth: 0,
-                  whiteSpace: "nowrap",
-                  borderColor: "#d1d5db",
-                  borderWidth: "1px",
-                  color: "#111827",
-                  fontWeight: 500,
-                  backgroundColor: "#ffffff",
+                  ...baseActionButtonSx,
+                  position: "relative",
+                  ...(hasActiveReward && {
+                    borderColor: "#9E1B3D",
+                    color: "#9E1B3D",
+                    fontWeight: 700,
+                    backgroundColor: "#fdf2f8",
+                  }),
                 }}
-                onClick={onScanAgainClick}
+                onClick={handleSecondButtonClick}
               >
-                <Box 
-                  sx={{ 
-                    display: "inline-flex", 
-                    alignItems: "center", 
-                    gap: { xs: 0.5, sm: 1 },
-                    "& img": {
-                      width: { xs: 16, sm: 24 },
-                      height: { xs: 16, sm: 24 },
-                    },
+                {hasActiveReward && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: 6,
+                      right: 8,
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      bgcolor: "#ef4444",
+                      boxShadow: "0 0 0 1.5px #ffffff",
+                    }}
+                  />
+                )}
+                <Box sx={actionIconSx}>
+                  {renderSecondButtonIcon(secondButtonIcon, ACTION_ICON_SIZE)}
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                    lineHeight: 1.15,
+                    minWidth: 0,
                   }}
                 >
-                  <Image src={secondButtonIcon} width={24} height={24} alt="" />
-                  <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                  <Box
+                    component="span"
+                    sx={{
+                      fontSize: "inherit",
+                      fontWeight: "inherit",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {secondButtonLabel}
+                  </Box>
+                  <Box
+                    component="span"
+                    sx={{
+                      fontSize:18,
+                      fontWeight: 400,
+                      color: hasActiveReward ? "#be185d" : "#6b7280",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {secondButtonSubLabel}
                   </Box>
                 </Box>
               </Button>
