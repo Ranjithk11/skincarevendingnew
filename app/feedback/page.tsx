@@ -16,6 +16,7 @@ import { HelpDialog } from "@/components/ui";
 import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 import { APP_ROUTES } from "@/utils/routes";
 import { clearSpinWheelSession } from "@/lib/spin-wheel/session";
+import { buildSpinWheelWebhookPayload } from "@/lib/spin-wheel/webhook";
 import { useAppDispatch } from "@/redux/store/store";
 import { clearCart } from "@/redux/reducers/cartSlice";
 import { persistor } from "@/redux/store/store";
@@ -311,6 +312,21 @@ export default function FeedbackPage() {
         "",
     }),
     [session, mergedMachine, webhookUserId]
+  );
+
+  const spinWheelWebhookData = useMemo(
+    () =>
+      buildSpinWheelWebhookPayload({
+        reward: checkoutSummary?.spinWheelReward,
+        couponApplied:
+          checkoutSummary?.couponApplied ??
+          Boolean(checkoutSummary?.discount && checkoutSummary?.spinWheelReward),
+        discountAmount: checkoutSummary?.discount,
+        cartTotal: checkoutSummary?.total,
+        payableTotal: checkoutSummary?.payableTotal,
+        appliedAt: checkoutSummary?.createdAt,
+      }),
+    [checkoutSummary]
   );
 
   const dispenseSuccessCommand = useMemo(() => {
@@ -687,6 +703,7 @@ export default function FeedbackPage() {
           transaction={checkoutSummary?.payment}
           machineLocation={mergedMachine.machineLocation}
           machineName={mergedMachine.machineName || "Vending Machine"}
+          spinWheel={spinWheelWebhookData}
         />
       )}
       <Box

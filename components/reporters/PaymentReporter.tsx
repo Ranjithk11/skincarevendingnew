@@ -8,6 +8,7 @@ import {
   type PaymentTransactionInfo,
 } from "@/utils/webhook";
 import { resolvePaymentForWebhook } from "@/lib/resolveWebhookPayment";
+import type { SpinWheelWebhookPayload } from "@/lib/spin-wheel/webhook";
 
 interface PaymentReporterProps {
   active: boolean;
@@ -17,6 +18,7 @@ interface PaymentReporterProps {
   selectedSlots?: (string | number)[];
   machineLocation?: string;
   machineName?: string;
+  spinWheel?: SpinWheelWebhookPayload | null;
 }
 
 export default function PaymentReporter({
@@ -27,6 +29,7 @@ export default function PaymentReporter({
   selectedSlots,
   machineLocation,
   machineName,
+  spinWheel,
 }: PaymentReporterProps) {
   const lastFiredKeyRef = useRef<string | null>(null);
 
@@ -52,6 +55,7 @@ export default function PaymentReporter({
         selectedSlots,
         machineLocation,
         machineName,
+        spinWheel,
         dedupeKey: key,
       });
     })();
@@ -59,7 +63,7 @@ export default function PaymentReporter({
     return () => {
       cancelled = true;
     };
-  }, [active, user, products, transaction, selectedSlots, machineLocation, machineName]);
+  }, [active, user, products, transaction, selectedSlots, machineLocation, machineName, spinWheel]);
 
   return null;
 }

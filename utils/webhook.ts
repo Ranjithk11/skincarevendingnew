@@ -3,6 +3,8 @@
 //
 // The endpoint can be overridden via NEXT_PUBLIC_SCAN_COMPLETED_WEBHOOK_URL.
 
+import type { SpinWheelWebhookPayload } from "@/lib/spin-wheel/webhook";
+
 const DEFAULT_SCAN_COMPLETED_WEBHOOK_URL =
   "https://hook.eu1.make.com/2jsb7s7vin1sohcbdc0ttfv31p9mofhu";
 
@@ -411,6 +413,8 @@ export interface PaymentPayload {
   machineLocation?: string;
   /** Machine name where payment occurred */
   machineName?: string;
+  /** Spin wheel reward / coupon details applied at checkout */
+  spinWheel?: SpinWheelWebhookPayload | null;
   /** Optional dedup key. If the same key was reported in this session, the
    *  webhook will not fire again. Defaults to a hash of orderId. */
   dedupeKey?: string;
@@ -503,6 +507,7 @@ export async function sendPaymentWebhook(
         method: payload.transaction?.method || "",
         agent_name: agentName,
       },
+      spin_wheel: payload.spinWheel ?? null,
     };
 
     await fetch(url, {
