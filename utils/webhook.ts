@@ -835,6 +835,15 @@ export interface ConsultationPayload {
   machineName?: string;
   /** Machine location where the lead was captured. */
   machineLocation?: string;
+  /** Where the lead originated (e.g. report_popup, spin_wheel). */
+  source?: string;
+  /** Optional spin-wheel reward context when lead came from the wheel. */
+  spinWheel?: {
+    couponCode?: string;
+    rewardType?: string;
+    title?: string;
+    segmentId?: string;
+  };
 }
 
 /**
@@ -853,6 +862,7 @@ export async function sendConsultationWebhook(
     const body = {
       event: "free_consultation_request",
       requested_at: new Date().toISOString(),
+      source: payload.source || "",
       user: {
         user_id: payload.user?.userId || "",
         name: payload.user?.name || "",
@@ -869,6 +879,14 @@ export async function sendConsultationWebhook(
       preferred_time: payload.preferredTime || "",
       machine_name: payload.machineName || "",
       machine_location: payload.machineLocation || "",
+      spin_wheel: payload.spinWheel
+        ? {
+            coupon_code: payload.spinWheel.couponCode || "",
+            reward_type: payload.spinWheel.rewardType || "",
+            title: payload.spinWheel.title || "",
+            segment_id: payload.spinWheel.segmentId || "",
+          }
+        : null,
     };
 
     const res = await fetch(url, {
@@ -881,6 +899,80 @@ export async function sendConsultationWebhook(
     return res.ok;
   } catch (err) {
     console.warn("[consultation webhook] request failed:", err);
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Birthday spin-wheel offer webhook
+// ---------------------------------------------------------------------------
+
+const DEFAULT_BIRTHDAY_OFFER_WEBHOOK_URL =
+  "https://hook.eu1.make.com/gimljdauory9hjmmh3tzp8jotqwq67jd";
+
+export interface BirthdayOfferUserInfo {
+  userId?: string;
+  name?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  email?: string;
+}
+
+export interface BirthdayOfferPayload {
+  user?: BirthdayOfferUserInfo;
+  machineName?: string;
+  machineLocation?: string;
+  spinWheel?: {
+    couponCode?: string;
+    rewardType?: string;
+    title?: string;
+    segmentId?: string;
+  };
+}
+
+/**
+ * Best-effort POST of a birthday spin-wheel lead (name, phone, DOB).
+ * Failures are swallowed so the UI is never blocked.
+ */
+export async function sendBirthdayOfferWebhook(
+  payload: BirthdayOfferPayload
+): Promise<boolean> {
+  try {
+    const url =
+      process.env.NEXT_PUBLIC_BIRTHDAY_OFFER_WEBHOOK_URL ||
+      DEFAULT_BIRTHDAY_OFFER_WEBHOOK_URL;
+
+    const body = {
+      event: "birthday_offer_lead",
+      requested_at: new Date().toISOString(),
+      source: "spin_wheel",
+      user: {
+        user_id: payload.user?.userId || "",
+        name: payload.user?.name || "",
+        phone: payload.user?.phone || "",
+        email: payload.user?.email || "",
+        date_of_birth: payload.user?.dateOfBirth || "",
+      },
+      machine_name: payload.machineName || "",
+      machine_location: payload.machineLocation || "",
+      spin_wheel: {
+        coupon_code: payload.spinWheel?.couponCode || "",
+        reward_type: payload.spinWheel?.rewardType || "",
+        title: payload.spinWheel?.title || "",
+        segment_id: payload.spinWheel?.segmentId || "",
+      },
+    };
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,
+    });
+
+    return res.ok;
+  } catch (err) {
+    console.warn("[birthday offer webhook] request failed:", err);
     return false;
   }
 }

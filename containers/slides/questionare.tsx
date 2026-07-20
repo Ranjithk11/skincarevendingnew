@@ -217,6 +217,7 @@ export default function Questionnaire() {
 
     const handlePhysicalKeyboard = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (typeof e.key !== "string") return;
 
       if (e.key === "Backspace") {
         e.preventDefault();

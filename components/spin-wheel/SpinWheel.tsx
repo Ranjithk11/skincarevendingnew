@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useSpinWheel } from "@/contexts/SpinWheelContext";
 import { SPIN_WHEEL_SEGMENTS } from "@/lib/spin-wheel/rewards";
 import {
@@ -9,6 +10,8 @@ import {
   sanitizeReturnTo,
 } from "@/lib/spin-wheel/navigation";
 import { APP_ROUTES } from "@/utils/routes";
+import SpinWheelConsultationPopup from "@/components/spin-wheel/SpinWheelConsultationPopup";
+import SpinWheelBirthdayPopup from "@/components/spin-wheel/SpinWheelBirthdayPopup";
 import styles from "./spin-wheel.module.scss";
 
 const CANVAS_SIZE = 1200;
@@ -117,6 +120,7 @@ type SpinWheelProps = {
 export default function SpinWheel({ onContinue }: SpinWheelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
   const returnTo = useMemo(
     () => sanitizeReturnTo(searchParams.get("returnTo")),
     [searchParams]
@@ -133,7 +137,24 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
   const [showResult, setShowResult] = useState(false);
   const [resultTitle, setResultTitle] = useState("");
   const [resultDesc, setResultDesc] = useState("");
+  const [consultationOpen, setConsultationOpen] = useState(false);
+  const [birthdayOpen, setBirthdayOpen] = useState(false);
   const { hasSpun, reward, isSpinning, saveReward, setIsSpinning } = useSpinWheel();
+
+  const sessionUser = useMemo(
+    () => ({
+      userId: session?.user?.id ? String(session.user.id) : undefined,
+      name: (session?.user as { name?: string } | undefined)?.name || "",
+      email: (session?.user as { email?: string } | undefined)?.email || "",
+      phone:
+        (session?.user as { mobileNumber?: string; phoneNumber?: string; phone?: string } | undefined)
+          ?.mobileNumber ||
+        (session?.user as { phoneNumber?: string } | undefined)?.phoneNumber ||
+        (session?.user as { phone?: string } | undefined)?.phone ||
+        "",
+    }),
+    [session]
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -180,12 +201,18 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
 
     window.setTimeout(() => {
       const segment = SPIN_WHEEL_SEGMENTS[winningIndex];
-      saveReward(winningIndex);
+      const nextReward = saveReward(winningIndex);
       setResultTitle(segment.title);
       setResultDesc(segment.description);
       setShowResult(true);
       setSpinningLocal(false);
       setIsSpinning(false);
+
+      if (nextReward.type === "FREE_CONSULTATION") {
+        setConsultationOpen(true);
+      } else if (nextReward.type === "PERCENT_BIRTHDAY_15") {
+        setBirthdayOpen(true);
+      }
     }, 6100);
   }, [hasSpun, isSpinning, saveReward, setIsSpinning, spinning]);
 
@@ -281,6 +308,20 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
           </button>
         </div>
       </div>
+
+      <SpinWheelConsultationPopup
+        open={consultationOpen}
+        onClose={() => setConsultationOpen(false)}
+        user={sessionUser}
+        reward={reward}
+      />
+
+      <SpinWheelBirthdayPopup
+        open={birthdayOpen}
+        onClose={() => setBirthdayOpen(false)}
+        user={sessionUser}
+        reward={reward}
+      />
     </div>
   );
 }
