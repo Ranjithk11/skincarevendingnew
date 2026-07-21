@@ -320,16 +320,40 @@ export function productMatchesCategoryFilter(
 
   const p = product as Record<string, unknown>;
   const productCategory = p?.productCategory as Record<string, unknown> | undefined;
-  const categoryId = String(productCategory?._id ?? p?.categoryId ?? "").trim();
+  const categoryId = String(
+    productCategory?._id ?? productCategory?.id ?? p?.categoryId ?? p?.catId ?? ""
+  ).trim();
   if (categoryId && categoryId === String(selectedCategoryId)) return true;
 
-  const categoryTitle = String(
-    productCategory?.title ?? p?.category ?? ""
-  ).trim();
-  if (selectedCategoryTitle && categoryTitle) {
-    return (
-      categoryTitle.toLowerCase() === selectedCategoryTitle.toLowerCase()
-    );
+  const normalizeTitle = (value: unknown) =>
+    String(value ?? "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
+
+  const selectedToken = normalizeTitle(selectedCategoryTitle);
+  const productTitles = [
+    productCategory?.title,
+    productCategory?.name,
+    p?.category,
+    p?.categoryTitle,
+    p?.category_name,
+  ]
+    .map(normalizeTitle)
+    .filter(Boolean);
+
+  if (selectedToken && productTitles.some((title) => title === selectedToken)) {
+    return true;
+  }
+
+  // Soft match: "Face Wash" ↔ "Facewash" / "face-wash"
+  if (
+    selectedToken &&
+    selectedToken.length >= 4 &&
+    productTitles.some(
+      (title) => title.startsWith(selectedToken) || selectedToken.startsWith(title)
+    )
+  ) {
+    return true;
   }
 
   return false;

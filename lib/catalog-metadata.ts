@@ -9,7 +9,13 @@ export async function fetchCatalogCategories(): Promise<CatalogCategory[]> {
     if (!res.ok) return DEFAULT_CATEGORIES;
     const json = await res.json();
     const list = Array.isArray(json?.data) ? json.data : [];
-    return list.length > 0 ? list : DEFAULT_CATEGORIES;
+    const normalized = list
+      .map((c: any) => ({
+        _id: String(c?._id ?? c?.id ?? "").trim(),
+        title: String(c?.title ?? c?.name ?? "").trim(),
+      }))
+      .filter((c: CatalogCategory) => Boolean(c._id && c.title));
+    return normalized.length > 0 ? normalized : DEFAULT_CATEGORIES;
   } catch {
     return DEFAULT_CATEGORIES;
   }

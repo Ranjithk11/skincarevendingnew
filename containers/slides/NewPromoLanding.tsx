@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Box, Button, Typography } from "@mui/material";
+import { Icon } from "@iconify/react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { APP_ROUTES } from "@/utils/routes";
+import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
 
 const FALLBACK_LANDING_IMAGE = "/logo/newLanding.png";
 const MACHINE_LOCATION_KEY = "kiosk_machine_location";
@@ -119,6 +121,10 @@ export default function NewPromoLanding() {
 
   const handleBrowseProducts = () => {
     router.push(APP_ROUTES.PRODUCTS);
+  };
+
+  const handleSpinWheelClick = () => {
+    router.push(buildSpinWheelHref("/"));
   };
 
   const handleAdminDashboard = () => {
@@ -240,6 +246,47 @@ export default function NewPromoLanding() {
               }}
             >
               DIRECTLY FROM SLOTS
+            </Typography>
+          </Box>
+        </Button>
+        <Button onClick={handleSpinWheelClick} sx={neonButtonSx}>
+          <Box
+            sx={{
+              width: { xs: 26, sm: 30 },
+              height: { xs: 26, sm: 30 },
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+            }}
+          >
+            <Icon icon="mdi:ferris-wheel" width={28} height={28} />
+          </Box>
+          <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
+            <Typography
+              sx={{
+                fontWeight: 700,
+                fontSize: 24,
+                letterSpacing: "0.03em",
+                lineHeight: 1.2,
+                color: "#fff",
+                textTransform: "uppercase",
+              }}
+            >
+              SPIN &amp; WIN
+            </Typography>
+            <Typography
+              sx={{
+                fontWeight: 500,
+                fontSize: 18,
+                letterSpacing: "0.02em",
+                lineHeight: 1.2,
+                color: "rgba(255, 255, 255, 0.9)",
+                textTransform: "uppercase",
+              }}
+            >
+              EXCITING REWARDS
             </Typography>
           </Box>
         </Button>

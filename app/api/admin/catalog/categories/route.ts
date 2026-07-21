@@ -53,7 +53,15 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: [{ _id: "all", title: "All" }, ...categories],
+      data: [
+        { _id: "all", title: "All" },
+        ...categories
+          .map((c: any) => ({
+            _id: String(c?._id ?? c?.id ?? "").trim(),
+            title: String(c?.title ?? c?.name ?? "").trim(),
+          }))
+          .filter((c) => c._id && c.title && c._id !== "all"),
+      ],
     });
   } catch (error) {
     console.error("[catalog/categories] Error:", error);

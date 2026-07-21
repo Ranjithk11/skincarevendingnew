@@ -1,13 +1,24 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { Box, Typography, Grid, useMediaQuery, useTheme } from "@mui/material";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import {
+  Box,
+  Typography,
+  Grid,
+  useMediaQuery,
+  useTheme,
+  TextField,
+  InputAdornment,
+  IconButton,
+} from "@mui/material";
+import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { APP_ROUTES } from "@/utils/routes";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import ProductCard from "@/containers/skinanalysis-home/Recommendations/ProductCard";
 import { useCart } from "@/containers/skinanalysis-home/Recommendations/CartContext";
 import CartProduct from "@/containers/skinanalysis-home/Recommendations/cartProduct";
+import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 import {
   buildSlotsMap,
   getSlotInfoForProduct,
@@ -21,6 +32,7 @@ import {
 import {
   fetchCatalogBrands,
   fetchCatalogCategories,
+  fetchCategoryImages,
   type CatalogBrand,
   type CatalogCategory,
 } from "@/lib/catalog-metadata";
@@ -102,6 +114,10 @@ export default function BrowseProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [openCart, setOpenCart] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const lastTypedKeyRef = useRef<{ key: string; ts: number } | null>(null);
   const { count: cartCount } = useCart();
   const isKiosk = false;
 
@@ -161,6 +177,12 @@ export default function BrowseProductsPage() {
         } else {
           console.warn("[BrowseProducts] Failed to load catalog:", productsRes.status);
           if (!cancelled) setProducts([]);
+        }
+
+        // Category icons: lightweight one-image-per-category fetch (brands filled from products).
+        const catImgs = await fetchCategoryImages();
+        if (!cancelled && catImgs && typeof catImgs === "object") {
+          setCategoryImages(catImgs);
         }
       } catch (e) {
         console.warn("[BrowseProducts] Failed to load page data:", e);
@@ -227,6 +249,71 @@ export default function BrowseProductsPage() {
       });
   }, [machineProducts, slotsMap, selectedBrand, selectedBrandName, selectedCategory, selectedCategoryTitle]);
 
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return sortedProducts;
+
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return sortedProducts.filter(({ product }) => {
+      const haystack = [
+        product?.name,
+        product?.brand?.name,
+        product?.productBrand?.name,
+        product?.category,
+        product?.productCategory?.title,
+        product?.id,
+        product?._id,
+      ]
+        .map((v) => String(v ?? "").toLowerCase())
+        .join(" ");
+      return tokens.every((token) => haystack.includes(token));
+    });
+  }, [sortedProducts, searchQuery]);
+
+  const focusSearchInput = useCallback(() => {
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(() => searchInputRef.current?.focus());
+      return;
+    }
+    setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, []);
+
+  const closeSearchKeyboard = useCallback(() => {
+    setIsKeyboardOpen(false);
+    searchInputRef.current?.blur();
+  }, []);
+
+  const handleKeyboardKeyPress = useCallback(
+    (key: string) => {
+      if (key === "shift" || key === "123" || key === "ABC") return;
+      if (key === "return") {
+        closeSearchKeyboard();
+        return;
+      }
+      if (key === "arrowleft" || key === "arrowright") return;
+      if (key === "backspace") {
+        setSearchQuery((prev) => prev.slice(0, -1));
+        lastTypedKeyRef.current = null;
+        return;
+      }
+      if (key === "space") {
+        setSearchQuery((prev) => `${prev} `);
+        lastTypedKeyRef.current = { key: "space", ts: Date.now() };
+        return;
+      }
+      if (key.length !== 1) return;
+
+      // Extra guard against touch + ghost-click double inserts.
+      const now = Date.now();
+      const last = lastTypedKeyRef.current;
+      if (last && last.key === key && now - last.ts < 500) return;
+      lastTypedKeyRef.current = { key, ts: now };
+
+      setSearchQuery((prev) => `${prev}${key}`);
+    },
+    [closeSearchKeyboard]
+  );
+
   const isAllBrandName = (name: unknown) => {
     const n = String(name ?? "").trim().toLowerCase();
     return n === "all" || n === "all brands";
@@ -242,7 +329,7 @@ export default function BrowseProductsPage() {
       );
   }, [brands]);
 
-  // Fill any missing brand / category icons from the loaded catalog (no extra network).
+  // Fill brand / category icons from the loaded catalog (no extra image APIs).
   useEffect(() => {
     if (products.length === 0) return;
 
@@ -253,6 +340,11 @@ export default function BrowseProductsPage() {
           (typeof product?.images?.[0] === "string" ? product.images[0] : "") ||
           ""
       ).trim();
+
+    const normalizeKey = (value: unknown) =>
+      String(value ?? "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "");
 
     if (brands.length > 0) {
       setBrandImages((prev) => {
@@ -285,12 +377,36 @@ export default function BrowseProductsPage() {
     }
 
     if (categories.length > 0) {
+      // Index first product image by category id + normalized title for reliable lookup.
+      const imageByKey = new Map<string, string>();
+      products.forEach((product) => {
+        const img = productImageUrl(product);
+        if (!img) return;
+        const cat = product?.productCategory;
+        const id = String(cat?._id ?? cat?.id ?? product?.categoryId ?? "").trim();
+        const title = String(cat?.title ?? cat?.name ?? product?.category ?? "").trim();
+        if (id && !imageByKey.has(id)) imageByKey.set(id, img);
+        const titleKey = normalizeKey(title);
+        if (titleKey && !imageByKey.has(titleKey)) imageByKey.set(titleKey, img);
+      });
+
       setCategoryImages((prev) => {
         const next = { ...prev };
         let changed = false;
 
         categories.forEach((category) => {
           if (!category._id || category._id === "all" || next[category._id]) return;
+
+          const fromIndex =
+            imageByKey.get(category._id) ||
+            imageByKey.get(normalizeKey(category.title));
+
+          if (fromIndex) {
+            next[category._id] = fromIndex;
+            changed = true;
+            return;
+          }
+
           const match = products.find(
             (p) =>
               productImageUrl(p) &&
@@ -605,24 +721,68 @@ export default function BrowseProductsPage() {
             sx={{
               width: "100%",
               mb: 2,
+              pb: isKeyboardOpen ? "340px" : 0,
               fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
             }}
           >
-            {!isLoading && products.length > 0 ? (
-              <Typography sx={{ fontSize: 16, color: "#6b7280", mb: 1.5 }}>
-                Showing {sortedProducts.length} of {products.length} products
-                {sortedProducts.some((row) => !row.isAvailable)
-                  ? " · Out-of-machine items shown as Unavailable"
-                  : ""}
-              </Typography>
-            ) : null}
+            <TextField
+              fullWidth
+              inputRef={searchInputRef}
+              value={searchQuery}
+              placeholder="Search products by name, brand, or category..."
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsKeyboardOpen(true)}
+              onClick={() => {
+                setIsKeyboardOpen(true);
+                focusSearchInput();
+              }}
+              inputProps={{
+                // Prefer on-screen keyboard on kiosk touch; physical keyboard still works.
+                inputMode: "text",
+                autoComplete: "off",
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Icon icon="mdi:magnify" width={26} color="#6b7280" />
+                  </InputAdornment>
+                ),
+                endAdornment:
+                  searchQuery || isKeyboardOpen ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="Clear search and close keyboard"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setSearchQuery("");
+                          closeSearchKeyboard();
+                        }}
+                        edge="end"
+                        size="small"
+                      >
+                        <Icon icon="mdi:close" width={22} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null,
+              }}
+              sx={{
+                mb: 2,
+                bgcolor: "#fff",
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  minHeight: 56,
+                  fontSize: 20,
+                  bgcolor: "#fff",
+                },
+              }}
+            />
             {isLoading ? (
               <Box sx={{ textAlign: "center", py: 8 }}>
                 <Typography sx={{ fontSize: 28, color: "#666" }}>
                   Loading all products...
                 </Typography>
               </Box>
-            ) : sortedProducts.length === 0 ? (
+            ) : filteredProducts.length === 0 ? (
               <Box sx={{ textAlign: "center", py: 8 }}>
                 <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#4b5563", mb: 1 }}>
                   No products found
@@ -630,12 +790,14 @@ export default function BrowseProductsPage() {
                 <Typography sx={{ fontSize: 16, color: "#9ca3af" }}>
                   {products.length === 0
                     ? "Could not load products from the catalog"
-                    : "Try a different category or brand filter"}
+                    : searchQuery.trim()
+                      ? `No matches for "${searchQuery.trim()}"`
+                      : "Try a different category or brand filter"}
                 </Typography>
               </Box>
             ) : (
               <Grid container spacing={2}>
-                {sortedProducts.map((row: any, idx: number) => {
+                {filteredProducts.map((row: any, idx: number) => {
                   const product = row?.product;
                   const slotInfo = row?.slotInfo;
                   const productId = product?.id ?? product?._id;
@@ -662,6 +824,26 @@ export default function BrowseProductsPage() {
           </Box>
         </Box>
       </PageBackground>
+
+      {isKeyboardOpen ? (
+        <Box
+          sx={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 1400,
+          }}
+        >
+          <VirtualKeyboard
+            onKeyPress={handleKeyboardKeyPress}
+            layout="default"
+            visible={isKeyboardOpen}
+            skipApplyToActiveElement
+            onClose={closeSearchKeyboard}
+          />
+        </Box>
+      ) : null}
 
       {openCart ? (
         <CartProduct

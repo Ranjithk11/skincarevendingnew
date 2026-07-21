@@ -1,52 +1,37 @@
 "use client";
 
-import { useRef, useEffect, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useEffect, useState } from "react";
 import Keyboard from "react-simple-keyboard";
 import "react-simple-keyboard/build/css/index.css";
-import { Box } from "@mui/material";
+import { Box, IconButton, Typography } from "@mui/material";
+import { Icon } from "@iconify/react";
 
 interface VirtualKeyboardProps {
   onKeyPress: (key: string) => void;
   layout?: "default" | "numeric" | "email";
   visible?: boolean;
+  /** When true, only call onKeyPress — parent owns the input value (avoids double characters). */
+  skipApplyToActiveElement?: boolean;
+  /** Optional close control shown above the keys. */
+  onClose?: () => void;
 }
 
 export default function VirtualKeyboard({
   onKeyPress,
   layout = "default",
   visible = true,
+  skipApplyToActiveElement = false,
+  onClose,
 }: VirtualKeyboardProps) {
   const keyboardRef = useRef<any>(null);
   const lastEditableRef = useRef<HTMLElement | null>(null);
   const lastKeyEventRef = useRef<{ key: string; ts: number } | null>(null);
+  const onKeyPressRef = useRef(onKeyPress);
+  const skipApplyRef = useRef(skipApplyToActiveElement);
   const [layoutName, setLayoutName] = useState(layout === "numeric" ? "numeric" : "default");
 
-  const handlePointerKeyFallback = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.type !== "pointerdown") return;
-    const t = e.target as HTMLElement | null;
-    if (!t) return;
-
-    const btn = t.closest?.(".hg-button") as HTMLElement | null;
-    if (!btn) return;
-
-    const raw = btn.getAttribute?.("data-skbtn") || btn.textContent || "";
-    let button = raw.trim();
-    if (!button) return;
-
-    if (!button.startsWith("{")) {
-      if (button === "⌫") button = "{bksp}";
-      else if (button.toLowerCase() === "space") button = "{space}";
-      else if (button.toLowerCase() === "return") button = "{enter}";
-      else if (button === "⇧") button = "{shift}";
-      else if (button === "123") button = "{numbers}";
-      else if (button.toLowerCase() === "abc") button = "{abc}";
-      else if (button === "←") button = "{arrowleft}";
-      else if (button === "→") button = "{arrowright}";
-    }
-
-    e.preventDefault();
-    handleKeyPress(button);
-  };
+  onKeyPressRef.current = onKeyPress;
+  skipApplyRef.current = skipApplyToActiveElement;
 
   const setNativeValue = (el: HTMLInputElement | HTMLTextAreaElement, value: string) => {
     const proto = el instanceof HTMLTextAreaElement
@@ -133,6 +118,51 @@ export default function VirtualKeyboard({
     } catch {}
   };
 
+  const handleKeyPress = (button: string) => {
+    const now = Date.now();
+    const last = lastKeyEventRef.current;
+    // Touch screens often emit a real key event, then a compatibility mouse/click
+    // ~300ms later. Coalesce both so one tap never inserts two characters.
+    if (last) {
+      const dt = now - last.ts;
+      if (dt < 120) return;
+      if (last.key === button && dt < 500) return;
+    }
+    lastKeyEventRef.current = { key: button, ts: now };
+
+    const emit = onKeyPressRef.current;
+    const skipApply = skipApplyRef.current;
+
+    if (button === "{shift}" || button === "{lock}") {
+      setLayoutName((prev) => (prev === "default" ? "shift" : "default"));
+      emit("shift");
+    } else if (button === "{bksp}") {
+      emit("backspace");
+      if (!skipApply) applyToActiveElement("backspace");
+    } else if (button === "{space}") {
+      emit("space");
+      if (!skipApply) applyToActiveElement("space");
+    } else if (button === "{enter}") {
+      emit("return");
+      if (!skipApply) applyToActiveElement("return");
+    } else if (button === "{numbers}") {
+      setLayoutName("numeric");
+      emit("123");
+    } else if (button === "{abc}") {
+      setLayoutName("default");
+      emit("ABC");
+    } else if (button === "{email}") {
+      setLayoutName("email");
+    } else if (button === "{arrowleft}") {
+      emit("arrowleft");
+    } else if (button === "{arrowright}") {
+      emit("arrowright");
+    } else {
+      emit(button);
+      if (!skipApply) applyToActiveElement(button);
+    }
+  };
+
   useEffect(() => {
     if (layout === "numeric") {
       setLayoutName("numeric");
@@ -160,63 +190,21 @@ export default function VirtualKeyboard({
     };
   }, []);
 
-  const handleKeyPress = (button: string) => {
-    const now = Date.now();
-    const last = lastKeyEventRef.current;
-    if (last && last.key === button && now - last.ts < 250) return;
-    lastKeyEventRef.current = { key: button, ts: now };
-
-    if (button === "{shift}" || button === "{lock}") {
-      setLayoutName(layoutName === "default" ? "shift" : "default");
-      onKeyPress("shift");
-    } else if (button === "{bksp}") {
-      onKeyPress("backspace");
-      applyToActiveElement("backspace");
-    } else if (button === "{space}") {
-      onKeyPress("space");
-      applyToActiveElement("space");
-    } else if (button === "{enter}") {
-      onKeyPress("return");
-      applyToActiveElement("return");
-    } else if (button === "{numbers}") {
-      setLayoutName("numeric");
-      onKeyPress("123");
-    } else if (button === "{abc}") {
-      setLayoutName("default");
-      onKeyPress("ABC");
-    } else if (button === "{email}") {
-      setLayoutName("email");
-    } else if (button === "{arrowleft}") {
-      onKeyPress("arrowleft");
-    } else if (button === "{arrowright}") {
-      onKeyPress("arrowright");
-    } else {
-      onKeyPress(button);
-      applyToActiveElement(button);
-    }
-  };
-
   if (!visible) return null;
 
   return (
     <Box
       onClick={(e) => e.stopPropagation()}
-      onClickCapture={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
-      onPointerDownCapture={(e) => {
-        handlePointerKeyFallback(e);
-        e.stopPropagation();
-      }}
-      onPointerUpCapture={(e) => e.stopPropagation()}
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchEndCapture={(e) => e.stopPropagation()}
       sx={{
         width: "100%",
         bgcolor: "#d1d5db",
         px: 1,
-        py: 2,
+        pt: onClose ? 1 : 2,
         pb: 4,
         touchAction: "manipulation",
+        WebkitUserSelect: "none",
+        userSelect: "none",
         "& .simple-keyboard": {
           backgroundColor: "transparent",
           borderRadius: 0,
@@ -249,10 +237,47 @@ export default function VirtualKeyboard({
         },
       }}
     >
+      {onClose ? (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 1,
+            pb: 1,
+          }}
+        >
+          <Typography sx={{ fontSize: 16, fontWeight: 600, color: "#374151" }}>
+            Keyboard
+          </Typography>
+          <IconButton
+            aria-label="Close keyboard"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            size="large"
+            sx={{
+              bgcolor: "#9ca3af",
+              color: "#111827",
+              borderRadius: 2,
+              px: 1.5,
+              "&:hover": { bgcolor: "#6b7280", color: "#fff" },
+            }}
+          >
+            <Icon icon="mdi:keyboard-close" width={28} />
+            <Typography component="span" sx={{ ml: 1, fontSize: 16, fontWeight: 600 }}>
+              Close
+            </Typography>
+          </IconButton>
+        </Box>
+      ) : null}
       <Keyboard
         keyboardRef={(r) => (keyboardRef.current = r)}
         layoutName={layoutName}
         onKeyPress={handleKeyPress}
+        // Touch devices: use touch events. Same-key debounce above blocks ghost clicks.
         useTouchEvents
         disableButtonHold
         preventMouseDownDefault
