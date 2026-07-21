@@ -243,45 +243,29 @@ export default function NewPromoLanding() {
             </Typography>
           </Box>
         </Button>
-
-        <Button onClick={handleBrowseProducts} sx={neonButtonSx}>
-          <Box
-            component="img"
-            src="/wending/productlog.svg"
-            alt=""
-            sx={{
-              width: { xs: 26, sm: 30 },
-              height: { xs: 26, sm: 30 },
-              flexShrink: 0,
-              objectFit: "contain",
-            }}
-          />
-          <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
-            <Typography
-              sx={{
-                fontWeight: 700,
-                fontSize: 24,
-                letterSpacing: "0.03em",
-                lineHeight: 1.2,
-                color: "#fff",
-              }}
-            >
-              BROWSE 
-            </Typography>
-            <Typography
-              sx={{
-                fontWeight: 500,
-                fontSize: 20,
-                letterSpacing: "0.02em",
-                lineHeight: 1.2,
-                color: "rgba(255, 255, 255, 0.9)",
-              }}
-            >
-             All PRODUCTS
-            </Typography>
-          </Box>
-        </Button>
       </Box>
+      <Typography
+        onClick={handleBrowseProducts}
+        sx={{
+          position: "absolute",
+          left: { xs: 16, sm: 24, md: 32 },
+          bottom: { xs: 16, sm: 24, md: 32 },
+          zIndex: 10,
+          color: "rgba(219, 18, 18, 0.82)",
+          fontSize: 24,
+          fontWeight: 400,
+          textDecoration: "underline",
+          cursor: "pointer",
+          textAlign: "left",
+          pointerEvents: "auto",
+          textShadow: "0 1px 4px rgba(52, 219, 30, 0.45)",
+          "&:hover": {
+            color: "#00E5FF",
+          },
+        }}
+      >
+        Browse All Products
+      </Typography>
       <Typography
         onClick={handleAdminDashboard}
         sx={{

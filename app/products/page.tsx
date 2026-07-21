@@ -21,8 +21,6 @@ import {
 import {
   fetchCatalogBrands,
   fetchCatalogCategories,
-  fetchCategoryImages,
-  fetchBrandImages,
   type CatalogBrand,
   type CatalogCategory,
 } from "@/lib/catalog-metadata";
@@ -114,42 +112,68 @@ export default function BrowseProductsPage() {
 
   const [categories, setCategories] = useState<CatalogCategory[]>([{ _id: "all", title: "All" }]);
   const [brands, setBrands] = useState<CatalogBrand[]>([]);
+  // State to store category images
+  const [categoryImages, setCategoryImages] = useState<Record<string, string | undefined>>({});
+  const [brandImages, setBrandImages] = useState<Record<string, string | undefined>>({});
 
+  const categoryStripRef = useRef<HTMLDivElement | null>(null);
+  const categoryDragRef = useRef<{ dragging: boolean; moved: boolean; startX: number; startScrollLeft: number }>(
+    { dragging: false, moved: false, startX: 0, startScrollLeft: 0 }
+  );
+
+  // Single mount load — one catalog + slots + metadata fetch (no duplicate image APIs).
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      const [cats, brs, catImgs, brandImgs] = await Promise.all([
-        fetchCatalogCategories(),
-        fetchCatalogBrands(),
-        fetchCategoryImages(),
-        fetchBrandImages(),
-      ]);
-      if (cancelled) return;
-      setCategories(cats);
-      setBrands(brs);
-      setCategoryImages(catImgs);
-      setBrandImages(brandImgs);
-    })();
+
+    const load = async () => {
+      try {
+        setIsLoading(true);
+
+        const [cats, brs, slotsRes, productsRes] = await Promise.all([
+          fetchCatalogCategories(),
+          fetchCatalogBrands(),
+          fetch("/api/admin/slots", { cache: "no-store" }),
+          fetch("/api/admin/products?fetchAll=1", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            cache: "no-store",
+          }),
+        ]);
+
+        if (cancelled) return;
+
+        setCategories(cats);
+        setBrands(brs);
+
+        if (slotsRes.ok) {
+          const slotsData = await slotsRes.json();
+          if (!cancelled) {
+            setRawSlotsData(slotsData);
+            setSlotsMap(buildSlotsMap(slotsData));
+          }
+        }
+
+        if (productsRes.ok) {
+          const json = await productsRes.json();
+          const list = Array.isArray(json) ? json : json?.data?.[0]?.products || [];
+          console.log(`[BrowseProducts] Loaded ${list.length} catalog products`);
+          if (!cancelled) setProducts(list);
+        } else {
+          console.warn("[BrowseProducts] Failed to load catalog:", productsRes.status);
+          if (!cancelled) setProducts([]);
+        }
+      } catch (e) {
+        console.warn("[BrowseProducts] Failed to load page data:", e);
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    void load();
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  // Fetch all slots once on mount
-  useEffect(() => {
-    const fetchSlots = async () => {
-      try {
-        const res = await fetch("/api/admin/slots");
-        if (res.ok) {
-          const slotsData = await res.json();
-          setRawSlotsData(slotsData);
-          setSlotsMap(buildSlotsMap(slotsData));
-        }
-      } catch (err) {
-        console.warn("Failed to fetch slots:", err);
-      }
-    };
-    fetchSlots();
   }, []);
 
   const selectedBrandName = useMemo(() => {
@@ -162,19 +186,11 @@ export default function BrowseProductsPage() {
     return categories.find((c) => c._id === selectedCategory)?.title;
   }, [selectedCategory, categories]);
 
-  const catalogFilters = useMemo(
-    () => ({
-      brandId: selectedBrand !== "all" ? selectedBrand : undefined,
-      brandName: selectedBrandName,
-      categoryId: selectedCategory !== "all" ? selectedCategory : undefined,
-      categoryTitle: selectedCategoryTitle,
-    }),
-    [selectedBrand, selectedBrandName, selectedCategory, selectedCategoryTitle]
-  );
-
   const machineProducts = useMemo(
-    () => mergeCatalogWithSlotProducts(products, rawSlotsData, { catalogFilters }),
-    [products, rawSlotsData, catalogFilters]
+    // Keep the full catalog here; brand/category filters run in sortedProducts
+    // so unavailable products still appear for every brand (same as admin inventory).
+    () => mergeCatalogWithSlotProducts(products, rawSlotsData),
+    [products, rawSlotsData]
   );
 
   const slotDiscountMap = useMemo(() => getSlotDiscountMap(rawSlotsData), [rawSlotsData]);
@@ -182,7 +198,11 @@ export default function BrowseProductsPage() {
   const sortedProducts = useMemo(() => {
     const decorated = machineProducts.map((product: any) => {
       const slotInfo = getSlotInfoForProduct(product, slotsMap);
-      const quantity = slotInfo?.quantity ?? 0;
+      // Prefer live slot qty; fall back to catalog/override quantity (same as admin inventory).
+      const quantity = Math.max(
+        Number(slotInfo?.quantity ?? 0),
+        Number(product?.quantity ?? 0)
+      );
       return { product, slotInfo, quantity, isAvailable: quantity > 0 };
     });
 
@@ -222,80 +242,70 @@ export default function BrowseProductsPage() {
       );
   }, [brands]);
 
-  // State to store category images
-  const [categoryImages, setCategoryImages] = useState<Record<string, string | undefined>>({});
-  const [brandImages, setBrandImages] = useState<Record<string, string | undefined>>({});
-
-  const categoryStripRef = useRef<HTMLDivElement | null>(null);
-  const categoryDragRef = useRef<{ dragging: boolean; moved: boolean; startX: number; startScrollLeft: number }>(
-    { dragging: false, moved: false, startX: 0, startScrollLeft: 0 }
-  );
-
-  // Fetch products for selected category
+  // Fill any missing brand / category icons from the loaded catalog (no extra network).
   useEffect(() => {
-    let cancelled = false;
+    if (products.length === 0) return;
 
-    const run = async () => {
-      try {
-        setIsLoading(true);
+    const productImageUrl = (product: any): string =>
+      String(
+        product?.images?.[0]?.url ||
+          product?.image_url ||
+          (typeof product?.images?.[0] === "string" ? product.images[0] : "") ||
+          ""
+      ).trim();
 
-        const params = new URLSearchParams();
-        params.set("page", "1");
-        params.set("limit", "1000");
-        params.set("hasBrand", "true");
-        params.set("isShopifyAvailable", "true");
-        if (selectedCategory !== "all") params.set("catId", selectedCategory);
-        if (selectedBrand !== "all") params.set("brandId", selectedBrand);
+    if (brands.length > 0) {
+      setBrandImages((prev) => {
+        const next = { ...prev };
+        let changed = false;
 
-        const res = await fetch(`/api/admin/products?${params.toString()}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
+        if (!next.all) {
+          const first = products.find((p) => productImageUrl(p));
+          if (first) {
+            next.all = productImageUrl(first);
+            changed = true;
+          }
+        }
+
+        brands.forEach((brand) => {
+          if (!brand._id || next[brand._id]) return;
+          const match = products.find(
+            (p) =>
+              productImageUrl(p) &&
+              productMatchesBrandFilter(p, brand._id, brand.name)
+          );
+          if (match) {
+            next[brand._id] = productImageUrl(match);
+            changed = true;
+          }
         });
 
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || `Failed to load products: ${res.status}`);
-        }
+        return changed ? next : prev;
+      });
+    }
 
-        const json = await res.json();
-        if (cancelled) return;
+    if (categories.length > 0) {
+      setCategoryImages((prev) => {
+        const next = { ...prev };
+        let changed = false;
 
-        setProducts(Array.isArray(json) ? json : json?.data?.[0]?.products || []);
-      } catch (e) {
-        if (!cancelled) {
-          setProducts([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
+        categories.forEach((category) => {
+          if (!category._id || category._id === "all" || next[category._id]) return;
+          const match = products.find(
+            (p) =>
+              productImageUrl(p) &&
+              productMatchesCategoryFilter(p, category._id, category.title)
+          );
+          if (match) {
+            next[category._id] = productImageUrl(match);
+            changed = true;
+          }
+        });
 
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedCategory, selectedBrand]);
-
-  // Refresh category/brand icons when machine inventory changes (slot images).
-  useEffect(() => {
-    if (Object.keys(slotsMap).length === 0) return;
-    let cancelled = false;
-    void (async () => {
-      const [catImgs, brandImgs] = await Promise.all([
-        fetchCategoryImages(),
-        fetchBrandImages(),
-      ]);
-      if (cancelled) return;
-      setCategoryImages((prev) => ({ ...prev, ...catImgs }));
-      setBrandImages((prev) => ({ ...prev, ...brandImgs }));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [slotsMap]);
+        return changed ? next : prev;
+      });
+    }
+  }, [products, brands, categories]);
 
   const handleGoBack = () => {
     router.push(APP_ROUTES.HOME);
@@ -598,10 +608,18 @@ export default function BrowseProductsPage() {
               fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
             }}
           >
+            {!isLoading && products.length > 0 ? (
+              <Typography sx={{ fontSize: 16, color: "#6b7280", mb: 1.5 }}>
+                Showing {sortedProducts.length} of {products.length} products
+                {sortedProducts.some((row) => !row.isAvailable)
+                  ? " · Out-of-machine items shown as Unavailable"
+                  : ""}
+              </Typography>
+            ) : null}
             {isLoading ? (
               <Box sx={{ textAlign: "center", py: 8 }}>
                 <Typography sx={{ fontSize: 28, color: "#666" }}>
-                  Loading products...
+                  Loading all products...
                 </Typography>
               </Box>
             ) : sortedProducts.length === 0 ? (
@@ -610,7 +628,9 @@ export default function BrowseProductsPage() {
                   No products found
                 </Typography>
                 <Typography sx={{ fontSize: 16, color: "#9ca3af" }}>
-                  Try a different category or brand filter
+                  {products.length === 0
+                    ? "Could not load products from the catalog"
+                    : "Try a different category or brand filter"}
                 </Typography>
               </Box>
             ) : (
@@ -643,10 +663,12 @@ export default function BrowseProductsPage() {
         </Box>
       </PageBackground>
 
-      <CartProduct
-        open={openCart}
-        onClose={() => setOpenCart(false)}
-      />
+      {openCart ? (
+        <CartProduct
+          open={openCart}
+          onClose={() => setOpenCart(false)}
+        />
+      ) : null}
     </Box>
   );
 }

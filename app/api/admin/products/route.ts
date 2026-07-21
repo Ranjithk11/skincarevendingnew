@@ -133,6 +133,8 @@ export async function GET(request: Request) {
     const limit = searchParams.get("limit") || "1000";
     const hasBrand = searchParams.get("hasBrand") || "false";
     const isShopifyAvailable = searchParams.get("isShopifyAvailable") || "";
+    // Backend caps page size (~100). fetchAll=1 pages through totalCounts.
+    const fetchAll = searchParams.get("fetchAll") === "1" || searchParams.get("fetchAll") === "true";
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -142,17 +144,106 @@ export async function GET(request: Request) {
       headers["x-db-token"] = DB_TOKEN;
     }
 
-    const params = new URLSearchParams();
-    if (search) params.append("search", search);
-    if (page) params.append("page", page);
-    if (limit) params.append("limit", limit);
-    if (catId && catId !== "all") params.append("catId", catId);
-    if (brandId && brandId !== "all") params.append("brandId", brandId);
-    if (hasBrand) params.append("hasBrand", hasBrand);
-    if (isShopifyAvailable) params.append("isShopifyAvailable", isShopifyAvailable);
+    const mapRawProduct = (p: any) => {
+      const brandObj = p.brand || p.productBrand || null;
+      const brandId =
+        p.brandId ||
+        p.brand_id ||
+        (typeof brandObj === "object" && brandObj ? brandObj._id : "") ||
+        (typeof brandObj === "string" ? brandObj : "") ||
+        "";
+      return {
+        id: p._id || p.id,
+        _id: p._id || p.id,
+        name: p.name,
+        description: p.productBenefits || p.description || "",
+        productUse: p.productUse || "",
+        productBenefits: p.productBenefits || p.description || "",
+        retail_price: p.retailPrice || p.retail_price || 0,
+        retailPrice: p.retailPrice || p.retail_price || 0,
+        category: p.productCategory?.title || p.category || "",
+        productCategory: p.productCategory || null,
+        image_url: p.images?.[0]?.url || p.image_url || "",
+        images: p.images || [],
+        quantity: p.quantity || 0,
+        in_stock: p.inStock ?? p.in_stock ?? true,
+        shopify_url: p.shopifyUrl || p.shopify_url || "",
+        shopifyUrl: p.shopifyUrl || p.shopify_url || "",
+        brandId,
+        brand_id: brandId,
+        brand: brandObj,
+        productBrand: brandObj,
+        discount: p.discount || null,
+        skinTypes: p.skinTypes || [],
+        matches: p.matches || [],
+      };
+    };
+
+    const buildFilterParams = (pageNum: string, pageLimit: string) => {
+      const params = new URLSearchParams();
+      if (search) params.append("search", search);
+      params.append("page", pageNum);
+      params.append("limit", pageLimit);
+      if (catId && catId !== "all") params.append("catId", catId);
+      if (brandId && brandId !== "all") params.append("brandId", brandId);
+      if (hasBrand) params.append("hasBrand", hasBrand);
+      if (isShopifyAvailable) params.append("isShopifyAvailable", isShopifyAvailable);
+      return params;
+    };
+
+    const fetchPage = async (pageNum: number, pageLimit: number) => {
+      const response = await fetch(
+        `${API_BASE}/product/fetch-by-filter?${buildFilterParams(String(pageNum), String(pageLimit)).toString()}`,
+        {
+          cache: "no-store",
+          headers,
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Backend products page ${pageNum} failed: ${response.status}`);
+      }
+      const result = await response.json();
+      const rawProducts = result?.data?.[0]?.products || result?.data || [];
+      const totalCounts = Number(result?.totalCounts ?? result?.data?.[0]?.totalCounts ?? 0);
+      return { rawProducts: Array.isArray(rawProducts) ? rawProducts : [], totalCounts };
+    };
+
+    if (fetchAll && !search) {
+      const PAGE_SIZE = 100;
+      const allRaw: any[] = [];
+      const seenIds = new Set<string>();
+      const addAll = (list: any[]) => {
+        list.forEach((p: any) => {
+          const id = String(p._id || p.id || "");
+          if (!id || seenIds.has(id)) return;
+          seenIds.add(id);
+          allRaw.push(p);
+        });
+      };
+
+      const first = await fetchPage(1, PAGE_SIZE);
+      addAll(first.rawProducts);
+      const total = first.totalCounts || first.rawProducts.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+      if (totalPages > 1) {
+        const rest = await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, i) => fetchPage(i + 2, PAGE_SIZE))
+        );
+        rest.forEach((pageResult) => addAll(pageResult.rawProducts));
+      }
+
+      console.log(
+        `[Admin Products API] fetchAll: ${allRaw.length} of ${total} products (${totalPages} pages)`
+      );
+
+      const products = allRaw.map(mapRawProduct);
+      const productsWithOverrides = await applyOverrides(products);
+      return NextResponse.json(productsWithOverrides);
+    }
 
     const response = await fetch(
-      `${API_BASE}/product/fetch-by-filter?${params.toString()}`,
+      `${API_BASE}/product/fetch-by-filter?${buildFilterParams(page, limit).toString()}`,
       {
         cache: "no-store",
         headers,
@@ -163,27 +254,7 @@ export async function GET(request: Request) {
       const result = await response.json();
       // Extract products array from response and transform to expected format
       const rawProducts = result?.data?.[0]?.products || result?.data || [];
-      const products = rawProducts.map((p: any) => ({
-        id: p._id || p.id,
-        name: p.name,
-        description: p.productBenefits || p.description || "",
-        productUse: p.productUse || "",
-        productBenefits: p.productBenefits || p.description || "",
-        retail_price: p.retailPrice || p.retail_price || 0,
-        category: p.productCategory?.title || p.category || "",
-        productCategory: p.productCategory || null,
-        image_url: p.images?.[0]?.url || p.image_url || "",
-        images: p.images || [],
-        quantity: p.quantity || 0,
-        in_stock: p.inStock ?? p.in_stock ?? true,
-        shopify_url: p.shopifyUrl || p.shopify_url || "",
-        shopifyUrl: p.shopifyUrl || p.shopify_url || "",
-        brandId: p.brandId || p.brand_id || p.brand?._id || p.productBrand?._id || p.productBrand || "",
-        brand: p.brand || p.productBrand || null,
-        discount: p.discount || null,
-        skinTypes: p.skinTypes || [],
-        matches: p.matches || [],
-      }));
+      const products = (Array.isArray(rawProducts) ? rawProducts : []).map(mapRawProduct);
       // Apply local overrides to external products (like Flask's SQLite storage)
       const productsWithOverrides = await applyOverrides(products);
       return NextResponse.json(productsWithOverrides);

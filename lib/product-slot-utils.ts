@@ -206,13 +206,30 @@ export function normalizeBrandToken(value: string): string {
 
 export function getProductBrandId(product: unknown): string {
   const p = product as Record<string, unknown>;
-  const brand = p?.brand as Record<string, unknown> | undefined;
+  const brand = p?.brand as Record<string, unknown> | string | undefined;
   const productBrand = p?.productBrand as Record<string, unknown> | string | undefined;
   return String(
     p?.brandId ??
       p?.brand_id ??
-      brand?._id ??
-      (typeof productBrand === "object" ? productBrand?._id : productBrand) ??
+      (typeof brand === "object" && brand ? brand._id : "") ??
+      (typeof productBrand === "object" && productBrand ? productBrand._id : "") ??
+      (typeof brand === "string" ? brand : "") ??
+      (typeof productBrand === "string" ? productBrand : "") ??
+      ""
+  ).trim();
+}
+
+export function getProductBrandName(product: unknown): string {
+  const p = product as Record<string, unknown>;
+  const brand = p?.brand as Record<string, unknown> | string | undefined;
+  const productBrand = p?.productBrand as Record<string, unknown> | string | undefined;
+  return String(
+    (typeof brand === "object" && brand ? brand.name : "") ||
+      (typeof productBrand === "object" && productBrand ? productBrand.name : "") ||
+      (typeof brand === "string" ? brand : "") ||
+      (typeof productBrand === "string" ? productBrand : "") ||
+      p?.brandName ||
+      p?.brand_name ||
       ""
   ).trim();
 }
@@ -225,28 +242,70 @@ export function productMatchesBrandFilter(
   if (!selectedBrandId || selectedBrandId === "all") return true;
 
   const productName = String((product as any)?.name ?? "");
+  const productNameToken = normalizeBrandToken(productName);
   const firstWord = normalizeBrandToken(productName.split(/\s+/)[0] ?? "");
   const brandToken = selectedBrandName
     ? normalizeBrandToken(selectedBrandName)
     : "";
+  const productBrandNameToken = normalizeBrandToken(getProductBrandName(product));
 
-  const nameMatchesBrand = (): boolean => {
-    if (!brandToken || !firstWord) return false;
-    if (firstWord === brandToken) return true;
-    // Prefix match only for tokens with 4+ chars (Cetaphill/Cetaphil), not loose substring.
-    if (firstWord.length >= 4 && brandToken.length >= 4) {
-      return firstWord.startsWith(brandToken) || brandToken.startsWith(firstWord);
-    }
-    return false;
-  };
-
-  if (nameMatchesBrand()) return true;
-
+  // 1) Exact brand-id match (same source of truth as admin catalog mapping)
   const productBrandId = getProductBrandId(product);
   if (productBrandId && productBrandId === String(selectedBrandId)) {
-    // Reject mis-tagged catalog rows (e.g. Plix carrying Cetaphil brandId).
-    if (brandToken && firstWord && !nameMatchesBrand()) return false;
     return true;
+  }
+
+  // 2) Product.brand.name matches selected brand label ("Bio Derma" ↔ "Bioderma")
+  if (brandToken && productBrandNameToken) {
+    if (
+      productBrandNameToken === brandToken ||
+      (brandToken.length >= 4 &&
+        (productBrandNameToken.startsWith(brandToken) ||
+          brandToken.startsWith(productBrandNameToken)))
+    ) {
+      return true;
+    }
+  }
+
+  // 3) Product title matches brand — including multi-word brands like "The Face Shop"
+  if (brandToken && productNameToken) {
+    if (brandToken.length >= 3 && productNameToken.startsWith(brandToken)) {
+      return true;
+    }
+    if (firstWord === brandToken) return true;
+
+    // Build prefix from successive words: "The" + "Face" + "Shop" → thefaceshop
+    const words = productName.split(/\s+/).filter(Boolean);
+    let acc = "";
+    for (const word of words.slice(0, 4)) {
+      acc += word;
+      const prefixToken = normalizeBrandToken(acc);
+      if (!prefixToken) continue;
+      if (prefixToken === brandToken) return true;
+      if (
+        brandToken.length >= 4 &&
+        prefixToken.length >= 4 &&
+        (prefixToken.startsWith(brandToken) || brandToken.startsWith(prefixToken))
+      ) {
+        // Prefer full brand match once we've accumulated enough characters
+        if (prefixToken.startsWith(brandToken)) return true;
+        if (brandToken.startsWith(prefixToken) && prefixToken.length >= brandToken.length - 2) {
+          // keep accumulating
+        }
+      }
+      if (prefixToken.length >= brandToken.length) break;
+    }
+
+    if (firstWord.length >= 4 && brandToken.length >= 4) {
+      if (firstWord.startsWith(brandToken) || brandToken.startsWith(firstWord)) {
+        return true;
+      }
+    }
+
+    // Last resort for long brand tokens embedded in the title
+    if (brandToken.length >= 6 && productNameToken.includes(brandToken)) {
+      return true;
+    }
   }
 
   return false;

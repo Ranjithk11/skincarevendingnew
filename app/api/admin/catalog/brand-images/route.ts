@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { productMatchesBrandFilter } from "@/lib/product-slot-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -14,54 +15,6 @@ function productImage(product: any): string | undefined {
   );
 }
 
-function normalizeBrandToken(value: string): string {
-  let token = String(value ?? "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  token = token.replace(/([a-z])\1+$/g, "$1");
-  return token;
-}
-
-function productBrandId(product: any): string {
-  const brand = product?.brand || product?.productBrand;
-  return String(
-    product?.brandId ??
-      product?.brand_id ??
-      (typeof brand === "object" ? brand?._id : brand) ??
-      ""
-  ).trim();
-}
-
-function productMatchesBrand(product: any, brandId: string, brandName: string): boolean {
-  if (productBrandId(product) === brandId) {
-    const brandToken = normalizeBrandToken(brandName);
-    const firstWord = normalizeBrandToken(
-      String(product?.name ?? "").split(/\s+/)[0] ?? ""
-    );
-    if (brandToken && firstWord && firstWord !== brandToken) {
-      if (firstWord.length >= 4 && brandToken.length >= 4) {
-        if (!firstWord.startsWith(brandToken) && !brandToken.startsWith(firstWord)) {
-          return false;
-        }
-      } else {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  const brandToken = normalizeBrandToken(brandName);
-  const firstWord = normalizeBrandToken(
-    String(product?.name ?? "").split(/\s+/)[0] ?? ""
-  );
-  if (!brandToken || !firstWord) return false;
-  if (firstWord === brandToken) return true;
-  if (firstWord.length >= 4 && brandToken.length >= 4) {
-    return firstWord.startsWith(brandToken) || brandToken.startsWith(firstWord);
-  }
-  return false;
-}
-
 async function fetchFromApi(path: string) {
   if (!API_BASE) return null;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -71,12 +24,43 @@ async function fetchFromApi(path: string) {
   return res.json();
 }
 
+/** Paginate catalog so every brand can resolve an image (backend caps ~100/page). */
 async function fetchAllCatalogProducts(): Promise<any[]> {
-  const result = await fetchFromApi(
-    "/product/fetch-by-filter?limit=1000&page=1&hasBrand=true&isShopifyAvailable=true"
+  const PAGE_SIZE = 100;
+  const all: any[] = [];
+  const seen = new Set<string>();
+
+  const addAll = (list: any[]) => {
+    list.forEach((p) => {
+      const id = String(p?._id ?? p?.id ?? "");
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      all.push(p);
+    });
+  };
+
+  const first = await fetchFromApi(
+    `/product/fetch-by-filter?limit=${PAGE_SIZE}&page=1`
   );
-  const products = result?.data?.[0]?.products || result?.data || [];
-  return Array.isArray(products) ? products : [];
+  const firstProducts = first?.data?.[0]?.products || first?.data || [];
+  addAll(Array.isArray(firstProducts) ? firstProducts : []);
+
+  const total = Number(first?.totalCounts ?? first?.data?.[0]?.totalCounts ?? all.length);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  if (totalPages > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) =>
+        fetchFromApi(`/product/fetch-by-filter?limit=${PAGE_SIZE}&page=${i + 2}`)
+      )
+    );
+    rest.forEach((result) => {
+      const products = result?.data?.[0]?.products || result?.data || [];
+      addAll(Array.isArray(products) ? products : []);
+    });
+  }
+
+  return all;
 }
 
 async function productsFromSlots(): Promise<any[]> {
@@ -85,13 +69,15 @@ async function productsFromSlots(): Promise<any[]> {
     const { adminDb } = await import("@/lib/admin-db");
     const slots = adminDb.getAllSlots();
     return Object.values(slots)
-      .filter((slot: any) => Number(slot?.quantity || 0) > 0 && slot?.product_id)
+      .filter((slot: any) => slot?.product_id && (slot.image_url || Number(slot?.quantity || 0) > 0))
       .map((slot: any) => ({
         _id: slot.product_id,
         id: slot.product_id,
         name: slot.product_name,
         image_url: slot.image_url || "",
         images: slot.image_url ? [{ url: slot.image_url }] : [],
+        brandId: "",
+        brand: null,
       }));
   } catch {
     return [];
@@ -115,12 +101,12 @@ export async function GET() {
     if (firstAny) images.all = productImage(firstAny)!;
 
     for (const brand of brands) {
-      const id = String(brand?._id ?? "").trim();
+      const id = String(brand?._id ?? brand?.id ?? "").trim();
       const name = String(brand?.name ?? "").trim();
       if (!id || !name) continue;
 
       const match = products.find(
-        (p) => productImage(p) && productMatchesBrand(p, id, name)
+        (p) => productImage(p) && productMatchesBrandFilter(p, id, name)
       );
       if (match) {
         images[id] = productImage(match)!;
@@ -128,13 +114,15 @@ export async function GET() {
       }
 
       const brandResult = await fetchFromApi(
-        `/product/fetch-by-filter?brandId=${encodeURIComponent(id)}&limit=5&page=1&hasBrand=true&isShopifyAvailable=true`
+        `/product/fetch-by-filter?brandId=${encodeURIComponent(id)}&limit=10&page=1`
       );
       const brandProducts = brandResult?.data?.[0]?.products || brandResult?.data || [];
-      const brandMatch = (Array.isArray(brandProducts) ? brandProducts : []).find(
-        (p: any) => productImage(p) && productMatchesBrand(p, id, name)
+      const withImage = (Array.isArray(brandProducts) ? brandProducts : []).find(
+        (p: any) => productImage(p)
       );
-      if (brandMatch) images[id] = productImage(brandMatch)!;
+      if (withImage) {
+        images[id] = productImage(withImage)!;
+      }
     }
 
     return NextResponse.json({ success: true, data: images });

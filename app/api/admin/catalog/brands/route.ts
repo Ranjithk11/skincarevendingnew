@@ -87,7 +87,10 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: brands,
+      data: brands.map((b: any) => ({
+        _id: String(b?._id ?? b?.id ?? "").trim(),
+        name: String(b?.name ?? "").trim(),
+      })).filter((b) => b._id && b.name),
     });
   } catch (error) {
     console.error("[catalog/brands] Error:", error);

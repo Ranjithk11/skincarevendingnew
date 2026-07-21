@@ -24,37 +24,6 @@ function productCategoryTitle(product: any): string {
   ).trim();
 }
 
-function productBrandId(product: any): string {
-  const brand = product?.brand || product?.productBrand;
-  return String(
-    product?.brandId ??
-      product?.brand_id ??
-      (typeof brand === "object" ? brand?._id : brand) ??
-      ""
-  ).trim();
-}
-
-function normalizeBrandToken(value: string): string {
-  let token = String(value ?? "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, "");
-  token = token.replace(/([a-z])\1+$/g, "$1");
-  return token;
-}
-
-function productMatchesBrandName(product: any, brandName: string): boolean {
-  const brandToken = normalizeBrandToken(brandName);
-  const firstWord = normalizeBrandToken(
-    String(product?.name ?? "").split(/\s+/)[0] ?? ""
-  );
-  if (!brandToken || !firstWord) return false;
-  if (firstWord === brandToken) return true;
-  if (firstWord.length >= 4 && brandToken.length >= 4) {
-    return firstWord.startsWith(brandToken) || brandToken.startsWith(firstWord);
-  }
-  return false;
-}
-
 async function fetchFromApi(path: string) {
   if (!API_BASE) return null;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -65,11 +34,41 @@ async function fetchFromApi(path: string) {
 }
 
 async function fetchAllCatalogProducts(): Promise<any[]> {
-  const result = await fetchFromApi(
-    "/product/fetch-by-filter?limit=1000&page=1&hasBrand=true&isShopifyAvailable=true"
+  const PAGE_SIZE = 100;
+  const all: any[] = [];
+  const seen = new Set<string>();
+
+  const addAll = (list: any[]) => {
+    list.forEach((p) => {
+      const id = String(p?._id ?? p?.id ?? "");
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      all.push(p);
+    });
+  };
+
+  const first = await fetchFromApi(
+    `/product/fetch-by-filter?limit=${PAGE_SIZE}&page=1`
   );
-  const products = result?.data?.[0]?.products || result?.data || [];
-  return Array.isArray(products) ? products : [];
+  const firstProducts = first?.data?.[0]?.products || first?.data || [];
+  addAll(Array.isArray(firstProducts) ? firstProducts : []);
+
+  const total = Number(first?.totalCounts ?? first?.data?.[0]?.totalCounts ?? all.length);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  if (totalPages > 1) {
+    const rest = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, i) =>
+        fetchFromApi(`/product/fetch-by-filter?limit=${PAGE_SIZE}&page=${i + 2}`)
+      )
+    );
+    rest.forEach((result) => {
+      const products = result?.data?.[0]?.products || result?.data || [];
+      addAll(Array.isArray(products) ? products : []);
+    });
+  }
+
+  return all;
 }
 
 async function productsFromSlots(): Promise<any[]> {
@@ -78,7 +77,7 @@ async function productsFromSlots(): Promise<any[]> {
     const { adminDb } = await import("@/lib/admin-db");
     const slots = adminDb.getAllSlots();
     return Object.values(slots)
-      .filter((slot: any) => Number(slot?.quantity || 0) > 0 && slot?.product_id)
+      .filter((slot: any) => slot?.product_id && (slot.image_url || Number(slot?.quantity || 0) > 0))
       .map((slot: any) => ({
         _id: slot.product_id,
         id: slot.product_id,
@@ -112,7 +111,7 @@ export async function GET() {
     if (firstAny) images.all = productImage(firstAny)!;
 
     for (const cat of categories) {
-      const id = String(cat?._id ?? "").trim();
+      const id = String(cat?._id ?? cat?.id ?? "").trim();
       const title = String(cat?.title ?? cat?.name ?? "").trim();
       if (!id) continue;
 
@@ -131,12 +130,13 @@ export async function GET() {
         continue;
       }
 
-      // Original behaviour: first product image for this category from catalog API.
       const catResult = await fetchFromApi(
-        `/product/fetch-by-filter?catId=${encodeURIComponent(id)}&limit=1&page=1&hasBrand=true&isShopifyAvailable=true`
+        `/product/fetch-by-filter?catId=${encodeURIComponent(id)}&limit=5&page=1`
       );
       const catProducts = catResult?.data?.[0]?.products || catResult?.data || [];
-      const first = Array.isArray(catProducts) ? catProducts[0] : null;
+      const first = (Array.isArray(catProducts) ? catProducts : []).find((p: any) =>
+        productImage(p)
+      );
       const img = first ? productImage(first) : undefined;
       if (img) images[id] = img;
     }

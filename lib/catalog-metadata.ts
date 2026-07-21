@@ -20,7 +20,13 @@ export async function fetchCatalogBrands(): Promise<CatalogBrand[]> {
     const res = await fetch("/api/admin/catalog/brands", { cache: "no-store" });
     if (!res.ok) return [];
     const json = await res.json();
-    return Array.isArray(json?.data) ? json.data : [];
+    const list = Array.isArray(json?.data) ? json.data : [];
+    return list
+      .map((b: any) => ({
+        _id: String(b?._id ?? b?.id ?? "").trim(),
+        name: String(b?.name ?? "").trim(),
+      }))
+      .filter((b: CatalogBrand) => Boolean(b._id && b.name));
   } catch {
     return [];
   }
