@@ -25,7 +25,7 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     type: "PERCENT_EXTRA_5",
     title: "5% EXTRA OFF",
     titleLines: ["5% EXTRA OFF"],
-    description: "Get an additional 5% discount on your purchase.",
+    description: "Get an additional 5% discount on orders above ₹500.",
     fill: "#F7C9D3",
     appliesToCart: true,
   },
@@ -45,7 +45,7 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     type: "PERCENT_BIRTHDAY_15",
     title: "IT'S YOUR BIRTHDAY? EXTRA 15% OFF!",
     titleLines: ["IT'S YOUR BIRTHDAY?", "EXTRA 15% OFF!"],
-    description: "Celebrate your special day with an extra 15% OFF on your purchase.",
+    description: "Celebrate with an extra 15% OFF on orders above ₹1,000.",
     fill: "#F9C6D1",
     appliesToCart: true,
   },
@@ -55,7 +55,7 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     type: "FLAT_100",
     title: "₹100 OFF ON NEXT PURCHASE",
     titleLines: ["₹100 OFF", "ON NEXT PURCHASE"],
-    description: "Get ₹100 off on your next purchase.",
+    description: "Get ₹100 off on your next purchase above ₹1,000.",
     fill: "#F1E4CE",
     appliesToCart: true,
   },
@@ -98,7 +98,19 @@ export type SpinWheelDiscountResult = {
   reason?: string;
 };
 
+const EXTRA_5_MIN_ORDER = 500;
+const BIRTHDAY_15_MIN_ORDER = 1000;
+const FLAT_100_MIN_ORDER = 1000;
 const FLAT_200_MIN_ORDER = 2999;
+
+function minOrderNotMet(minOrder: number): SpinWheelDiscountResult {
+  return {
+    discount: 0,
+    canApply: false,
+    message: `Add items worth ₹${minOrder.toLocaleString("en-IN")} or more to use this reward.`,
+    reason: "min_order_not_met",
+  };
+}
 
 export function getSegmentById(segmentId: string): SpinWheelSegment | undefined {
   return SPIN_WHEEL_SEGMENTS.find((segment) => segment.id === segmentId);
@@ -173,6 +185,9 @@ export function computeSpinWheelDiscount(
 
   switch (reward.type) {
     case "PERCENT_EXTRA_5": {
+      if (cartTotal < EXTRA_5_MIN_ORDER) {
+        return minOrderNotMet(EXTRA_5_MIN_ORDER);
+      }
       const discount = Math.round(cartTotal * 0.05);
       return {
         discount,
@@ -181,6 +196,9 @@ export function computeSpinWheelDiscount(
       };
     }
     case "PERCENT_BIRTHDAY_15": {
+      if (cartTotal < BIRTHDAY_15_MIN_ORDER) {
+        return minOrderNotMet(BIRTHDAY_15_MIN_ORDER);
+      }
       const discount = Math.round(cartTotal * 0.15);
       return {
         discount,
@@ -189,6 +207,9 @@ export function computeSpinWheelDiscount(
       };
     }
     case "FLAT_100": {
+      if (cartTotal < FLAT_100_MIN_ORDER) {
+        return minOrderNotMet(FLAT_100_MIN_ORDER);
+      }
       const discount = Math.min(100, Math.round(cartTotal));
       return {
         discount,
@@ -198,12 +219,7 @@ export function computeSpinWheelDiscount(
     }
     case "FLAT_200_MIN_2999": {
       if (cartTotal < FLAT_200_MIN_ORDER) {
-        return {
-          discount: 0,
-          canApply: false,
-          message: `Add items worth ₹${FLAT_200_MIN_ORDER} or more to use this reward.`,
-          reason: "min_order_not_met",
-        };
+        return minOrderNotMet(FLAT_200_MIN_ORDER);
       }
       const discount = Math.min(200, Math.round(cartTotal));
       return {
