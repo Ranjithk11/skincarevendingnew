@@ -512,7 +512,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                            orderId: orderData?.order?.id || `order_${Date.now()}`,
+                            orderId: orderData?.order?.id || txnId,
                             items: orderItems,
                             totalAmount: amount,
                             discountAmount: discount,
@@ -738,10 +738,12 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             "";
                                         if (!dedupeKey) return;
 
-                                        if (paymentRecordedRef.current === dedupeKey) {
+                                        // Claim synchronously before any await (prevents double record).
+                                        if (paymentRecordedRef.current) {
                                             console.log("[Payment] Duplicate onVerified ignored:", dedupeKey);
                                             return;
                                         }
+                                        paymentRecordedRef.current = dedupeKey;
 
                                         if (typeof window !== "undefined") {
                                             const storageKey = `kiosk_order_recorded::${dedupeKey}`;
@@ -752,7 +754,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             window.sessionStorage.setItem(storageKey, "1");
                                         }
 
-                                        paymentRecordedRef.current = dedupeKey;
                                         console.log("[Payment] onVerified called, items:", items, "payload:", payload);
                                         const itemsToDispense = [...items];
 
@@ -843,12 +844,19 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                     }),
                                                 }).catch(err => console.warn("[Payment] Failed to record transaction:", err));
 
+                                                // Stable bill identity: always prefer paymentId (never Date.now()).
+                                                const stableOrderId =
+                                                    orderData?.order?.id ||
+                                                    payload?.paymentId ||
+                                                    payload?.orderId ||
+                                                    dedupeKey;
+
                                                 // Save POSIFLY bill data
                                                 await fetch("/api/posifly/bills", {
                                                     method: "POST",
                                                     headers: { "Content-Type": "application/json" },
                                                     body: JSON.stringify({
-                                                        orderId: orderData?.order?.id || `order_${Date.now()}`,
+                                                        orderId: stableOrderId,
                                                         items: orderItems,
                                                         totalAmount: payableTotal,
                                                         discountAmount: discount,

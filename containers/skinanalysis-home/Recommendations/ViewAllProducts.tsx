@@ -148,7 +148,9 @@ const AllViewProductsCard = ({
         component="div"
         className="product_image"
         sx={{
-          backgroundImage: `url(${images?.[0]?.url})`,
+          backgroundImage: images?.[0]?.url
+            ? `url("${String(images[0].url).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
+            : "none",
         }}
       ></Box>
       <Box flexGrow={1}>

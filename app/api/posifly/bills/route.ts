@@ -5,9 +5,13 @@ import { localBillToAnalyticsSyncPayload, pushPosSyncToAnalytics, pushSaleToVend
 
 export const dynamic = 'force-dynamic';
 
-function findExistingPosiflyBill(orderId: string) {
+function findExistingPosiflyBill(...ids: Array<string | null | undefined>) {
   const candidates = Array.from(
-    new Set([generateBillNumber(orderId), orderId].filter(Boolean))
+    new Set(
+      ids
+        .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+        .flatMap((id) => [generateBillNumber(id), id])
+    )
   );
 
   for (const billNumber of candidates) {
@@ -118,7 +122,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const existingBill = findExistingPosiflyBill(resolvedOrderId);
+    // Prefer Razorpay paymentId as the stable bill identity so concurrent posts
+    // with different orderId fallbacks still collapse to one bill.
+    const billIdentity = paymentId || resolvedOrderId;
+
+    const existingBill = findExistingPosiflyBill(billIdentity, resolvedOrderId, paymentId);
     if (existingBill) {
       console.log("[POSIFLY Bills] Duplicate request ignored:", existingBill.billNumber);
       return NextResponse.json({
@@ -129,9 +137,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Build LeafwaterOrder
+    // Build LeafwaterOrder — billIdentity drives generateBillNumber()
     const order: LeafwaterOrder = {
-      orderId: resolvedOrderId,
+      orderId: billIdentity,
       items: body.items.map((item: any) => ({
         productId: item.productId || "",
         productName: item.productName || item.name || "Unknown",
@@ -176,13 +184,24 @@ export async function POST(request: NextRequest) {
       taxes: item.taxes,
     }));
 
-    // Save to POSIFLY tables
-    const billNumber = adminDb.savePosiflyBill({
+    // Atomic insert — second concurrent POST gets created:false
+    const saved = adminDb.savePosiflyBill({
       billDetails: posiflyPayload.bill_details,
       items: itemsForDb,
       paymentDetails: posiflyPayload.payment_details,
       chargesDetails: posiflyPayload.charges_details,
     });
+    const billNumber = saved.billNumber;
+
+    if (!saved.created) {
+      console.log("[POSIFLY Bills] Duplicate insert raced; skipping sync:", billNumber);
+      return NextResponse.json({
+        success: true,
+        billNumber,
+        duplicate: true,
+        message: "POSIFLY bill already exists",
+      });
+    }
 
     console.log("[POSIFLY Bills] Saved bill:", billNumber);
 
@@ -205,15 +224,7 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    const retryOnce = async <T,>(fn: () => Promise<T>): Promise<T> => {
-      try {
-        return await fn();
-      } catch (err) {
-        return await fn();
-      }
-    };
-
-    // Also push to LW Analytics backend (best-effort, but reliable)
+    // Also push to LW Analytics backend (best-effort, once per bill)
     try {
       const unprefixBillNumber = (bn: string): string => {
         if (!bn) return bn;
@@ -226,6 +237,7 @@ export async function POST(request: NextRequest) {
           billNumber,
           posiflyPayload.bill_details.billNumber,
           body.orderId,
+          billIdentity,
           unprefixBillNumber(billNumber),
           unprefixBillNumber(posiflyPayload.bill_details.billNumber),
         ].filter(Boolean))
@@ -238,22 +250,28 @@ export async function POST(request: NextRequest) {
       }
 
       if (fullBill) {
-        const posSyncPromise = withTimeout(
-          "POS sync",
-          async (signal) => {
-            const payload = localBillToAnalyticsSyncPayload(fullBill);
-            return pushPosSyncToAnalytics(payload, { signal });
-          },
-          8000
-        );
+        const syncBillNumber =
+          fullBill?.bill_details?.billNumber || billNumber;
 
-        const vendingSyncPromise = retryOnce(() =>
-          withTimeout(
-            "Vending sync",
-            async (signal) => pushSaleToVendingSync(fullBill, { signal }),
-            12000
-          )
-        );
+        const posSyncPromise = adminDb.claimAnalyticsSync("pos", syncBillNumber)
+          ? withTimeout(
+              "POS sync",
+              async (signal) => {
+                const payload = localBillToAnalyticsSyncPayload(fullBill);
+                return pushPosSyncToAnalytics(payload, { signal });
+              },
+              8000
+            )
+          : Promise.resolve({ skipped: true, reason: "already_claimed" });
+
+        // Do NOT retry on timeout — analytics may have already accepted the POST.
+        const vendingSyncPromise = adminDb.claimAnalyticsSync("vending", syncBillNumber)
+          ? withTimeout(
+              "Vending sync",
+              async (signal) => pushSaleToVendingSync(fullBill, { signal }),
+              15000
+            )
+          : Promise.resolve({ skipped: true, reason: "already_claimed" });
 
         const [posRes, vendingRes] = await Promise.allSettled([
           posSyncPromise,

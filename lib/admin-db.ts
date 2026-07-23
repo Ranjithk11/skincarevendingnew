@@ -117,6 +117,7 @@ export const adminDb = {
   // POSIFLY data (read-only access for POSIFLY + save on payment)
   savePosiflyBill: sqliteDb.savePosiflyBill.bind(sqliteDb),
   hasSavedPosiflyBill: sqliteDb.hasSavedPosiflyBill.bind(sqliteDb),
+  claimAnalyticsSync: sqliteDb.claimAnalyticsSync.bind(sqliteDb),
   getPosiflyBills: sqliteDb.getPosiflyBills.bind(sqliteDb),
   getPosiflyBillByNumber: sqliteDb.getPosiflyBillByNumber.bind(sqliteDb),
   getPosiflyItemsByBill: sqliteDb.getPosiflyItemsByBill.bind(sqliteDb),

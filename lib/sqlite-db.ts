@@ -526,6 +526,27 @@ function initDb() {
     )
   `);
 
+  try {
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_payment_id_unique
+        ON transactions(payment_id)
+        WHERE payment_id IS NOT NULL AND payment_id != ''
+    `);
+  } catch (err: any) {
+    console.warn(
+      "[SQLite] Could not create transactions payment_id unique index:",
+      err?.message || err
+    );
+  }
+
+  // One-time claim keys so analytics /sync is never posted twice for the same bill.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS analytics_sync_claims (
+      claim_key TEXT PRIMARY KEY,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+
   // Settings table - additional settings
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -1772,11 +1793,23 @@ export const sqliteDb = {
   // ==================== TRANSACTIONS ====================
 
   createTransaction(transactionId: string, userId: string | null, productId: string | null, amount: number, paymentId?: string): boolean {
-    db.prepare(`
-      INSERT INTO transactions (id, user_id, product_id, amount, payment_id, status)
+    const result = db.prepare(`
+      INSERT OR IGNORE INTO transactions (id, user_id, product_id, amount, payment_id, status)
       VALUES (?, ?, ?, ?, ?, 'pending')
     `).run(transactionId, userId, productId, amount, paymentId || null);
-    return true;
+
+    // Same Razorpay payment must not create a second local transaction row.
+    if (result.changes === 0 && paymentId) {
+      const existing = db
+        .prepare("SELECT id FROM transactions WHERE payment_id = ? OR id = ? LIMIT 1")
+        .get(paymentId, transactionId) as { id?: string } | undefined;
+      if (existing?.id) {
+        console.log("[SQLite] Duplicate transaction ignored:", paymentId);
+        return false;
+      }
+    }
+
+    return result.changes > 0;
   },
 
   updateTransactionStatus(transactionId: string, status: string, paymentId?: string): boolean {
@@ -1908,11 +1941,11 @@ export const sqliteDb = {
       outletRefId: string;
       charges: Array<{ mode: string; value: number }>;
     };
-  }): string {
+  }): { billNumber: string; created: boolean } {
     const txn = db.transaction(() => {
       const bd = data.billDetails;
-      db.prepare(`
-        INSERT OR REPLACE INTO _posifly_bill_data (
+      const insertBill = db.prepare(`
+        INSERT OR IGNORE INTO _posifly_bill_data (
           billNumber, outletRefId, posTerminalId, billDate, billTime,
           billType, billValue, netAmount, taxAmount, billDiscountValue,
           ShiftNumber, businessDate, billStatus, isComplementBill, currency,
@@ -1927,6 +1960,15 @@ export const sqliteDb = {
         bd.salesPersonName ?? '', bd.flightNumber ?? '', bd.PNRNumber ?? '',
         bd.journeyFrom ?? '', bd.journeyTo ?? '', bd.gateNumber ?? ''
       );
+
+      if (insertBill.changes === 0) {
+        return { billNumber: bd.billNumber, created: false };
+      }
+
+      // Fresh bill — clear any orphan line items then insert once.
+      db.prepare("DELETE FROM _posifly_item_data WHERE billNumber = ?").run(bd.billNumber);
+      db.prepare("DELETE FROM _posifly_payment_data WHERE billNumber = ?").run(bd.billNumber);
+      db.prepare("DELETE FROM _posifly_charges_data WHERE billNumber = ?").run(bd.billNumber);
 
       const insertItem = db.prepare(`
         INSERT INTO _posifly_item_data (
@@ -1947,22 +1989,37 @@ export const sqliteDb = {
 
       const pd = data.paymentDetails;
       db.prepare(`
-        INSERT OR REPLACE INTO _posifly_payment_data (billNumber, outletRefId, paymentModes)
+        INSERT INTO _posifly_payment_data (billNumber, outletRefId, paymentModes)
         VALUES (?, ?, ?)
       `).run(pd.billNumber, pd.outletRefId, JSON.stringify(pd.paymentModes));
 
       const cd = data.chargesDetails;
       db.prepare(`
-        INSERT OR REPLACE INTO _posifly_charges_data (billNumber, outletRefId, charges)
+        INSERT INTO _posifly_charges_data (billNumber, outletRefId, charges)
         VALUES (?, ?, ?)
       `).run(cd.billNumber, cd.outletRefId, JSON.stringify(cd.charges));
 
-      return bd.billNumber;
+      return { billNumber: bd.billNumber, created: true };
     });
 
-    const billNumber = txn();
-    console.log('[SQLite] Saved POSIFLY bill:', billNumber);
-    return billNumber;
+    const result = txn();
+    console.log('[SQLite] Saved POSIFLY bill:', result);
+    return result;
+  },
+
+  /**
+   * Atomically claim an analytics push. Returns false if this bill was already claimed
+   * (so callers must not POST /sync again).
+   */
+  claimAnalyticsSync(kind: "vending" | "pos", billNumber: string): boolean {
+    if (!billNumber) return false;
+    const key = `${kind}:${billNumber}`;
+    const result = db
+      .prepare(
+        "INSERT OR IGNORE INTO analytics_sync_claims (claim_key) VALUES (?)"
+      )
+      .run(key);
+    return result.changes > 0;
   },
 
   // Read-only queries for POSIFLY (using spec-named VIEWS)

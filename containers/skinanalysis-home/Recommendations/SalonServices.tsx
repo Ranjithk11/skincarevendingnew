@@ -131,7 +131,9 @@ const SalonServices = ({ data }: SalonServicesProps) => {
                     <Box
                       component="div"
                       style={{
-                        backgroundImage: `url(${itm?.images?.[0]?.url})`,
+                        backgroundImage: itm?.images?.[0]?.url
+                          ? `url("${String(itm.images[0].url).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
+                          : "none",
                       }}
                       className="card_image"
                     />

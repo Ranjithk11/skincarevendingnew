@@ -362,7 +362,10 @@ const ProductCard = ({
         component="div"
         className="product_image"
         sx={{
-          backgroundImage: `url(${images?.[0]?.url})`,
+          // Quote the URL — S3 paths often contain `(52ml)` etc. which break unquoted css url().
+          backgroundImage: images?.[0]?.url
+            ? `url("${String(images[0].url).replace(/\\/g, "\\\\").replace(/"/g, '\\"')}")`
+            : "none",
         }}
       ></Box>
       <Box flexGrow={1} width="100%" sx={{ minWidth: 0, mr: 2 }}>

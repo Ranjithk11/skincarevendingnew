@@ -50,6 +50,7 @@ export default function UpiQrPayment({
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasTriggered = useRef(false);
   const verifiedRef = useRef(false);
+  const pollInFlightRef = useRef(false);
 
   const cleanup = useCallback(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
@@ -69,6 +70,8 @@ export default function UpiQrPayment({
   const startPolling = useCallback(
     (qrId: string, oId: string) => {
       cleanup();
+      verifiedRef.current = false;
+      pollInFlightRef.current = false;
 
       const pollBody = {
         qrCodeId: qrId,
@@ -77,6 +80,10 @@ export default function UpiQrPayment({
       };
 
       pollingRef.current = setInterval(async () => {
+        // Prevent overlapping polls (slow check-payment can outlive the 3s interval).
+        if (verifiedRef.current || pollInFlightRef.current) return;
+        pollInFlightRef.current = true;
+
         try {
           const res = await fetch("/api/razorpay/check-payment", {
             method: "POST",
@@ -112,6 +119,7 @@ export default function UpiQrPayment({
               cleanup();
               return;
             }
+            // Claim before any further async work / parent callbacks.
             verifiedRef.current = true;
 
             cleanup();
@@ -128,6 +136,8 @@ export default function UpiQrPayment({
           }
         } catch (err) {
           console.error("[UpiQR] Poll error:", err);
+        } finally {
+          pollInFlightRef.current = false;
         }
       }, 3000);
 

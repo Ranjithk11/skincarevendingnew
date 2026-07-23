@@ -102,25 +102,27 @@ export async function POST(request: NextRequest) {
         taxes: item.taxes,
       }));
 
-      adminDb.savePosiflyBill({
+      const saved = adminDb.savePosiflyBill({
         billDetails: posiflyPayload.bill_details,
         items: itemsForDb,
         paymentDetails: posiflyPayload.payment_details,
         chargesDetails: posiflyPayload.charges_details,
       });
-      console.log("[POSIFLY API] Saved bill to local DB:", posiflyPayload.bill_details.billNumber);
+      console.log("[POSIFLY API] Saved bill to local DB:", saved);
 
-      // Also push to LW Analytics backend (fire-and-forget)
-      try {
-        const fullBill = adminDb.getPosiflyFullBill(posiflyPayload.bill_details.billNumber);
-        if (fullBill) {
-          const analyticsPayload = localBillToAnalyticsSyncPayload(fullBill);
-          pushPosSyncToAnalytics(analyticsPayload)
-            .then((res) => console.log("[Analytics] POS synced:", res.bill_number))
-            .catch((err) => console.warn("[Analytics] POS sync failed (non-blocking):", err?.message));
+      // Also push to LW Analytics backend (fire-and-forget) — only on first create
+      if (saved.created) {
+        try {
+          const fullBill = adminDb.getPosiflyFullBill(saved.billNumber);
+          if (fullBill && adminDb.claimAnalyticsSync("pos", saved.billNumber)) {
+            const analyticsPayload = localBillToAnalyticsSyncPayload(fullBill);
+            pushPosSyncToAnalytics(analyticsPayload)
+              .then((res) => console.log("[Analytics] POS synced:", res.bill_number))
+              .catch((err) => console.warn("[Analytics] POS sync failed (non-blocking):", err?.message));
+          }
+        } catch (analyticsErr: any) {
+          console.warn("[Analytics] POS sync prep failed (non-blocking):", analyticsErr?.message);
         }
-      } catch (analyticsErr: any) {
-        console.warn("[Analytics] POS sync prep failed (non-blocking):", analyticsErr?.message);
       }
     } catch (dbErr) {
       console.warn("[POSIFLY API] Failed to save to local DB:", dbErr);
