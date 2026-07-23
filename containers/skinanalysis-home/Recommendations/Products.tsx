@@ -286,14 +286,7 @@ const ProductsView = ({ data, isAdminView }: ProductsViewProps) => {
                           ?.slice(0, 3)
                           .map((product: any, index: number) => ( */}
                         {recommended?.products
-                          ?.filter((product: any) => {
-                            const discountValue = product?.discount?.value || 0;
-                            const discountedPrice =
-                              product.retailPrice -
-                              product.retailPrice * (discountValue / 100);
-                            return discountedPrice >= 500;
-                          })
-                          .slice(0, 3)
+                          ?.slice(0, 3)
                           .map((product: any, index: number) => (
                             <>
                               {product?.isShopifyAvailable && (
@@ -350,14 +343,7 @@ const ProductsView = ({ data, isAdminView }: ProductsViewProps) => {
                     >
                       
                       {recommended?.products
-                        ?.filter((product: any) => {
-                          const discountValue = product?.discount?.value || 0;
-                          const discountedPrice =
-                            product.retailPrice -
-                            product.retailPrice * (discountValue / 100);
-                          return discountedPrice >= 500;
-                        })
-                        .slice(0, 3)
+                        ?.slice(0, 3)
                         .map((product: any, index: number) => (
                           <>
                             {product?.isShopifyAvailable && (

@@ -8,9 +8,25 @@ import { useRouter } from "next/navigation";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { APP_ROUTES } from "@/utils/routes";
 import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
+import { FaShoppingCart } from "react-icons/fa";
 
 const FALLBACK_LANDING_IMAGE = "/logo/newLanding.png";
 const MACHINE_LOCATION_KEY = "kiosk_machine_location";
+const CTA_ICON_SIZE = { xs: 24, sm: 28 };
+const ctaIconBoxSx = {
+  width: CTA_ICON_SIZE,
+  height: CTA_ICON_SIZE,
+  flexShrink: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "#fff",
+  "& img, & svg": {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+  },
+};
 const neonButtonSx = {
   display: "flex",
   alignItems: "center",
@@ -189,7 +205,7 @@ export default function NewPromoLanding() {
             component="img"
             src="/wending/scanlogo.svg"
             alt=""
-            sx={{ width: { xs: 26, sm: 30 }, height: { xs: 26, sm: 30 }, flexShrink: 0 }}
+            sx={ctaIconBoxSx}
           />
           <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
             <Typography
@@ -218,12 +234,9 @@ export default function NewPromoLanding() {
         </Button>
 
         <Button onClick={handleBuyProducts} sx={neonButtonSx}>
-          <Box
-            component="img"
-            src="/wending/productlog.svg"
-            alt=""
-            sx={{ width: { xs: 26, sm: 30 }, height: { xs: 26, sm: 30 }, flexShrink: 0, color: "#fff", objectFit: "contain" }}
-          />
+          <Box sx={ctaIconBoxSx}>
+            <FaShoppingCart />
+          </Box>
           <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
             <Typography
               sx={{
@@ -250,18 +263,8 @@ export default function NewPromoLanding() {
           </Box>
         </Button>
         <Button onClick={handleSpinWheelClick} sx={neonButtonSx}>
-          <Box
-            sx={{
-              width: { xs: 26, sm: 30 },
-              height: { xs: 26, sm: 30 },
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-            }}
-          >
-            <Icon icon="mdi:ferris-wheel" width={28} height={28} />
+          <Box sx={ctaIconBoxSx}>
+            <Icon icon="mdi:ferris-wheel" />
           </Box>
           <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
             <Typography
