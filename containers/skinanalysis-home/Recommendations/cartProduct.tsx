@@ -418,7 +418,11 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     // UPI). The agent name + amount + method="cash" travel in the checkout summary
     // so the dispense-success webhook can include them.
     const handleCashConfirmed = useCallback(
-        async (agentName: string) => {
+        async (auth: { agentName: string; method?: "qr" | "password"; staff?: { hash?: string; role?: string; branch?: string; phone?: string } } | string) => {
+            const agentName = typeof auth === "string" ? auth : auth.agentName;
+            const staffAuthMethod = typeof auth === "string" ? "password" : auth.method;
+            const staff = typeof auth === "string" ? undefined : auth.staff;
+
             const txnId = `CASH-${Date.now()}`;
             if (paymentRecordedRef.current === txnId) return;
 
@@ -440,6 +444,11 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 status: "paid",
                 method: "cash",
                 agentName,
+                staffAuthMethod,
+                staffHash: staff?.hash,
+                staffRole: staff?.role,
+                staffBranch: staff?.branch,
+                staffPhone: staff?.phone,
                 machineId,
                 machineName,
                 machineLocation,
