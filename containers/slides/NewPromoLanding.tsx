@@ -8,34 +8,32 @@ import { useRouter } from "next/navigation";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { APP_ROUTES } from "@/utils/routes";
 import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
-import { FaShoppingCart } from "react-icons/fa";
-
 const FALLBACK_LANDING_IMAGE = "/logo/newLanding.png";
 const MACHINE_LOCATION_KEY = "kiosk_machine_location";
-const CTA_ICON_SIZE = { xs: 24, sm: 28 };
-const ctaIconBoxSx = {
-  width: CTA_ICON_SIZE,
-  height: CTA_ICON_SIZE,
+/** Fixed icon column so scan / cart / spin icons share one vertical axis. */
+const CTA_ICON_BOX = {
+  width: { xs: 40, sm: 44 },
+  height: { xs: 40, sm: 44 },
   flexShrink: 0,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   color: "#fff",
   "& img, & svg": {
-    width: "100%",
-    height: "100%",
+    width: { xs: 32, sm: 36 },
+    height: { xs: 32, sm: 36 },
     objectFit: "contain",
   },
-};
+} as const;
 const neonButtonSx = {
   display: "flex",
   alignItems: "center",
-  justifyContent: "center", // Changed to center since the button is now narrower
-  gap: { xs: 1.5, sm: 2 },
+  justifyContent: "flex-start",
+  gap: { xs: 1.75, sm: 2.25 },
   width: "100%",
-  minHeight: { xs: 56, sm: 64 }, // Slightly reduced height to match the narrower width proportionally
-  px: { xs: 2, sm: 3 },
-  py: { xs: 1, sm: 1.25 },
+  minHeight: { xs: 64, sm: 68 },
+  px: { xs: 2.5, sm: 3 },
+  py: { xs: 1.25, sm: 1.5 },
   borderRadius: "50px",
   textTransform: "none" as const,
   color: "#fff",
@@ -60,6 +58,13 @@ const neonButtonSx = {
     transform: "scale(0.98)",
   },
 };
+const ctaTextColSx = {
+  display: "flex",
+  flexDirection: "column",
+  textAlign: "left",
+  minWidth: 0,
+  flex: 1,
+} as const;
 
 export default function NewPromoLanding() {
   const router = useRouter();
@@ -201,17 +206,19 @@ export default function NewPromoLanding() {
         }}
       >
         <Button onClick={handleStartScan} sx={neonButtonSx}>
-          <Box
-            component="img"
-            src="/wending/scanlogo.svg"
-            alt=""
-            sx={ctaIconBoxSx}
-          />
-          <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
+          <Box sx={CTA_ICON_BOX}>
+            <Box
+              component="img"
+              src="/wending/scanlogo.svg"
+              alt=""
+              sx={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
+          </Box>
+          <Box sx={ctaTextColSx}>
             <Typography
               sx={{
                 fontWeight: 700,
-                fontSize: 24,
+                fontSize: { xs: 20, sm: 22 },
                 letterSpacing: "0.03em",
                 lineHeight: 1.2,
                 color: "#fff",
@@ -222,9 +229,9 @@ export default function NewPromoLanding() {
             <Typography
               sx={{
                 fontWeight: 500,
-                fontSize: 20,
+                fontSize: { xs: 16, sm: 17 },
                 letterSpacing: "0.02em",
-                lineHeight: 1.2,
+                lineHeight: 1.25,
                 color: "rgba(255, 255, 255, 0.9)",
               }}
             >
@@ -234,14 +241,14 @@ export default function NewPromoLanding() {
         </Button>
 
         <Button onClick={handleBuyProducts} sx={neonButtonSx}>
-          <Box sx={ctaIconBoxSx}>
-            <FaShoppingCart />
+          <Box sx={CTA_ICON_BOX}>
+            <Icon icon="mdi:cart-outline" width={36} height={36} />
           </Box>
-          <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
+          <Box sx={ctaTextColSx}>
             <Typography
               sx={{
                 fontWeight: 700,
-                fontSize: 24,
+                fontSize: { xs: 20, sm: 22 },
                 letterSpacing: "0.03em",
                 lineHeight: 1.2,
                 color: "#fff",
@@ -252,9 +259,9 @@ export default function NewPromoLanding() {
             <Typography
               sx={{
                 fontWeight: 500,
-                fontSize: 18,
+                fontSize: { xs: 16, sm: 17 },
                 letterSpacing: "0.02em",
-                lineHeight: 1.2,
+                lineHeight: 1.25,
                 color: "rgba(255, 255, 255, 0.9)",
               }}
             >
@@ -263,14 +270,14 @@ export default function NewPromoLanding() {
           </Box>
         </Button>
         <Button onClick={handleSpinWheelClick} sx={neonButtonSx}>
-          <Box sx={ctaIconBoxSx}>
-            <Icon icon="mdi:ferris-wheel" />
+          <Box sx={CTA_ICON_BOX}>
+            <Icon icon="mdi:ferris-wheel" width={36} height={36} />
           </Box>
-          <Box sx={{ display: "flex", flexDirection: "column", textAlign: "left" }}>
+          <Box sx={ctaTextColSx}>
             <Typography
               sx={{
                 fontWeight: 700,
-                fontSize: 24,
+                fontSize: { xs: 20, sm: 22 },
                 letterSpacing: "0.03em",
                 lineHeight: 1.2,
                 color: "#fff",
@@ -282,9 +289,9 @@ export default function NewPromoLanding() {
             <Typography
               sx={{
                 fontWeight: 500,
-                fontSize: 18,
+                fontSize: { xs: 16, sm: 17 },
                 letterSpacing: "0.02em",
-                lineHeight: 1.2,
+                lineHeight: 1.25,
                 color: "rgba(255, 255, 255, 0.9)",
                 textTransform: "uppercase",
               }}

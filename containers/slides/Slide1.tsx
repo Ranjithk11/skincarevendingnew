@@ -519,6 +519,8 @@ export default function Slide1({
         <VirtualKeyboard
           onKeyPress={handleKeyPress}
           layout={activeField === "email" ? "email" : isNumeric ? "numeric" : "default"}
+          // Parent owns field state — avoid DOM apply fighting React/MuiTelInput.
+          skipApplyToActiveElement
         />
       </PageBackground>
     </Box>

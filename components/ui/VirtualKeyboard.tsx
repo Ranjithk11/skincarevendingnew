@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState } from "react";
 import Keyboard from "react-simple-keyboard";
+// Side-effect stylesheet for react-simple-keyboard key chrome.
 import "react-simple-keyboard/build/css/index.css";
 import { Box, IconButton, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
@@ -121,12 +122,12 @@ export default function VirtualKeyboard({
   const handleKeyPress = (button: string) => {
     const now = Date.now();
     const last = lastKeyEventRef.current;
-    // Touch screens often emit a real key event, then a compatibility mouse/click
-    // ~300ms later. Coalesce both so one tap never inserts two characters.
+    // Coalesce only near-simultaneous duplicate events (pointer + library).
+    // Keep the window short so intentional repeats (e.g. phone "99") still work.
     if (last) {
       const dt = now - last.ts;
-      if (dt < 120) return;
-      if (last.key === button && dt < 500) return;
+      if (dt < 80) return;
+      if (last.key === button && dt < 140) return;
     }
     lastKeyEventRef.current = { key: button, ts: now };
 

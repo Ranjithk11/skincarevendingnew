@@ -19,30 +19,32 @@ const WHEEL_RADIUS = 600;
 const SEGMENT_COUNT = SPIN_WHEEL_SEGMENTS.length;
 const SEGMENT_ARC = (2 * Math.PI) / SEGMENT_COUNT;
 
-function wrapText(
+/** Wrap so each line respects the chord width at its own Y (narrower toward center). */
+function wrapTextLinesRadial(
   ctx: CanvasRenderingContext2D,
   text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number
-) {
+  startY: number,
+  lineHeight: number,
+  widthAt: (y: number) => number
+): string[] {
   const words = text.split(" ");
+  const lines: string[] = [];
   let line = "";
-  let yy = y;
+  let lineIndex = 0;
 
   words.forEach((word) => {
     const test = line ? `${line} ${word}` : word;
+    const maxWidth = widthAt(startY + lineIndex * lineHeight);
     if (ctx.measureText(test).width > maxWidth && line) {
-      ctx.fillText(line, x, yy);
+      lines.push(line);
       line = word;
-      yy += lineHeight;
+      lineIndex += 1;
     } else {
       line = test;
     }
   });
-
-  ctx.fillText(line, x, yy);
+  if (line) lines.push(line);
+  return lines;
 }
 
 function drawWheel(canvas: HTMLCanvasElement) {
@@ -63,6 +65,10 @@ function drawWheel(canvas: HTMLCanvasElement) {
   ctx.fillStyle = rim;
   ctx.fill();
 
+  // Chord width at a given radius — wider near the rim, narrower toward center.
+  const chordWidthAt = (radius: number) =>
+    Math.max(40, Math.sin(SEGMENT_ARC / 2) * Math.abs(radius) * 2 * 0.9);
+
   SPIN_WHEEL_SEGMENTS.forEach((segment, index) => {
     const start = -Math.PI / 2 - SEGMENT_ARC / 2 + index * SEGMENT_ARC;
     ctx.beginPath();
@@ -76,24 +82,46 @@ function drawWheel(canvas: HTMLCanvasElement) {
     ctx.stroke();
 
     ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, inner - 6, start, start + SEGMENT_ARC);
+    ctx.closePath();
+    ctx.clip();
+
     ctx.rotate(start + SEGMENT_ARC / 2 + Math.PI / 2);
     ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Titles sit near the rim so body copy can use the wider band underneath.
+    const titleSize = 32;
+    const titleStartY = -inner * 0.84;
+    const titleLineHeight = titleSize + 1;
+    ctx.font = `800 ${titleSize}px Montserrat, sans-serif`;
     ctx.fillStyle = "#7C2340";
-    ctx.font = "700 34px Montserrat, sans-serif";
     segment.titleLines.forEach((line, lineIndex) => {
-      ctx.fillText(line, 0, -inner * 0.62 + lineIndex * 40);
+      const y = titleStartY + lineIndex * titleLineHeight;
+      ctx.fillText(line, 0, y, chordWidthAt(y) * 0.98);
     });
 
-    ctx.fillStyle = "#8C5567";
-    ctx.font = "600 22px Montserrat, sans-serif";
-    wrapText(
+    // Description starts just under the title (still in the outer/wider band).
+    const descSize = 20;
+    const descLineHeight = descSize + 2;
+    const descStartY =
+      titleStartY + segment.titleLines.length * titleLineHeight + titleSize * 0.28;
+    ctx.font = `600 ${descSize}px Montserrat, sans-serif`;
+    const descLines = wrapTextLinesRadial(
       ctx,
       segment.description,
-      0,
-      -inner * 0.62 + segment.titleLines.length * 40 + 26,
-      250,
-      28
+      descStartY,
+      descLineHeight,
+      chordWidthAt
     );
+
+    ctx.fillStyle = "#8C5567";
+    descLines.forEach((line, lineIndex) => {
+      const y = descStartY + lineIndex * descLineHeight;
+      ctx.fillText(line, 0, y, chordWidthAt(y) * 0.98);
+    });
     ctx.restore();
   });
 
@@ -295,7 +323,9 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
       ) : null}
 
       <button type="button" className={styles.backLink} onClick={handleBack}>
-        {returnTo ? "Go back" : "Back to home"}
+        <span style={{ fontSize: "24px" }}>
+          {returnTo ? "Go back" : "Back to home"}
+        </span>
       </button>
 
       <div className={`${styles.overlay} ${showResult ? styles.overlayShow : ""}`}>
