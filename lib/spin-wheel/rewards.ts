@@ -45,9 +45,10 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     type: "PERCENT_BIRTHDAY_15",
     title: "IT'S YOUR BIRTHDAY? EXTRA 15% OFF!",
     titleLines: ["IT'S YOUR BIRTHDAY?", "EXTRA 15% OFF!"],
-    description: "Celebrate with an extra 15% OFF on orders above ₹1,000.",
+    description:
+      "Extra 15% OFF on your birthday (orders above ₹1,000). Share your details — this offer is for your birthday only and is not applied to the current purchase.",
     fill: "#F9C6D1",
-    appliesToCart: true,
+    appliesToCart: false,
   },
   {
     id: "flat_100",
@@ -99,7 +100,6 @@ export type SpinWheelDiscountResult = {
 };
 
 const EXTRA_5_MIN_ORDER = 500;
-const BIRTHDAY_15_MIN_ORDER = 1000;
 const FLAT_100_MIN_ORDER = 1000;
 const FLAT_200_MIN_ORDER = 2999;
 
@@ -165,6 +165,16 @@ export function computeSpinWheelDiscount(
     };
   }
 
+  if (reward.type === "PERCENT_BIRTHDAY_15") {
+    return {
+      discount: 0,
+      canApply: false,
+      message:
+        "Birthday 15% OFF is for your birthday only. Your details were saved — it will not be applied to this purchase.",
+      reason: "birthday_only",
+    };
+  }
+
   if (!segment.appliesToCart || reward.type === "NO_PRIZE") {
     return {
       discount: 0,
@@ -193,17 +203,6 @@ export function computeSpinWheelDiscount(
         discount,
         canApply: discount > 0,
         message: "Extra 5% discount applied from your spin wheel reward.",
-      };
-    }
-    case "PERCENT_BIRTHDAY_15": {
-      if (cartTotal < BIRTHDAY_15_MIN_ORDER) {
-        return minOrderNotMet(BIRTHDAY_15_MIN_ORDER);
-      }
-      const discount = Math.round(cartTotal * 0.15);
-      return {
-        discount,
-        canApply: discount > 0,
-        message: "Birthday extra 15% discount applied from your spin wheel reward.",
       };
     }
     case "FLAT_100": {

@@ -978,7 +978,9 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                         {spinReward.redeemed ? " (used)" : ""}
                                                     </Typography>
                                                 </Box>
-                                                {!couponApplied && !spinReward.redeemed ? (
+                                                {!couponApplied &&
+                                                !spinReward.redeemed &&
+                                                spinValidation.canApply ? (
                                                     <Button
                                                         variant="contained"
                                                         disableElevation

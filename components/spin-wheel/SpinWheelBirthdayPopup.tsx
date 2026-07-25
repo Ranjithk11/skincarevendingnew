@@ -515,8 +515,8 @@ export default function SpinWheelBirthdayPopup({
                     mx: "auto",
                   }}
                 >
-                  Your extra 15% birthday discount is ready. Continue shopping to
-                  use it at checkout.
+                  Your extra 15% birthday discount is saved. It applies on your
+                  birthday only — not on this purchase.
                 </Typography>
               </Box>
             )}
