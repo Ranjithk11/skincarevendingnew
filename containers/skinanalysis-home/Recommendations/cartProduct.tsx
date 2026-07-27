@@ -44,7 +44,6 @@ import {
   buildSpinWheelWebhookPayload,
   type SpinWheelWebhookPayload,
 } from "@/lib/spin-wheel/webhook";
-import SpinWheelNextPurchasePopup from "@/components/spin-wheel/SpinWheelNextPurchasePopup";
 
 type CartProductProps = {
     open: boolean;
@@ -73,24 +72,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [couponApplied, setCouponApplied] = useState(false);
     const [couponMessage, setCouponMessage] = useState("");
-    const [nextPurchaseClaimOpen, setNextPurchaseClaimOpen] = useState(false);
-    const [nextPurchaseClaimed, setNextPurchaseClaimed] = useState(false);
     const { reward: spinReward, validateForCart, markRewardRedeemed } = useSpinWheel();
-
-    const claimSessionUser = useMemo(
-      () => ({
-        userId: session?.user?.id ? String(session.user.id) : undefined,
-        name: (session?.user as { name?: string } | undefined)?.name || "",
-        email: (session?.user as { email?: string } | undefined)?.email || "",
-        phone:
-          (session?.user as { mobileNumber?: string; phoneNumber?: string; phone?: string } | undefined)
-            ?.mobileNumber ||
-          (session?.user as { phoneNumber?: string } | undefined)?.phoneNumber ||
-          (session?.user as { phone?: string } | undefined)?.phone ||
-          "",
-      }),
-      [session]
-    );
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
     const [isDispensing, setIsDispensing] = useState(false);
     const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -395,15 +377,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
         setCouponApplied(true);
     }, [open, step, spinReward, total, validateForCart]);
 
-    // Open claim popup on checkout when ₹100 next-purchase reward is unclaimed.
-    useEffect(() => {
-      if (!open || step !== "checkout") return;
-      if (!isNextPurchaseSpinReward(spinReward) || spinReward?.redeemed || nextPurchaseClaimed) {
-        return;
-      }
-      setNextPurchaseClaimOpen(true);
-    }, [open, step, spinReward, nextPurchaseClaimed]);
-
     const handleApplySpinCoupon = useCallback(() => {
         if (!spinReward) {
             toast.info("Spin the wheel first to win a reward.");
@@ -415,9 +388,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
             setCouponMessage(validation.message);
             setCouponApplied(false);
             toast.info(validation.message);
-            if (isNextPurchaseSpinReward(spinReward) && !nextPurchaseClaimed) {
-              setNextPurchaseClaimOpen(true);
-            }
             return;
         }
 
@@ -432,7 +402,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
 
         setCouponApplied(true);
         toast.success(validation.message);
-    }, [spinReward, total, validateForCart, nextPurchaseClaimed]);
+    }, [spinReward, total, validateForCart]);
 
     const handleRemoveSpinCoupon = useCallback(() => {
         setCouponApplied(false);
@@ -1087,26 +1057,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                         Apply
                                                     </Button>
                                                 ) : null}
-                                                {isNextPurchaseOnly &&
-                                                !spinReward.redeemed &&
-                                                !nextPurchaseClaimed ? (
-                                                    <Button
-                                                        variant="contained"
-                                                        disableElevation
-                                                        onClick={() => setNextPurchaseClaimOpen(true)}
-                                                        sx={{
-                                                            textTransform: "none",
-                                                            fontWeight: 600,
-                                                            fontSize: 18,
-                                                            borderRadius: "0 6px 6px 0",
-                                                            minWidth: 120,
-                                                            bgcolor: "#006c49",
-                                                            "&:hover": { bgcolor: "#005236" },
-                                                        }}
-                                                    >
-                                                        Claim
-                                                    </Button>
-                                                ) : null}
                                             </Box>
                                             {couponMessage ? (
                                                 <Typography sx={{ fontSize: 16, color: "#6b7280", mt: 1 }}>
@@ -1438,14 +1388,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                     spinWheel={spinWheelWebhookData}
                 />
             </Dialog>
-
-            <SpinWheelNextPurchasePopup
-              open={nextPurchaseClaimOpen}
-              onClose={() => setNextPurchaseClaimOpen(false)}
-              onClaimed={() => setNextPurchaseClaimed(true)}
-              user={claimSessionUser}
-              reward={spinReward}
-            />
         </>
     );
 };

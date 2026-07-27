@@ -211,7 +211,13 @@ export default function NewPromoLanding() {
               component="img"
               src="/wending/scanlogo.svg"
               alt=""
-              sx={{ width: "100%", height: "100%", objectFit: "contain" }}
+              sx={{
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                // Dark neon CTA — keep the white scan glyph.
+                filter: "none",
+              }}
             />
           </Box>
           <Box sx={ctaTextColSx}>

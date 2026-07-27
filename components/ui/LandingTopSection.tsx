@@ -100,7 +100,13 @@ export default function LandingTopSection({
             component="img"
             src="/wending/scanlogo.svg"
             alt="Scan"
-            sx={{ width: 40, height: 40, display: "block" }}
+            sx={{
+              width: 40,
+              height: 40,
+              display: "block",
+              // Primary/dark CTA — keep the white scan glyph.
+              filter: "none",
+            }}
           />
         }
         sx={{

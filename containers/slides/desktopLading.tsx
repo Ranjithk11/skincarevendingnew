@@ -70,7 +70,15 @@ export default function DesktopLandingPage() {
           <ActionButton
             variant="primary"
             fullWidth
-            icon={<Image src="/wending/scanlogo.svg" alt="Scan" width={22} height={22} />}
+            icon={
+              <Image
+                src="/wending/scanlogo.svg"
+                alt="Scan"
+                width={22}
+                height={22}
+                style={{ filter: "none" }}
+              />
+            }
             onClick={handleStartScan}
           >
             Start AI Skin Scan

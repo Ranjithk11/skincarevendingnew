@@ -22,6 +22,8 @@ interface TopLogoProps {
   firstButtonIcon?: string;
   /** Path (starts with /) or Iconify icon name */
   secondButtonIcon?: string;
+  /** Icon tone for image icons. Black on white TopLogo buttons; white on dark CTAs. */
+  secondButtonIconTone?: "black" | "white";
   mode?: "actions" | "centered";
   /** When false, skip Spin & Win reward highlight (e.g. button is Use AI scan). */
   highlightActiveReward?: boolean;
@@ -31,7 +33,11 @@ interface TopLogoProps {
 
 const ACTION_ICON_SIZE = 24;
 
-const renderSecondButtonIcon = (icon: string, size: number) => {
+const renderSecondButtonIcon = (
+  icon: string,
+  size: number,
+  tone: "black" | "white" = "black"
+) => {
   if (icon.startsWith("/")) {
     return (
       <Image
@@ -39,11 +45,23 @@ const renderSecondButtonIcon = (icon: string, size: number) => {
         width={size}
         height={size}
         alt=""
-        style={{ display: "block", objectFit: "contain" }}
+        style={{
+          display: "block",
+          objectFit: "contain",
+          // SVG asset is white by default (landing dark CTAs). Invert to black on white buttons.
+          ...(tone === "black" ? { filter: "brightness(0)" } : undefined),
+        }}
       />
     );
   }
-  return <Icon icon={icon} width={size} height={size} color="#111827" />;
+  return (
+    <Icon
+      icon={icon}
+      width={size}
+      height={size}
+      color={tone === "black" ? "#111827" : "#ffffff"}
+    />
+  );
 };
 
 const baseActionButtonSx = {
@@ -97,6 +115,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
   secondButtonSubLabel = "Rewards",
   firstButtonIcon = "/icons/cart.svg",
   secondButtonIcon = "mdi:ferris-wheel",
+  secondButtonIconTone = "black",
   mode = "actions",
   highlightActiveReward = true,
   pulseSecondButton = false,
@@ -319,7 +338,11 @@ const TopLogo: React.FC<TopLogoProps> = ({
                   />
                 )}
                 <Box sx={actionIconSx}>
-                  {renderSecondButtonIcon(secondButtonIcon, ACTION_ICON_SIZE)}
+                  {renderSecondButtonIcon(
+                    secondButtonIcon,
+                    ACTION_ICON_SIZE,
+                    secondButtonIconTone
+                  )}
                 </Box>
                 <Box
                   sx={{

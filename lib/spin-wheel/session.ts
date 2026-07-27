@@ -2,10 +2,15 @@ import type { SpinWheelReward } from "./rewards";
 
 const SCOPE_KEY = "kiosk_spin_scope_id";
 const REWARD_PREFIX = "spin_wheel_reward_";
+const NEXT_PURCHASE_LEAD_PREFIX = "spin_wheel_next_purchase_lead_";
 export const SPIN_WHEEL_CLEAR_EVENT = "spin-wheel-session-cleared";
 
 function rewardKey(scopeId: string): string {
   return `${REWARD_PREFIX}${scopeId}`;
+}
+
+function nextPurchaseLeadKey(scopeId: string): string {
+  return `${NEXT_PURCHASE_LEAD_PREFIX}${scopeId}`;
 }
 
 function createWalkInScopeId(): string {
@@ -66,6 +71,17 @@ export function markSpinWheelRewardRedeemed(scopeId: string): SpinWheelReward | 
   return next;
 }
 
+/** Whether the ₹100 next-purchase lead was already submitted this session. */
+export function isNextPurchaseLeadClaimed(scopeId: string): boolean {
+  if (typeof window === "undefined" || !scopeId) return false;
+  return window.sessionStorage.getItem(nextPurchaseLeadKey(scopeId)) === "1";
+}
+
+export function markNextPurchaseLeadClaimed(scopeId: string): void {
+  if (typeof window === "undefined" || !scopeId) return;
+  window.sessionStorage.setItem(nextPurchaseLeadKey(scopeId), "1");
+}
+
 /** Clears spin wheel state for the current browser session (call on logout / idle reset). */
 export function clearSpinWheelSession(): void {
   if (typeof window === "undefined") return;
@@ -73,13 +89,17 @@ export function clearSpinWheelSession(): void {
   const scopeId = window.sessionStorage.getItem(SCOPE_KEY)?.trim();
   if (scopeId) {
     window.sessionStorage.removeItem(rewardKey(scopeId));
+    window.sessionStorage.removeItem(nextPurchaseLeadKey(scopeId));
   }
 
   window.sessionStorage.removeItem(SCOPE_KEY);
 
   for (let i = window.sessionStorage.length - 1; i >= 0; i -= 1) {
     const key = window.sessionStorage.key(i);
-    if (key?.startsWith(REWARD_PREFIX)) {
+    if (
+      key?.startsWith(REWARD_PREFIX) ||
+      key?.startsWith(NEXT_PURCHASE_LEAD_PREFIX)
+    ) {
       window.sessionStorage.removeItem(key);
     }
   }

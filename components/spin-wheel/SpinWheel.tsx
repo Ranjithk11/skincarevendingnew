@@ -12,6 +12,11 @@ import { drawSpinWheelIcon } from "@/lib/spin-wheel/drawIcons";
 import {
   sanitizeReturnTo,
 } from "@/lib/spin-wheel/navigation";
+import {
+  isNextPurchaseLeadClaimed,
+  markNextPurchaseLeadClaimed,
+} from "@/lib/spin-wheel/session";
+import { sendBirthdayOfferWebhook } from "@/utils/webhook";
 import { APP_ROUTES } from "@/utils/routes";
 import SpinWheelConsultationPopup from "@/components/spin-wheel/SpinWheelConsultationPopup";
 import SpinWheelBirthdayPopup from "@/components/spin-wheel/SpinWheelBirthdayPopup";
@@ -186,19 +191,8 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
   const [nextPurchaseDismissed, setNextPurchaseDismissed] = useState(false);
   const [nextPurchaseClaimed, setNextPurchaseClaimed] = useState(false);
   const [pulseAiScan, setPulseAiScan] = useState(false);
-  const { hasSpun, reward, isSpinning, saveReward, setIsSpinning, clearRewardSession } =
+  const { hasSpun, reward, isSpinning, saveReward, setIsSpinning, clearRewardSession, scopeId } =
     useSpinWheel();
-
-  // Open as soon as an unclaimed ₹100 reward exists (fresh win OR page reload).
-  const nextPurchaseOpen = Boolean(
-    reward &&
-      isNextPurchaseSpinReward(reward) &&
-      !reward.redeemed &&
-      !nextPurchaseClaimed &&
-      !nextPurchaseDismissed &&
-      !spinning &&
-      !isSpinning
-  );
 
   const sessionUser = useMemo(
     () => ({
@@ -213,6 +207,53 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
         "",
     }),
     [session]
+  );
+
+  const hasExistingContact = Boolean(
+    sessionUser.name.trim() && sessionUser.phone.trim()
+  );
+
+  useEffect(() => {
+    if (isNextPurchaseLeadClaimed(scopeId)) {
+      setNextPurchaseClaimed(true);
+    }
+  }, [scopeId]);
+
+  const submitNextPurchaseLead = useCallback(
+    async (nextReward: typeof reward) => {
+      if (!nextReward) return;
+      await sendBirthdayOfferWebhook({
+        event: "next_purchase_offer_lead",
+        user: {
+          userId: sessionUser.userId,
+          name: sessionUser.name,
+          phone: sessionUser.phone,
+          email: sessionUser.email,
+        },
+        spinWheel: {
+          couponCode: nextReward.code,
+          rewardType: nextReward.type,
+          title: nextReward.title,
+          segmentId: nextReward.segmentId,
+        },
+      });
+      markNextPurchaseLeadClaimed(scopeId);
+      setNextPurchaseClaimed(true);
+      setNextPurchaseDismissed(true);
+    },
+    [scopeId, sessionUser]
+  );
+
+  // Only ask for details on the spin-wheel page when contact is missing and not already claimed.
+  const nextPurchaseOpen = Boolean(
+    reward &&
+      isNextPurchaseSpinReward(reward) &&
+      !reward.redeemed &&
+      !nextPurchaseClaimed &&
+      !nextPurchaseDismissed &&
+      !hasExistingContact &&
+      !spinning &&
+      !isSpinning
   );
 
   useEffect(() => {
@@ -268,6 +309,11 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
       return;
     }
     if (isNextPurchaseSpinReward(reward) && !nextPurchaseClaimed) {
+      if (hasExistingContact) {
+        void submitNextPurchaseLead(reward);
+        promptAiScan();
+        return;
+      }
       openNextPurchaseClaim();
       return;
     }
@@ -276,11 +322,13 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
   }, [
     birthdayClaimed,
     consultationClaimed,
+    hasExistingContact,
     nextPurchaseClaimed,
     onContinue,
     openNextPurchaseClaim,
     promptAiScan,
     reward,
+    submitNextPurchaseLead,
   ]);
 
   const handleBack = useCallback(() => {
@@ -353,8 +401,18 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
         return;
       }
       if (isNextPurchaseSpinReward(nextReward)) {
-        // Derived `nextPurchaseOpen` becomes true once spinning flags clear.
         setShowResult(false);
+        // Contact already known (login / earlier form) — send lead quietly, no popup.
+        if (hasExistingContact || isNextPurchaseLeadClaimed(scopeId)) {
+          if (!isNextPurchaseLeadClaimed(scopeId)) {
+            void submitNextPurchaseLead(nextReward);
+          } else {
+            setNextPurchaseClaimed(true);
+            setNextPurchaseDismissed(true);
+          }
+          setShowResult(true);
+          return;
+        }
         setNextPurchaseDismissed(false);
         return;
       }
@@ -362,12 +420,15 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
     }, 6100);
   }, [
     clearRewardSession,
+    hasExistingContact,
     hasSpun,
     isSpinning,
     saveReward,
+    scopeId,
     searchParams,
     setIsSpinning,
     spinning,
+    submitNextPurchaseLead,
   ]);
 
   const forceFlat100 = searchParams.get("force") === "flat_100";
@@ -383,6 +444,7 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
         secondButtonLabel="Use AI scan"
         secondButtonSubLabel="Skin analysis"
         secondButtonIcon="/wending/scanlogo.svg"
+        secondButtonIconTone="black"
         onSpinWheelClick={() => router.push("/questionnaire")}
         highlightActiveReward={false}
         pulseSecondButton={pulseAiScan}
@@ -553,7 +615,10 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
           setNextPurchaseDismissed(true);
           setShowResult(false);
         }}
-        onClaimed={() => setNextPurchaseClaimed(true)}
+        onClaimed={() => {
+          markNextPurchaseLeadClaimed(scopeId);
+          setNextPurchaseClaimed(true);
+        }}
         user={sessionUser}
         reward={reward}
       />
