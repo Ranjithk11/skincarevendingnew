@@ -62,6 +62,8 @@ export const useVoiceMessages = () => {
     () => ({
     welcome: "Welcome to Leaf Water Skincare Vending Machine",
     homeStartScan: "Tap Start A I Skin Scan to begin.",
+    spinWheelUseAiScan:
+      "Your reward is saved. Tap Use A I scan at the top right, and do a skin scan.",
     questionnaireIntro: "",
     questionnaireSlide1: "Enter your details.",
     questionnaireSlide2: "Select your skin type to continue.",

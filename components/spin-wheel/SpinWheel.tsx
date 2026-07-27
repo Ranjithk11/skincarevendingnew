@@ -5,13 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useSpinWheel } from "@/contexts/SpinWheelContext";
 import { SPIN_WHEEL_SEGMENTS } from "@/lib/spin-wheel/rewards";
-import {
-  resolveSpinWheelContinuePath,
-  sanitizeReturnTo,
-} from "@/lib/spin-wheel/navigation";
+import { sanitizeReturnTo } from "@/lib/spin-wheel/navigation";
 import { APP_ROUTES } from "@/utils/routes";
 import SpinWheelConsultationPopup from "@/components/spin-wheel/SpinWheelConsultationPopup";
 import SpinWheelBirthdayPopup from "@/components/spin-wheel/SpinWheelBirthdayPopup";
+import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
+import { useVoiceMessages } from "@/contexts/VoiceContext";
 import styles from "./spin-wheel.module.scss";
 
 const CANVAS_SIZE = 1200;
@@ -149,24 +148,23 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const { speakMessage } = useVoiceMessages();
   const returnTo = useMemo(
     () => sanitizeReturnTo(searchParams.get("returnTo")),
     [searchParams]
   );
-  const continuePath = useMemo(
-    () => resolveSpinWheelContinuePath(returnTo),
-    [returnTo]
-  );
-  const continueLabel =
-    returnTo === APP_ROUTES.RECOMMENDATIONS ? "Back to recommendations" : "Continue shopping";
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rotationRef = useRef(0);
+  const scanPulseTimerRef = useRef<number | null>(null);
   const [spinning, setSpinningLocal] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [resultTitle, setResultTitle] = useState("");
   const [resultDesc, setResultDesc] = useState("");
   const [consultationOpen, setConsultationOpen] = useState(false);
   const [birthdayOpen, setBirthdayOpen] = useState(false);
+  const [consultationClaimed, setConsultationClaimed] = useState(false);
+  const [birthdayClaimed, setBirthdayClaimed] = useState(false);
+  const [pulseAiScan, setPulseAiScan] = useState(false);
   const { hasSpun, reward, isSpinning, saveReward, setIsSpinning } = useSpinWheel();
 
   const sessionUser = useMemo(
@@ -196,18 +194,59 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
     }
   }, []);
 
-  const handleContinue = useCallback(() => {
+  const promptAiScan = useCallback(() => {
     setShowResult(false);
+    setPulseAiScan(true);
+    speakMessage("spinWheelUseAiScan");
+
+    if (scanPulseTimerRef.current) {
+      window.clearTimeout(scanPulseTimerRef.current);
+    }
+    scanPulseTimerRef.current = window.setTimeout(() => {
+      setPulseAiScan(false);
+      scanPulseTimerRef.current = null;
+    }, 7000);
+  }, [speakMessage]);
+
+  const handleContinue = useCallback(() => {
     if (onContinue) {
+      setShowResult(false);
       onContinue();
       return;
     }
-    router.push(continuePath);
-  }, [continuePath, onContinue, router]);
+
+    // For birthday / consultation rewards, reopen claim popup until details are submitted.
+    if (reward?.type === "FREE_CONSULTATION" && !consultationClaimed) {
+      setShowResult(false);
+      setConsultationOpen(true);
+      return;
+    }
+    if (reward?.type === "PERCENT_BIRTHDAY_15" && !birthdayClaimed) {
+      setShowResult(false);
+      setBirthdayOpen(true);
+      return;
+    }
+
+    promptAiScan();
+  }, [
+    birthdayClaimed,
+    consultationClaimed,
+    onContinue,
+    promptAiScan,
+    reward?.type,
+  ]);
 
   const handleBack = useCallback(() => {
     router.push(returnTo ?? APP_ROUTES.HOME);
   }, [returnTo, router]);
+
+  useEffect(() => {
+    return () => {
+      if (scanPulseTimerRef.current) {
+        window.clearTimeout(scanPulseTimerRef.current);
+      }
+    };
+  }, []);
 
   const spin = useCallback(() => {
     if (spinning || isSpinning || hasSpun) return;
@@ -230,6 +269,8 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
     window.setTimeout(() => {
       const segment = SPIN_WHEEL_SEGMENTS[winningIndex];
       const nextReward = saveReward(winningIndex);
+      setConsultationClaimed(false);
+      setBirthdayClaimed(false);
       setResultTitle(segment.title);
       setResultDesc(segment.description);
       setShowResult(true);
@@ -248,11 +289,43 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
 
   return (
     <div className={styles.stage}>
+      <TopLogo
+        isKiosk
+        firstButtonLabel="Slots"
+        firstButtonIcon="/wending/dashboard-gauge.svg"
+        onCartClick={() => router.push(APP_ROUTES.SLOTS)}
+        secondButtonLabel="Use AI scan"
+        secondButtonSubLabel="Skin analysis"
+        secondButtonIcon="/wending/scanlogo.svg"
+        onSpinWheelClick={() => router.push("/questionnaire")}
+        highlightActiveReward={false}
+        pulseSecondButton={pulseAiScan}
+      />
+
       <header className={styles.header}>
-        <div className={styles.title}>
-          Spin<span>the Wheel</span>
+        <div className={styles.giftWrap} aria-hidden>
+          <span className={styles.giftSpark} />
+          <span className={styles.giftSpark} />
+          <span className={styles.giftSpark} />
+          <span className={styles.giftSpark} />
+          <div className={styles.giftScene}>
+            <div className={styles.giftBox}>
+              <div className={styles.giftLid}>
+                <span className={styles.giftBow} />
+              </div>
+              <div className={styles.giftBody}>
+                <span className={styles.giftRibbonV} />
+                <span className={styles.giftGlow} />
+              </div>
+            </div>
+          </div>
         </div>
-        <div className={styles.ribbon}>WIN EXCITING REWARDS!</div>
+        <div className={styles.headerCopy}>
+          <div className={styles.title}>
+            Spin<span>the Wheel</span>
+          </div>
+          <div className={styles.ribbon}>WIN EXCITING REWARDS!</div>
+        </div>
       </header>
 
       <div className={styles.wheelWrap}>
@@ -316,7 +389,7 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
             <div className={styles.cardDesc}>Already used on a previous order this session.</div>
           ) : (
             <button type="button" className={styles.cardButton} onClick={handleContinue}>
-              {continueLabel}
+              Collect &amp; continue
             </button>
           )}
         </div>
@@ -342,6 +415,7 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
       <SpinWheelConsultationPopup
         open={consultationOpen}
         onClose={() => setConsultationOpen(false)}
+        onClaimed={() => setConsultationClaimed(true)}
         user={sessionUser}
         reward={reward}
       />
@@ -349,6 +423,7 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
       <SpinWheelBirthdayPopup
         open={birthdayOpen}
         onClose={() => setBirthdayOpen(false)}
+        onClaimed={() => setBirthdayClaimed(true)}
         user={sessionUser}
         reward={reward}
       />

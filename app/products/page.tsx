@@ -303,10 +303,10 @@ export default function BrowseProductsPage() {
       }
       if (key.length !== 1) return;
 
-      // Extra guard against touch + ghost-click double inserts.
+      // Light guard only — VirtualKeyboard already coalesces ghost double-fires.
       const now = Date.now();
       const last = lastTypedKeyRef.current;
-      if (last && last.key === key && now - last.ts < 500) return;
+      if (last && last.key === key && now - last.ts < 120) return;
       lastTypedKeyRef.current = { key, ts: now };
 
       setSearchQuery((prev) => `${prev}${key}`);

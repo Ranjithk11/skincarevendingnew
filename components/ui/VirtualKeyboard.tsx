@@ -48,19 +48,33 @@ export default function VirtualKeyboard({
 
   const applyToActiveElement = (key: string) => {
     if (typeof document === "undefined") return;
-    const active = (document.activeElement as any) || null;
-    const candidate = active || lastEditableRef.current;
-    const target = candidate || null;
+    const active = (document.activeElement as HTMLElement | null) || null;
+    const activeIsEditable =
+      active instanceof HTMLInputElement ||
+      active instanceof HTMLTextAreaElement ||
+      (!!active && (active as HTMLElement).isContentEditable);
+
+    // Prefer the focused field; if a key stole focus, fall back to last focused input.
+    const target = (activeIsEditable ? active : lastEditableRef.current) || null;
     if (!target) return;
 
     const isInput =
       target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
     const isEditable =
       !isInput &&
-      typeof (target as any).isContentEditable === "boolean" &&
-      (target as any).isContentEditable;
+      typeof (target as HTMLElement).isContentEditable === "boolean" &&
+      (target as HTMLElement).isContentEditable;
 
     if (!isInput && !isEditable) return;
+
+    // Re-focus so caret/selection APIs work after a key tap.
+    try {
+      if (document.activeElement !== target) {
+        (target as HTMLElement).focus({ preventScroll: true });
+      }
+    } catch {
+      /* ignore */
+    }
 
     if (key === "return") {
       try {
@@ -278,8 +292,9 @@ export default function VirtualKeyboard({
         keyboardRef={(r) => (keyboardRef.current = r)}
         layoutName={layoutName}
         onKeyPress={handleKeyPress}
-        // Touch devices: use touch events. Same-key debounce above blocks ghost clicks.
-        useTouchEvents
+        // Kiosk touchscreens often emit pointer/mouse, not reliable touch events.
+        // Touch-only mode makes keys look clickable but never update the field.
+        useTouchEvents={false}
         disableButtonHold
         preventMouseDownDefault
         stopMouseDownPropagation

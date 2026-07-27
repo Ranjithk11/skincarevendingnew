@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 36px 32px 28px;
+  padding: 110px 32px 28px;
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
@@ -21,8 +21,159 @@
 }
 
 .header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 3vw, 28px);
   margin-bottom: 6px;
+  text-align: left;
+}
+
+.giftWrap {
+  position: relative;
+  flex-shrink: 0;
+  width: clamp(96px, 15vw, 140px);
+  height: clamp(96px, 15vw, 140px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.giftScene {
+  position: relative;
+  width: 78%;
+  height: 78%;
+  filter: drop-shadow(0 10px 16px rgba(158, 27, 61, 0.28));
+  animation: giftBob 2.8s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+.giftBox {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.giftBody {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 0;
+  height: 58%;
+  border-radius: 10px 10px 14px 14px;
+  background: linear-gradient(160deg, #f7d56a 0%, #efbf2f 45%, #d9a418 100%);
+  border: 2px solid #c99212;
+  overflow: hidden;
+}
+
+.giftRibbonV {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 18%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #ef4d5a, #c2325a 60%, #9e1b3d);
+}
+
+.giftGlow {
+  position: absolute;
+  inset: 18% 22% auto;
+  height: 28%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.55), transparent 70%);
+  opacity: 0;
+  animation: giftGlow 2.8s ease-in-out infinite;
+}
+
+.giftLid {
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: 18%;
+  height: 28%;
+  border-radius: 10px;
+  background: linear-gradient(160deg, #ffdf7a 0%, #f0c33a 50%, #e0ad1c 100%);
+  border: 2px solid #c99212;
+  transform-origin: 12% 90%;
+  z-index: 2;
+  animation: giftLidOpen 2.8s ease-in-out infinite;
+  box-shadow: 0 4px 0 rgba(158, 27, 61, 0.12);
+}
+
+.giftLid::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 18%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #ff6b78, #c2325a);
+  border-radius: 2px;
+}
+
+.giftBow {
+  position: absolute;
+  left: 50%;
+  top: -42%;
+  width: 42%;
+  height: 70%;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(circle at 22% 55%, #ef4d5a 0 42%, transparent 43%),
+    radial-gradient(circle at 78% 55%, #ef4d5a 0 42%, transparent 43%),
+    radial-gradient(circle at 50% 78%, #c2325a 0 30%, transparent 31%);
+  filter: drop-shadow(0 2px 2px rgba(120, 20, 40, 0.25));
+}
+
+.giftSpark {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #e85a3c;
+  transform: rotate(45deg);
+  animation: sparkPop 2.8s ease-in-out infinite;
+  z-index: 3;
+}
+
+.giftSpark:nth-child(1) {
+  top: 4%;
+  right: 10%;
+}
+
+.giftSpark:nth-child(2) {
+  top: 18%;
+  left: 4%;
+  animation-delay: 0.15s;
+  background: #f0a020;
+}
+
+.giftSpark:nth-child(3) {
+  top: 0;
+  left: 42%;
+  width: 8px;
+  height: 8px;
+  animation-delay: 0.35s;
+  background: #c2325a;
+}
+
+.giftSpark:nth-child(4) {
+  top: 28%;
+  right: 0;
+  width: 7px;
+  height: 7px;
+  animation-delay: 0.55s;
+  background: #ef6b4a;
+}
+
+.headerCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .title {
@@ -41,7 +192,7 @@
 }
 
 .ribbon {
-  margin: 14px auto 0;
+  margin: 14px 0 0;
   display: inline-block;
   padding: 9px 34px;
   border-radius: 6px;
@@ -51,6 +202,61 @@
   font-weight: 700;
   letter-spacing: 3px;
   box-shadow: 0 6px 16px rgba(158, 27, 61, 0.25);
+}
+
+@keyframes giftBob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(1deg);
+  }
+}
+
+@keyframes giftLidOpen {
+  0%,
+  12% {
+    transform: rotate(0deg) translateY(0);
+  }
+  28%,
+  55% {
+    transform: rotate(-42deg) translateY(-6px) translateX(-2px);
+  }
+  72%,
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+}
+
+@keyframes giftGlow {
+  0%,
+  18%,
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  30%,
+  52% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@keyframes sparkPop {
+  0%,
+  18%,
+  70%,
+  100% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.4) translateY(8px);
+  }
+  30%,
+  50% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1.2) translateY(-4px);
+  }
 }
 
 .wheelWrap {

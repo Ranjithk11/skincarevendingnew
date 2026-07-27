@@ -23,6 +23,10 @@ interface TopLogoProps {
   /** Path (starts with /) or Iconify icon name */
   secondButtonIcon?: string;
   mode?: "actions" | "centered";
+  /** When false, skip Spin & Win reward highlight (e.g. button is Use AI scan). */
+  highlightActiveReward?: boolean;
+  /** Temporary attention pulse on the second action button (e.g. after Collect & continue). */
+  pulseSecondButton?: boolean;
 }
 
 const ACTION_ICON_SIZE = 24;
@@ -86,11 +90,14 @@ const TopLogo: React.FC<TopLogoProps> = ({
   firstButtonIcon = "/icons/cart.svg",
   secondButtonIcon = "mdi:ferris-wheel",
   mode = "actions",
+  highlightActiveReward = true,
+  pulseSecondButton = false,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
   const { reward } = useSpinWheel();
-  const hasActiveReward = Boolean(reward && !reward.redeemed);
+  const hasActiveReward =
+    highlightActiveReward && Boolean(reward && !reward.redeemed);
 
   const handleSecondButtonClick =
     onSpinWheelClick ??
@@ -259,16 +266,30 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 sx={{
                   ...baseActionButtonSx,
                   position: "relative",
-                  ...(hasActiveReward && {
+                  "@keyframes topLogoSecondPulse": {
+                    "0%, 100%": {
+                      transform: "scale(1)",
+                      boxShadow: "0 0 0 0 rgba(158, 27, 61, 0.35)",
+                    },
+                    "50%": {
+                      transform: "scale(1.07)",
+                      boxShadow: "0 0 0 10px rgba(158, 27, 61, 0)",
+                    },
+                  },
+                  ...((hasActiveReward || pulseSecondButton) && {
                     borderColor: "#9E1B3D",
                     color: "#9E1B3D",
                     fontWeight: 700,
                     backgroundColor: "#fdf2f8",
                   }),
+                  ...(pulseSecondButton && {
+                    animation: "topLogoSecondPulse 0.9s ease-in-out infinite",
+                    zIndex: 2,
+                  }),
                 }}
                 onClick={handleSecondButtonClick}
               >
-                {hasActiveReward && (
+                {(hasActiveReward || pulseSecondButton) && (
                   <Box
                     sx={{
                       position: "absolute",
@@ -279,6 +300,13 @@ const TopLogo: React.FC<TopLogoProps> = ({
                       borderRadius: "50%",
                       bgcolor: "#ef4444",
                       boxShadow: "0 0 0 1.5px #ffffff",
+                      ...(pulseSecondButton && {
+                        "@keyframes topLogoDotBlink": {
+                          "0%, 100%": { opacity: 1, transform: "scale(1)" },
+                          "50%": { opacity: 0.35, transform: "scale(1.35)" },
+                        },
+                        animation: "topLogoDotBlink 0.9s ease-in-out infinite",
+                      }),
                     }}
                   />
                 )}
@@ -309,7 +337,10 @@ const TopLogo: React.FC<TopLogoProps> = ({
                     sx={{
                       fontSize:18,
                       fontWeight: 400,
-                      color: hasActiveReward ? "#be185d" : "#6b7280",
+                      color:
+                        hasActiveReward || pulseSecondButton
+                          ? "#be185d"
+                          : "#6b7280",
                       whiteSpace: "nowrap",
                     }}
                   >
