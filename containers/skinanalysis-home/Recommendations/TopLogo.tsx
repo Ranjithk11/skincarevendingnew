@@ -33,9 +33,17 @@ const ACTION_ICON_SIZE = 24;
 
 const renderSecondButtonIcon = (icon: string, size: number) => {
   if (icon.startsWith("/")) {
-    return <Image src={icon} width={size} height={size} alt="" />;
+    return (
+      <Image
+        src={icon}
+        width={size}
+        height={size}
+        alt=""
+        style={{ display: "block", objectFit: "contain" }}
+      />
+    );
   }
-  return <Icon icon={icon} width={size} height={size} />;
+  return <Icon icon={icon} width={size} height={size} color="#111827" />;
 };
 
 const baseActionButtonSx = {

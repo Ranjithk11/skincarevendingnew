@@ -919,6 +919,8 @@ export interface BirthdayOfferUserInfo {
 }
 
 export interface BirthdayOfferPayload {
+  /** Defaults to birthday_offer_lead. Use next_purchase_offer_lead for ₹100 next visit. */
+  event?: "birthday_offer_lead" | "next_purchase_offer_lead";
   user?: BirthdayOfferUserInfo;
   machineName?: string;
   machineLocation?: string;
@@ -931,7 +933,7 @@ export interface BirthdayOfferPayload {
 }
 
 /**
- * Best-effort POST of a birthday spin-wheel lead (name, phone, DOB).
+ * Best-effort POST of a spin-wheel lead (birthday / next-purchase) to the birthday webhook URL.
  * Failures are swallowed so the UI is never blocked.
  */
 export async function sendBirthdayOfferWebhook(
@@ -943,7 +945,7 @@ export async function sendBirthdayOfferWebhook(
       DEFAULT_BIRTHDAY_OFFER_WEBHOOK_URL;
 
     const body = {
-      event: "birthday_offer_lead",
+      event: payload.event || "birthday_offer_lead",
       requested_at: new Date().toISOString(),
       source: "spin_wheel",
       user: {
@@ -972,7 +974,7 @@ export async function sendBirthdayOfferWebhook(
 
     return res.ok;
   } catch (err) {
-    console.warn("[birthday offer webhook] request failed:", err);
+    console.warn("[spin offer webhook] request failed:", err);
     return false;
   }
 }

@@ -324,17 +324,19 @@ export default function SpinWheelBirthdayPopup({
               aria-label="Close"
               sx={{
                 position: "absolute",
-                top: 24,
-                right: 24,
-                zIndex: 20,
-                width: 40,
-                height: 40,
+                top: 16,
+                right: 16,
+                zIndex: 30,
+                width: 48,
+                height: 48,
                 color: COLORS.onSurface,
-                bgcolor: "rgba(255,255,255,0.4)",
-                "&:hover": { bgcolor: "rgba(255,255,255,0.85)" },
+                bgcolor: "rgba(255,255,255,0.92)",
+                border: `1px solid ${COLORS.outlineVariant}`,
+                boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
+                "&:hover": { bgcolor: "#fff" },
               }}
             >
-              <CloseIcon sx={{ fontSize: 20 }} />
+              <CloseIcon sx={{ fontSize: 24 }} />
             </IconButton>
 
             <Box

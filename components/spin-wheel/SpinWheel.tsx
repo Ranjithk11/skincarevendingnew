@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useSpinWheel } from "@/contexts/SpinWheelContext";
-import { SPIN_WHEEL_SEGMENTS } from "@/lib/spin-wheel/rewards";
+import {
+  SPIN_WHEEL_SEGMENTS,
+  isNextPurchaseSpinReward,
+} from "@/lib/spin-wheel/rewards";
 import { drawSpinWheelIcon } from "@/lib/spin-wheel/drawIcons";
 import {
   sanitizeReturnTo,
@@ -12,6 +15,7 @@ import {
 import { APP_ROUTES } from "@/utils/routes";
 import SpinWheelConsultationPopup from "@/components/spin-wheel/SpinWheelConsultationPopup";
 import SpinWheelBirthdayPopup from "@/components/spin-wheel/SpinWheelBirthdayPopup";
+import SpinWheelNextPurchasePopup from "@/components/spin-wheel/SpinWheelNextPurchasePopup";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { Icon } from "@iconify/react";
@@ -96,17 +100,17 @@ function drawWheel(canvas: HTMLCanvasElement) {
     ctx.textBaseline = "middle";
 
     // Icon first — outer rim side (top of the wedge).
-    const iconSize = Math.min(100, inner * 0.1);
-    const iconY = -inner * 0.9;
+    const iconSize = Math.min(92, inner * 0.16);
+    const iconY = -inner * 0.88;
     ctx.save();
     ctx.translate(0, iconY);
     drawSpinWheelIcon(ctx, segment.icon, iconSize);
     ctx.restore();
 
-    // Titles sit just under the icon toward the rim band.
-    const titleSize = 40;
-    const paddingTop = 10;
-    const titleStartY = iconY + iconSize * 0.72 + paddingTop;
+    // Titles sit under the icon with clear padding below the icon.
+    const titleSize = 36;
+    const paddingBelowIcon = 20;
+    const titleStartY = iconY + iconSize * 0.62 + paddingBelowIcon;
     const titleLineHeight = titleSize + 1;
     ctx.font = `800 ${titleSize}px Montserrat, sans-serif`;
     ctx.fillStyle = "#7C2340";
@@ -178,8 +182,23 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
   const [birthdayOpen, setBirthdayOpen] = useState(false);
   const [consultationClaimed, setConsultationClaimed] = useState(false);
   const [birthdayClaimed, setBirthdayClaimed] = useState(false);
+  /** User closed the ₹100 claim UI without submitting — Collect & continue clears this. */
+  const [nextPurchaseDismissed, setNextPurchaseDismissed] = useState(false);
+  const [nextPurchaseClaimed, setNextPurchaseClaimed] = useState(false);
   const [pulseAiScan, setPulseAiScan] = useState(false);
-  const { hasSpun, reward, isSpinning, saveReward, setIsSpinning } = useSpinWheel();
+  const { hasSpun, reward, isSpinning, saveReward, setIsSpinning, clearRewardSession } =
+    useSpinWheel();
+
+  // Open as soon as an unclaimed ₹100 reward exists (fresh win OR page reload).
+  const nextPurchaseOpen = Boolean(
+    reward &&
+      isNextPurchaseSpinReward(reward) &&
+      !reward.redeemed &&
+      !nextPurchaseClaimed &&
+      !nextPurchaseDismissed &&
+      !spinning &&
+      !isSpinning
+  );
 
   const sessionUser = useMemo(
     () => ({
@@ -222,6 +241,14 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
     }, 7000);
   }, [speakMessage]);
 
+  const openNextPurchaseClaim = useCallback(() => {
+    setShowResult(false);
+    setConsultationOpen(false);
+    setBirthdayOpen(false);
+    setNextPurchaseClaimed(false);
+    setNextPurchaseDismissed(false);
+  }, []);
+
   const handleContinue = useCallback(() => {
     if (onContinue) {
       setShowResult(false);
@@ -229,7 +256,7 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
       return;
     }
 
-    // For birthday / consultation rewards, reopen claim popup until details are submitted.
+    // For claimable lead rewards, reopen popup until details are submitted.
     if (reward?.type === "FREE_CONSULTATION" && !consultationClaimed) {
       setShowResult(false);
       setConsultationOpen(true);
@@ -240,14 +267,20 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
       setBirthdayOpen(true);
       return;
     }
+    if (isNextPurchaseSpinReward(reward) && !nextPurchaseClaimed) {
+      openNextPurchaseClaim();
+      return;
+    }
 
     promptAiScan();
   }, [
     birthdayClaimed,
     consultationClaimed,
+    nextPurchaseClaimed,
     onContinue,
+    openNextPurchaseClaim,
     promptAiScan,
-    reward?.type,
+    reward,
   ]);
 
   const handleBack = useCallback(() => {
@@ -263,17 +296,31 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
   }, []);
 
   const spin = useCallback(() => {
-    if (spinning || isSpinning || hasSpun) return;
+    const forceFlat100 = searchParams.get("force") === "flat_100";
+    if (spinning || isSpinning || (hasSpun && !forceFlat100)) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    if (forceFlat100 && hasSpun) {
+      clearRewardSession();
+    }
+
     setSpinningLocal(true);
     setIsSpinning(true);
 
-    const winningIndex = Math.floor(Math.random() * SEGMENT_COUNT);
+    // Pick the winning segment first, then animate to that index.
+    // Do NOT recompute winner from rotation later — that desyncs popup from the pointer.
+    const winningIndex = forceFlat100
+      ? Math.max(
+          0,
+          SPIN_WHEEL_SEGMENTS.findIndex((s) => s.type === "FLAT_100")
+        )
+      : Math.floor(Math.random() * SEGMENT_COUNT);
     const segmentDegrees = 360 / SEGMENT_COUNT;
-    const jitter = (Math.random() * 0.6 - 0.3) * segmentDegrees;
+    const jitter = forceFlat100
+      ? 0
+      : (Math.random() * 0.6 - 0.3) * segmentDegrees;
     const target = 360 * 6 - winningIndex * segmentDegrees + jitter;
 
     rotationRef.current += target;
@@ -283,23 +330,48 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
     window.setTimeout(() => {
       const segment = SPIN_WHEEL_SEGMENTS[winningIndex];
       const nextReward = saveReward(winningIndex);
+
       setConsultationClaimed(false);
       setBirthdayClaimed(false);
+      setNextPurchaseClaimed(false);
+      setNextPurchaseDismissed(false);
+      setConsultationOpen(false);
+      setBirthdayOpen(false);
       setResultTitle(segment.title);
       setResultDesc(segment.description);
-      setShowResult(true);
       setSpinningLocal(false);
       setIsSpinning(false);
 
       if (nextReward.type === "FREE_CONSULTATION") {
+        setShowResult(false);
         setConsultationOpen(true);
-      } else if (nextReward.type === "PERCENT_BIRTHDAY_15") {
-        setBirthdayOpen(true);
+        return;
       }
+      if (nextReward.type === "PERCENT_BIRTHDAY_15") {
+        setShowResult(false);
+        setBirthdayOpen(true);
+        return;
+      }
+      if (isNextPurchaseSpinReward(nextReward)) {
+        // Derived `nextPurchaseOpen` becomes true once spinning flags clear.
+        setShowResult(false);
+        setNextPurchaseDismissed(false);
+        return;
+      }
+      setShowResult(true);
     }, 6100);
-  }, [hasSpun, isSpinning, saveReward, setIsSpinning, spinning]);
+  }, [
+    clearRewardSession,
+    hasSpun,
+    isSpinning,
+    saveReward,
+    searchParams,
+    setIsSpinning,
+    spinning,
+  ]);
 
-  const spinDisabled = spinning || isSpinning || hasSpun;
+  const forceFlat100 = searchParams.get("force") === "flat_100";
+  const spinDisabled = spinning || isSpinning || (hasSpun && !forceFlat100);
 
   return (
     <div className={styles.stage}>
@@ -399,7 +471,7 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
       </button>
       <div className={styles.tc}>*T&amp;C Apply</div>
 
-      {hasSpun && reward ? (
+      {hasSpun && reward && !nextPurchaseOpen ? (
         <div className={styles.existingReward}>
           <div className={styles.cardEyebrow}>YOUR REWARD</div>
           <div className={styles.cardTitle}>{reward.title}</div>
@@ -407,6 +479,14 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
           <div className={styles.existingRewardCode}>Coupon: {reward.code}</div>
           {reward.redeemed ? (
             <div className={styles.cardDesc}>Already used on a previous order this session.</div>
+          ) : isNextPurchaseSpinReward(reward) && !nextPurchaseClaimed ? (
+            <button
+              type="button"
+              className={styles.cardButton}
+              onClick={openNextPurchaseClaim}
+            >
+              Claim ₹100 offer
+            </button>
           ) : (
             <button type="button" className={styles.cardButton} onClick={handleContinue}>
               Collect &amp; continue
@@ -421,8 +501,21 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
         </span>
       </button>
 
-      <div className={`${styles.overlay} ${showResult ? styles.overlayShow : ""}`}>
+      <div
+        className={`${styles.overlay} ${showResult ? styles.overlayShow : ""}`}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) setShowResult(false);
+        }}
+      >
         <div className={styles.card}>
+          <button
+            type="button"
+            className={styles.cardClose}
+            aria-label="Close"
+            onClick={() => setShowResult(false)}
+          >
+            ×
+          </button>
           <div className={styles.cardEyebrow}>YOUR WINNINGS</div>
           <h2 className={styles.cardTitle}>{resultTitle}</h2>
           <p className={styles.cardDesc}>{resultDesc}</p>
@@ -434,7 +527,10 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
 
       <SpinWheelConsultationPopup
         open={consultationOpen}
-        onClose={() => setConsultationOpen(false)}
+        onClose={() => {
+          setConsultationOpen(false);
+          setShowResult(true);
+        }}
         onClaimed={() => setConsultationClaimed(true)}
         user={sessionUser}
         reward={reward}
@@ -442,8 +538,22 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
 
       <SpinWheelBirthdayPopup
         open={birthdayOpen}
-        onClose={() => setBirthdayOpen(false)}
+        onClose={() => {
+          setBirthdayOpen(false);
+          setShowResult(true);
+        }}
         onClaimed={() => setBirthdayClaimed(true)}
+        user={sessionUser}
+        reward={reward}
+      />
+
+      <SpinWheelNextPurchasePopup
+        open={nextPurchaseOpen}
+        onClose={() => {
+          setNextPurchaseDismissed(true);
+          setShowResult(false);
+        }}
+        onClaimed={() => setNextPurchaseClaimed(true)}
         user={sessionUser}
         reward={reward}
       />

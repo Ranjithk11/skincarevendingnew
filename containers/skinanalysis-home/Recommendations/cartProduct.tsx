@@ -37,9 +37,14 @@ import {
 } from "@/utils/cartQuantityLimits";
 import { useSpinWheel } from "@/contexts/SpinWheelContext";
 import {
+  isDeferredSpinReward,
+  isNextPurchaseSpinReward,
+} from "@/lib/spin-wheel/rewards";
+import {
   buildSpinWheelWebhookPayload,
   type SpinWheelWebhookPayload,
 } from "@/lib/spin-wheel/webhook";
+import SpinWheelNextPurchasePopup from "@/components/spin-wheel/SpinWheelNextPurchasePopup";
 
 type CartProductProps = {
     open: boolean;
@@ -68,7 +73,24 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [couponApplied, setCouponApplied] = useState(false);
     const [couponMessage, setCouponMessage] = useState("");
+    const [nextPurchaseClaimOpen, setNextPurchaseClaimOpen] = useState(false);
+    const [nextPurchaseClaimed, setNextPurchaseClaimed] = useState(false);
     const { reward: spinReward, validateForCart, markRewardRedeemed } = useSpinWheel();
+
+    const claimSessionUser = useMemo(
+      () => ({
+        userId: session?.user?.id ? String(session.user.id) : undefined,
+        name: (session?.user as { name?: string } | undefined)?.name || "",
+        email: (session?.user as { email?: string } | undefined)?.email || "",
+        phone:
+          (session?.user as { mobileNumber?: string; phoneNumber?: string; phone?: string } | undefined)
+            ?.mobileNumber ||
+          (session?.user as { phoneNumber?: string } | undefined)?.phoneNumber ||
+          (session?.user as { phone?: string } | undefined)?.phone ||
+          "",
+      }),
+      [session]
+    );
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
     const [isDispensing, setIsDispensing] = useState(false);
     const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -327,10 +349,26 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
 
     const spinValidation = useMemo(() => validateForCart(total), [validateForCart, total]);
 
+    const isNextPurchaseOnly = isNextPurchaseSpinReward(spinReward);
+    const isDeferredOnly = isDeferredSpinReward(spinReward);
+
     const discount = useMemo(() => {
-        if (!couponApplied) return 0;
-        return spinValidation.discount;
-    }, [couponApplied, spinValidation.discount]);
+      if (!couponApplied) return 0;
+      // Hard block: next-visit / birthday rewards never reduce payable total.
+      if (isDeferredOnly || isNextPurchaseOnly) return 0;
+      if (!spinValidation.canApply) return 0;
+      if (spinValidation.reason === "next_purchase_only" || spinValidation.reason === "birthday_only") {
+        return 0;
+      }
+      return Math.max(0, Number(spinValidation.discount) || 0);
+    }, [
+      couponApplied,
+      isDeferredOnly,
+      isNextPurchaseOnly,
+      spinValidation.canApply,
+      spinValidation.discount,
+      spinValidation.reason,
+    ]);
 
     useEffect(() => {
         if (!open || step !== "checkout") return;
@@ -342,16 +380,44 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
 
         const validation = validateForCart(total);
         setCouponMessage(validation.message);
-        if (validation.canApply) {
-            setCouponApplied(true);
-        } else {
+
+        if (
+          isDeferredSpinReward(spinReward) ||
+          isNextPurchaseSpinReward(spinReward) ||
+          !validation.canApply ||
+          validation.reason === "next_purchase_only" ||
+          validation.reason === "birthday_only"
+        ) {
             setCouponApplied(false);
+            return;
         }
+
+        setCouponApplied(true);
     }, [open, step, spinReward, total, validateForCart]);
+
+    // Open claim popup on checkout when ₹100 next-purchase reward is unclaimed.
+    useEffect(() => {
+      if (!open || step !== "checkout") return;
+      if (!isNextPurchaseSpinReward(spinReward) || spinReward?.redeemed || nextPurchaseClaimed) {
+        return;
+      }
+      setNextPurchaseClaimOpen(true);
+    }, [open, step, spinReward, nextPurchaseClaimed]);
 
     const handleApplySpinCoupon = useCallback(() => {
         if (!spinReward) {
             toast.info("Spin the wheel first to win a reward.");
+            return;
+        }
+
+        if (isDeferredSpinReward(spinReward) || isNextPurchaseSpinReward(spinReward)) {
+            const validation = validateForCart(total);
+            setCouponMessage(validation.message);
+            setCouponApplied(false);
+            toast.info(validation.message);
+            if (isNextPurchaseSpinReward(spinReward) && !nextPurchaseClaimed) {
+              setNextPurchaseClaimOpen(true);
+            }
             return;
         }
 
@@ -366,7 +432,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
 
         setCouponApplied(true);
         toast.success(validation.message);
-    }, [spinReward, total, validateForCart]);
+    }, [spinReward, total, validateForCart, nextPurchaseClaimed]);
 
     const handleRemoveSpinCoupon = useCallback(() => {
         setCouponApplied(false);
@@ -374,27 +440,40 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     }, []);
 
     const payableTotal = useMemo(() => {
+        // Extra guard: deferred rewards can never reduce pay amount.
+        if (isDeferredOnly || isNextPurchaseOnly) {
+          return Number.isFinite(total) ? Math.max(0, total) : 0;
+        }
         const next = total - discount;
         return Number.isFinite(next) ? Math.max(0, next) : 0;
-    }, [total, discount]);
+    }, [total, discount, isDeferredOnly, isNextPurchaseOnly]);
+
+    const amountPaise = useMemo(() => {
+        const canDiscount = couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0;
+        const amount = canDiscount ? payableTotal : total;
+        return Math.max(0, Math.round(amount * 100));
+    }, [payableTotal, couponApplied, total, isDeferredOnly, isNextPurchaseOnly, discount]);
 
     const captureSpinWheelWebhookData = useCallback(
         (appliedAt = Date.now()) =>
             buildSpinWheelWebhookPayload({
                 reward: spinReward,
-                couponApplied,
-                discountAmount: discount,
+                couponApplied: couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0,
+                discountAmount: isDeferredOnly || isNextPurchaseOnly ? 0 : discount,
                 cartTotal: total,
                 payableTotal,
                 appliedAt,
             }),
-        [spinReward, couponApplied, discount, total, payableTotal]
+        [
+          spinReward,
+          couponApplied,
+          discount,
+          total,
+          payableTotal,
+          isDeferredOnly,
+          isNextPurchaseOnly,
+        ]
     );
-
-    const amountPaise = useMemo(() => {
-        const amount = couponApplied ? payableTotal : total;
-        return Math.max(0, Math.round(amount * 100));
-    }, [payableTotal, couponApplied, total]);
 
     const handleBack = () => {
         if (step === "payment") {
@@ -708,7 +787,11 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                             >
                                 {paymentMethod === null ? (
                                     <PaymentMethodChooser
-                                        amount={couponApplied ? payableTotal : total}
+                                        amount={
+                                          couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0
+                                            ? payableTotal
+                                            : total
+                                        }
                                         onSelect={(m) => {
                                             setPaymentMethod(m);
                                             speakMessage("payment");
@@ -716,7 +799,11 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                     />
                                 ) : paymentMethod === "cash" ? (
                                     <CashAgentPayment
-                                        amount={couponApplied ? payableTotal : total}
+                                        amount={
+                                          couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0
+                                            ? payableTotal
+                                            : total
+                                        }
                                         onBack={() => setPaymentMethod(null)}
                                         onConfirmed={handleCashConfirmed}
                                     />
@@ -980,7 +1067,9 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                 </Box>
                                                 {!couponApplied &&
                                                 !spinReward.redeemed &&
-                                                spinValidation.canApply ? (
+                                                spinValidation.canApply &&
+                                                !isNextPurchaseOnly &&
+                                                !isDeferredOnly ? (
                                                     <Button
                                                         variant="contained"
                                                         disableElevation
@@ -998,6 +1087,26 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                         Apply
                                                     </Button>
                                                 ) : null}
+                                                {isNextPurchaseOnly &&
+                                                !spinReward.redeemed &&
+                                                !nextPurchaseClaimed ? (
+                                                    <Button
+                                                        variant="contained"
+                                                        disableElevation
+                                                        onClick={() => setNextPurchaseClaimOpen(true)}
+                                                        sx={{
+                                                            textTransform: "none",
+                                                            fontWeight: 600,
+                                                            fontSize: 18,
+                                                            borderRadius: "0 6px 6px 0",
+                                                            minWidth: 120,
+                                                            bgcolor: "#006c49",
+                                                            "&:hover": { bgcolor: "#005236" },
+                                                        }}
+                                                    >
+                                                        Claim
+                                                    </Button>
+                                                ) : null}
                                             </Box>
                                             {couponMessage ? (
                                                 <Typography sx={{ fontSize: 16, color: "#6b7280", mt: 1 }}>
@@ -1011,7 +1120,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         </Typography>
                                     )}
                                 </Box>
-                                {couponApplied && discount > 0 ? (
+                                {couponApplied && discount > 0 && !isDeferredOnly && !isNextPurchaseOnly ? (
                                     <Box sx={{ mt: 1.5, display: "flex", alignItems: "flex-start", gap: 1, bgcolor: "#fdf2f8", borderRadius: 2, p: 1.5, border: "1px solid #fbcfe8" }}>
                                         <Box sx={{ flex: 1 }}>
                                             <Typography sx={{ fontWeight: 700, fontSize: 20, color: "#9E1B3D" }}>
@@ -1026,10 +1135,19 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         </IconButton>
                                     </Box>
                                 ) : null}
-                                {spinReward && !spinReward.redeemed && !couponApplied && spinValidation.reason === "min_order_not_met" ? (
+                                {spinReward &&
+                                !spinReward.redeemed &&
+                                (isNextPurchaseOnly ||
+                                    isDeferredOnly ||
+                                    spinValidation.reason === "min_order_not_met" ||
+                                    spinValidation.reason === "next_purchase_only" ||
+                                    spinValidation.reason === "birthday_only") ? (
                                     <Box sx={{ mt: 1.5, bgcolor: "#fff7ed", borderRadius: 2, p: 1.5, border: "1px solid #fed7aa" }}>
                                         <Typography sx={{ fontSize: 18, color: "#9a3412" }}>
-                                            {spinValidation.message}
+                                            {spinValidation.message ||
+                                              (isNextPurchaseOnly
+                                                ? "₹100 OFF is for your next purchase only and will not be applied to this order."
+                                                : couponMessage)}
                                         </Typography>
                                     </Box>
                                 ) : null}
@@ -1239,13 +1357,21 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                 </Typography>
                             </Box>
                             <Box sx={{ textAlign: "right" }}>
-                                {couponApplied && discount > 0 ? (
+                                {couponApplied && discount > 0 && !isDeferredOnly && !isNextPurchaseOnly ? (
                                     <Typography sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}>
                                         Rs.{Math.round(total)}/-
                                     </Typography>
                                 ) : null}
                                 <Typography sx={{ fontWeight: 900, fontSize: 24 }}>
-                                    Rs. {Math.round(couponApplied ? payableTotal : (Number.isFinite(total) ? total : 0))}/-
+                                    Rs.{" "}
+                                    {Math.round(
+                                      couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0
+                                        ? payableTotal
+                                        : Number.isFinite(total)
+                                          ? total
+                                          : 0
+                                    )}
+                                    /-
                                 </Typography>
                             </Box>
                         </Box>
@@ -1312,6 +1438,14 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                     spinWheel={spinWheelWebhookData}
                 />
             </Dialog>
+
+            <SpinWheelNextPurchasePopup
+              open={nextPurchaseClaimOpen}
+              onClose={() => setNextPurchaseClaimOpen(false)}
+              onClaimed={() => setNextPurchaseClaimed(true)}
+              user={claimSessionUser}
+              reward={spinReward}
+            />
         </>
     );
 };

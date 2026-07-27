@@ -68,10 +68,11 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     type: "FLAT_100",
     title: "₹100 OFF ON NEXT PURCHASE",
     titleLines: ["₹100 OFF", "ON NEXT PURCHASE"],
-    description: "Get ₹100 off on your next purchase above ₹1,000.",
+    description:
+      "Get ₹100 off on your next purchase above ₹1,000. Share your details — this offer is for your next visit only and is not applied to the current purchase.",
     fill: "#F1E4CE",
     icon: "shopping_bag",
-    appliesToCart: true,
+    appliesToCart: false,
   },
   {
     id: "flat_200_min",
@@ -115,7 +116,6 @@ export type SpinWheelDiscountResult = {
 };
 
 const EXTRA_5_MIN_ORDER = 500;
-const FLAT_100_MIN_ORDER = 1000;
 const FLAT_200_MIN_ORDER = 2999;
 
 function minOrderNotMet(minOrder: number): SpinWheelDiscountResult {
@@ -148,6 +148,56 @@ export function createRewardFromSegment(segment: SpinWheelSegment): SpinWheelRew
   };
 }
 
+/** True for rewards that must never reduce the current cart total. */
+export function isDeferredSpinReward(
+  reward: SpinWheelReward | null | undefined
+): boolean {
+  if (!reward) return false;
+  const code = String(reward.code || "")
+    .toUpperCase()
+    .replace(/\s+/g, "");
+  const type = String(reward.type || "").toUpperCase();
+  const segmentId = String(reward.segmentId || "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  const title = String(reward.title || "").toUpperCase();
+
+  return (
+    type === "FLAT_100" ||
+    type === "PERCENT_BIRTHDAY_15" ||
+    code === "SPIN-OFF100" ||
+    code === "SPIN-BDAY15" ||
+    code.includes("OFF100") ||
+    segmentId === "flat_100" ||
+    segmentId === "birthday_15" ||
+    title.includes("NEXT PURCHASE") ||
+    title.includes("BIRTHDAY")
+  );
+}
+
+/** ₹100 next-visit offer (lead capture only — never cart discount). */
+export function isNextPurchaseSpinReward(
+  reward: SpinWheelReward | null | undefined
+): boolean {
+  if (!reward) return false;
+  const code = String(reward.code || "")
+    .toUpperCase()
+    .replace(/\s+/g, "");
+  const type = String(reward.type || "").toUpperCase();
+  const segmentId = String(reward.segmentId || "")
+    .toLowerCase()
+    .replace(/\s+/g, "");
+  const title = String(reward.title || "").toUpperCase();
+
+  return (
+    type === "FLAT_100" ||
+    code === "SPIN-OFF100" ||
+    code.includes("OFF100") ||
+    segmentId === "flat_100" ||
+    title.includes("NEXT PURCHASE")
+  );
+}
+
 export function computeSpinWheelDiscount(
   reward: SpinWheelReward | null | undefined,
   cartTotal: number
@@ -170,6 +220,27 @@ export function computeSpinWheelDiscount(
     };
   }
 
+  // Hard stop first — never let next-purchase / birthday reduce cart.
+  if (isNextPurchaseSpinReward(reward)) {
+    return {
+      discount: 0,
+      canApply: false,
+      message:
+        "₹100 OFF is for your next purchase only. Share your details on the spin wheel — it will not be applied to this purchase.",
+      reason: "next_purchase_only",
+    };
+  }
+
+  if (isDeferredSpinReward(reward)) {
+    return {
+      discount: 0,
+      canApply: false,
+      message:
+        "Birthday 15% OFF is for your birthday only. Your details were saved — it will not be applied to this purchase.",
+      reason: "birthday_only",
+    };
+  }
+
   const segment = getSegmentById(reward.segmentId);
   if (!segment) {
     return {
@@ -177,16 +248,6 @@ export function computeSpinWheelDiscount(
       canApply: false,
       message: "Invalid spin wheel reward.",
       reason: "invalid_reward",
-    };
-  }
-
-  if (reward.type === "PERCENT_BIRTHDAY_15") {
-    return {
-      discount: 0,
-      canApply: false,
-      message:
-        "Birthday 15% OFF is for your birthday only. Your details were saved — it will not be applied to this purchase.",
-      reason: "birthday_only",
     };
   }
 
@@ -220,17 +281,6 @@ export function computeSpinWheelDiscount(
         message: "Extra 5% discount applied from your spin wheel reward.",
       };
     }
-    case "FLAT_100": {
-      if (cartTotal < FLAT_100_MIN_ORDER) {
-        return minOrderNotMet(FLAT_100_MIN_ORDER);
-      }
-      const discount = Math.min(100, Math.round(cartTotal));
-      return {
-        discount,
-        canApply: discount > 0,
-        message: "₹100 off applied from your spin wheel reward.",
-      };
-    }
     case "FLAT_200_MIN_2999": {
       if (cartTotal < FLAT_200_MIN_ORDER) {
         return minOrderNotMet(FLAT_200_MIN_ORDER);
@@ -242,6 +292,15 @@ export function computeSpinWheelDiscount(
         message: "Flat ₹200 off applied from your spin wheel reward.",
       };
     }
+    case "FLAT_100":
+      // Safety net — must never reach cart math.
+      return {
+        discount: 0,
+        canApply: false,
+        message:
+          "₹100 OFF is for your next purchase only. It will not be applied to this purchase.",
+        reason: "next_purchase_only",
+      };
     case "FREE_CONSULTATION":
       return {
         discount: 0,
