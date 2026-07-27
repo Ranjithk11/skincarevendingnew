@@ -360,8 +360,18 @@
   color: #9e1b3d;
   font-size: 22px;
   font-weight: 800;
-  line-height: 1;
-  margin: 0;
+}
+
+.stepIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #fdf2f5;
+  border: 2px solid #f3c4d0;
+  color: #9e1b3d;
 }
 
 .step p {

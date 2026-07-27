@@ -5,12 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useSpinWheel } from "@/contexts/SpinWheelContext";
 import { SPIN_WHEEL_SEGMENTS } from "@/lib/spin-wheel/rewards";
-import { sanitizeReturnTo } from "@/lib/spin-wheel/navigation";
+import { drawSpinWheelIcon } from "@/lib/spin-wheel/drawIcons";
+import {
+  sanitizeReturnTo,
+} from "@/lib/spin-wheel/navigation";
 import { APP_ROUTES } from "@/utils/routes";
 import SpinWheelConsultationPopup from "@/components/spin-wheel/SpinWheelConsultationPopup";
 import SpinWheelBirthdayPopup from "@/components/spin-wheel/SpinWheelBirthdayPopup";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
+import { Icon } from "@iconify/react";
 import styles from "./spin-wheel.module.scss";
 
 const CANVAS_SIZE = 1200;
@@ -91,9 +95,18 @@ function drawWheel(canvas: HTMLCanvasElement) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    // Titles sit near the rim so body copy can use the wider band underneath.
-    const titleSize = 32;
-    const titleStartY = -inner * 0.84;
+    // Icon first — outer rim side (top of the wedge).
+    const iconSize = Math.min(100, inner * 0.1);
+    const iconY = -inner * 0.9;
+    ctx.save();
+    ctx.translate(0, iconY);
+    drawSpinWheelIcon(ctx, segment.icon, iconSize);
+    ctx.restore();
+
+    // Titles sit just under the icon toward the rim band.
+    const titleSize = 40;
+    const paddingTop = 10;
+    const titleStartY = iconY + iconSize * 0.72 + paddingTop;
     const titleLineHeight = titleSize + 1;
     ctx.font = `800 ${titleSize}px Montserrat, sans-serif`;
     ctx.fillStyle = "#7C2340";
@@ -102,7 +115,7 @@ function drawWheel(canvas: HTMLCanvasElement) {
       ctx.fillText(line, 0, y, chordWidthAt(y) * 0.98);
     });
 
-    // Description starts just under the title (still in the outer/wider band).
+    // Description starts just under the title.
     const descSize = 20;
     const descLineHeight = descSize + 2;
     const descStartY =
@@ -121,6 +134,7 @@ function drawWheel(canvas: HTMLCanvasElement) {
       const y = descStartY + lineIndex * descLineHeight;
       ctx.fillText(line, 0, y, chordWidthAt(y) * 0.98);
     });
+
     ctx.restore();
   });
 
@@ -361,15 +375,21 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
 
       <div className={styles.steps}>
         <div className={styles.step}>
-          <b>1</b>
+          <span className={styles.stepIcon} aria-hidden>
+            <Icon icon="mdi:gesture-tap" width={30} height={30} />
+          </span>
           <p>Tap SPIN NOW to spin the wheel</p>
         </div>
         <div className={styles.step}>
-          <b>2</b>
+          <span className={styles.stepIcon} aria-hidden>
+            <Icon icon="mdi:gift" width={30} height={30} />
+          </span>
           <p>Win amazing offers and discounts</p>
         </div>
         <div className={styles.step}>
-          <b>3</b>
+          <span className={styles.stepIcon} aria-hidden>
+            <Icon icon="mdi:shopping" width={30} height={30} />
+          </span>
           <p>Make your purchase and enjoy your reward</p>
         </div>
       </div>

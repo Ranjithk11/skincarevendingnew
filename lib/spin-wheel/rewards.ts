@@ -6,6 +6,14 @@ export type SpinRewardType =
   | "FLAT_200_MIN_2999"
   | "NO_PRIZE";
 
+export type SpinWheelIconKey =
+  | "percent_tag"
+  | "headset"
+  | "gift"
+  | "shopping_bag"
+  | "cart"
+  | "sad_face";
+
 export type SpinWheelSegment = {
   id: string;
   code: string;
@@ -14,10 +22,11 @@ export type SpinWheelSegment = {
   titleLines: string[];
   description: string;
   fill: string;
+  /** Canvas / UI icon key for this segment. */
+  icon: SpinWheelIconKey;
   /** Whether this reward can reduce the cart total at checkout. */
   appliesToCart: boolean;
 };
-
 export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
   {
     id: "extra_5",
@@ -27,6 +36,7 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     titleLines: ["5% EXTRA OFF"],
     description: "Get an additional 5% discount on orders above ₹500.",
     fill: "#F7C9D3",
+    icon: "percent_tag",
     appliesToCart: true,
   },
   {
@@ -36,7 +46,8 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     title: "FREE CONSULTATION",
     titleLines: ["FREE CONSULTATION"],
     description: "Get a free consultation with our experienced doctors.",
-    fill: "#F5EADA",
+    fill: "#E8F5E9",
+    icon: "headset",
     appliesToCart: false,
   },
   {
@@ -48,6 +59,7 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     description:
       "Extra 15% OFF on your birthday (orders above ₹1,000). Share your details — this offer is for your birthday only and is not applied to the current purchase.",
     fill: "#F9C6D1",
+    icon: "gift",
     appliesToCart: false,
   },
   {
@@ -58,6 +70,7 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     titleLines: ["₹100 OFF", "ON NEXT PURCHASE"],
     description: "Get ₹100 off on your next purchase above ₹1,000.",
     fill: "#F1E4CE",
+    icon: "shopping_bag",
     appliesToCart: true,
   },
   {
@@ -67,7 +80,8 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     title: "FLAT ₹200 OFF ABOVE ₹2,999",
     titleLines: ["FLAT ₹200 OFF", "ABOVE ₹2,999"],
     description: "Enjoy flat ₹200 off on orders above ₹2,999.",
-    fill: "#E7D2E4",
+    fill: "#D6EAF8",
+    icon: "cart",
     appliesToCart: true,
   },
   {
@@ -77,7 +91,8 @@ export const SPIN_WHEEL_SEGMENTS: SpinWheelSegment[] = [
     title: "BETTER LUCK NEXT TIME!",
     titleLines: ["BETTER LUCK", "NEXT TIME!"],
     description: "Thank you for participating! Try again.",
-    fill: "#C7A6BE",
+    fill: "#E8D5F0",
+    icon: "sad_face",
     appliesToCart: false,
   },
 ];
