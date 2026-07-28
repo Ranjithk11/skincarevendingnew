@@ -24,8 +24,8 @@ import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import VerifiedUserRoundedIcon from "@mui/icons-material/VerifiedUserRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import {
-  sendConsultationWebhook,
-  type ConsultationUserInfo,
+  sendSpinWheelLeadWebhook,
+  type BirthdayOfferUserInfo,
 } from "@/utils/webhook";
 import {
   extractNationalDigits,
@@ -43,7 +43,7 @@ interface SpinWheelConsultationPopupProps {
   onClose: () => void;
   /** Called after the user successfully claims the offer. */
   onClaimed?: () => void;
-  user?: ConsultationUserInfo;
+  user?: BirthdayOfferUserInfo;
   reward?: SpinWheelReward | null;
 }
 
@@ -210,8 +210,8 @@ export default function SpinWheelConsultationPopup({
 
     setSubmitting(true);
 
-    await sendConsultationWebhook({
-      source: "spin_wheel",
+    await sendSpinWheelLeadWebhook({
+      event: "spin_wheel_consultation_lead",
       user: {
         userId: user?.userId,
         name: trimmedName,

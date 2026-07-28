@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { APP_ROUTES } from "@/utils/routes";
-import { clearSpinWheelSession } from "@/lib/spin-wheel/session";
+import { clearVisitorSession } from "@/utils/clearVisitorSession";
 
 interface IdleRedirectProps {
   /** Default idle timeout for most pages (ms). */
@@ -43,7 +43,7 @@ export default function IdleRedirect({
     clearTimer();
     const ms = getIdleMs();
     timerRef.current = window.setTimeout(async () => {
-      clearSpinWheelSession();
+      clearVisitorSession();
       try {
         await signOut({ redirect: false });
       } catch {}

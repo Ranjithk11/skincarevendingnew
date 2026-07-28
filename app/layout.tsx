@@ -10,6 +10,7 @@ import HomeLayout from "@/components/layouts/HomeLayout";
 import DefaultLayout from "@/components/layouts/DefaultLayout";
 import ConditionalVoiceLayout from "@/components/layouts/ConditionalVoiceLayout";
 import { SpinWheelProvider } from "@/contexts/SpinWheelContext";
+import ClearCartOnLogout from "@/components/ui/ClearCartOnLogout";
 
 const roboto = Roboto({
   subsets: ["latin"],
@@ -33,6 +34,7 @@ export default async function RootLayout({
         <body suppressHydrationWarning={true} className={roboto.className}>
           <ReduxStateProviders>
             <NextAuthSessionProvider>
+              <ClearCartOnLogout />
               <SpinWheelProvider>
                 <MuiThemeProvider>
                   <ConditionalVoiceLayout>

@@ -20,9 +20,8 @@ import { APP_ROUTES } from "@/utils/routes";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import FooterComponent from "../footer";
-import { useAppDispatch } from "@/redux/store/store";
-import { clearCart } from "@/redux/reducers/cartSlice";
 import VoiceControl from "@/components/ui/VoiceControl";
+import { clearVisitorSession } from "@/utils/clearVisitorSession";
 
 const drawerWidth = 200;
 interface HomeLayoutProps {
@@ -103,7 +102,6 @@ const HomeLayout = ({ children }: HomeLayoutProps) => {
   const isSmDevice = useMediaQuery(theme.breakpoints.only("xs"));
   const { data: session } = useSession();
   const router = useRouter();
-  const dispatch = useAppDispatch();
 
   const handleDrawerOpen = () => {
     setOpen(!open);
@@ -143,7 +141,7 @@ const HomeLayout = ({ children }: HomeLayoutProps) => {
             <VoiceControl />
             <IconButton
               onClick={() => {
-                dispatch(clearCart());
+                clearVisitorSession();
                 signOut().then(()=>{
                   router.push("/");
                 });

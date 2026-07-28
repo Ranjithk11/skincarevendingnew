@@ -9,6 +9,7 @@ import { useSession, signOut } from "next-auth/react";
 import { LOGO_URL, SOCIAL_LINKS } from "@/utils/constants";
 import { useRouter } from "next/navigation";
 import { AiFillFacebook, AiFillInstagram, AiFillYoutube } from "react-icons/ai";
+import { clearVisitorSession } from "@/utils/clearVisitorSession";
 
 const AppBarComponent = () => {
   const { data: session } = useSession();
@@ -26,6 +27,7 @@ const AppBarComponent = () => {
               {session?.user?.id && (
                 <Button
                   onClick={() => {
+                    clearVisitorSession();
                     signOut().then((response) => {
                       router.push("/");
                     });

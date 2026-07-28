@@ -5,6 +5,7 @@ import { Box, Typography } from "@mui/material";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { APP_ROUTES } from "@/utils/routes";
+import { clearVisitorSession } from "@/utils/clearVisitorSession";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
 type IdleVideoOverlayProps = {
@@ -133,6 +134,7 @@ export default function IdleVideoOverlay({
     clearTimer();
     timerRef.current = window.setTimeout(async () => {
       // Clear any stale session before showing idle screen
+      clearVisitorSession();
       try {
         await signOut({ redirect: false });
       } catch {}

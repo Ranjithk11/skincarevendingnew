@@ -3,7 +3,6 @@ import {
     Box,
     Button,
     CircularProgress,
-    Collapse,
     Dialog,
     Divider,
     IconButton,
@@ -20,7 +19,6 @@ import CashAgentPayment from "@/components/payments/CashAgentPayment";
 import { ProductPrice } from "./components";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
-import CloseIcon from "@mui/icons-material/Close";
 import { APP_ROUTES } from "@/utils/routes";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { useSession } from "next-auth/react";
@@ -44,20 +42,16 @@ import {
   buildSpinWheelWebhookPayload,
   type SpinWheelWebhookPayload,
 } from "@/lib/spin-wheel/webhook";
+import { parsePrice } from "./cart/parsePrice";
+import ThubCouponSection from "./cart/ThubCouponSection";
+import SpinWheelRewardSection from "./cart/SpinWheelRewardSection";
+import CheckoutOrderReview from "./cart/CheckoutOrderReview";
+import CartToPayFooter from "./cart/CartToPayFooter";
 
 type CartProductProps = {
     open: boolean;
     onClose: () => void;
     onCheckout?: () => void;
-};
-
-const parsePrice = (priceText?: string): number => {
-    if (!priceText) return 0;
-    const normalized = String(priceText).replace(/,/g, " ");
-    const match = normalized.match(/(\d+(?:\.\d+)?)/);
-    if (!match) return 0;
-    const num = Number(match[1]);
-    return Number.isFinite(num) ? num : 0;
 };
 
 const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) => {
@@ -72,6 +66,8 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
     const [couponApplied, setCouponApplied] = useState(false);
     const [couponMessage, setCouponMessage] = useState("");
+    /** T Hub Exclusive Extra 5% — independent of spin-wheel rewards. */
+    const [thubCouponApplied, setThubCouponApplied] = useState(false);
     const { reward: spinReward, validateForCart, markRewardRedeemed } = useSpinWheel();
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
     const [isDispensing, setIsDispensing] = useState(false);
@@ -85,6 +81,8 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
     const [limitNotice, setLimitNotice] = useState({ open: false, message: "" });
     const paymentRecordedRef = useRef<string | null>(null);
+    /** Ensures T-Hub 5% is defaulted once per checkout visit without blocking manual remove. */
+    const thubDefaultedForCheckoutRef = useRef(false);
 
     const cartItemKey = (item: CartItem) => item.id || item.name;
 
@@ -208,7 +206,10 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     );
 
     useEffect(() => {
-        if (!open) return;
+        if (!open) {
+            setThubCouponApplied(false);
+            return;
+        }
         if (step === "checkout") {
             speakMessage("checkoutTapCart");
             return;
@@ -334,7 +335,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const isNextPurchaseOnly = isNextPurchaseSpinReward(spinReward);
     const isDeferredOnly = isDeferredSpinReward(spinReward);
 
-    const discount = useMemo(() => {
+    const spinDiscount = useMemo(() => {
       if (!couponApplied) return 0;
       // Hard block: next-visit / birthday rewards never reduce payable total.
       if (isDeferredOnly || isNextPurchaseOnly) return 0;
@@ -352,8 +353,27 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
       spinValidation.reason,
     ]);
 
+    // T-Hub default 5% — no minimum order value (MOV applies to spin-wheel only).
+    const thubDiscount = useMemo(() => {
+      if (!thubCouponApplied) return 0;
+      if (!Number.isFinite(total) || total <= 0) return 0;
+      return Math.round(total * 0.05);
+    }, [thubCouponApplied, total]);
+
+    /**
+     * T-Hub scenario: use EITHER default T-Hub 5% OR a spin-wheel cart offer — never both.
+     * Spin-wheel MOV / eligibility still gates spinDiscount only.
+     */
+    const discount = useMemo(() => {
+      if (spinDiscount > 0) return Math.min(Math.max(0, total), spinDiscount);
+      if (thubDiscount > 0) return Math.min(Math.max(0, total), thubDiscount);
+      return 0;
+    }, [total, spinDiscount, thubDiscount]);
+
+    // Keep spin validation message in sync; never auto-apply spin (user chooses vs T-Hub).
     useEffect(() => {
         if (!open || step !== "checkout") return;
+
         if (!spinReward || spinReward.redeemed) {
             setCouponApplied(false);
             setCouponMessage("");
@@ -371,11 +391,33 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
           validation.reason === "birthday_only"
         ) {
             setCouponApplied(false);
+        }
+    }, [open, step, spinReward, total, validateForCart]);
+
+    // Default T-Hub 5% once when entering checkout (unless a spin cart offer is already active).
+    useEffect(() => {
+        if (!open) {
+            setThubCouponApplied(false);
+            thubDefaultedForCheckoutRef.current = false;
             return;
         }
+        if (step !== "checkout") {
+            thubDefaultedForCheckoutRef.current = false;
+            return;
+        }
+        if (thubDefaultedForCheckoutRef.current) return;
+        thubDefaultedForCheckoutRef.current = true;
+        if (spinDiscount <= 0) {
+            setThubCouponApplied(true);
+        }
+    }, [open, step, spinDiscount]);
 
-        setCouponApplied(true);
-    }, [open, step, spinReward, total, validateForCart]);
+    // If user applies a spin cart discount, always clear T-Hub (mutual exclusivity).
+    useEffect(() => {
+        if (spinDiscount > 0 && thubCouponApplied) {
+            setThubCouponApplied(false);
+        }
+    }, [spinDiscount, thubCouponApplied]);
 
     const handleApplySpinCoupon = useCallback(() => {
         if (!spinReward) {
@@ -400,49 +442,61 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
             return;
         }
 
+        // Mutual exclusivity: spin-wheel offer replaces T-Hub 5%.
+        setThubCouponApplied(false);
         setCouponApplied(true);
-        toast.success(validation.message);
+        toast.success(
+          `${validation.message} T Hub 5% was removed — only one offer can be used.`
+        );
     }, [spinReward, total, validateForCart]);
 
     const handleRemoveSpinCoupon = useCallback(() => {
         setCouponApplied(false);
         setCouponMessage("");
+        // Restore T-Hub default when spin offer is removed.
+        setThubCouponApplied(true);
     }, []);
 
-    const payableTotal = useMemo(() => {
-        // Extra guard: deferred rewards can never reduce pay amount.
-        if (isDeferredOnly || isNextPurchaseOnly) {
-          return Number.isFinite(total) ? Math.max(0, total) : 0;
+    const handleApplyThubCoupon = useCallback(() => {
+        // Mutual exclusivity: T-Hub 5% replaces any applied spin-wheel cart discount.
+        setCouponApplied(false);
+        setThubCouponApplied(true);
+        toast.success("T Hub Extra 5% discount applied. Spin-wheel offer was removed.");
+    }, []);
+
+    const handleRemoveThubCoupon = useCallback(() => {
+        setThubCouponApplied(false);
+    }, []);
+
+    const handleToggleThubCoupon = useCallback(() => {
+        if (thubCouponApplied) {
+            setThubCouponApplied(false);
+            return;
         }
+        handleApplyThubCoupon();
+    }, [thubCouponApplied, handleApplyThubCoupon]);
+
+    const payableTotal = useMemo(() => {
         const next = total - discount;
         return Number.isFinite(next) ? Math.max(0, next) : 0;
-    }, [total, discount, isDeferredOnly, isNextPurchaseOnly]);
+    }, [total, discount]);
 
     const amountPaise = useMemo(() => {
-        const canDiscount = couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0;
-        const amount = canDiscount ? payableTotal : total;
+        const amount = discount > 0 ? payableTotal : total;
         return Math.max(0, Math.round(amount * 100));
-    }, [payableTotal, couponApplied, total, isDeferredOnly, isNextPurchaseOnly, discount]);
+    }, [payableTotal, total, discount]);
 
     const captureSpinWheelWebhookData = useCallback(
         (appliedAt = Date.now()) =>
             buildSpinWheelWebhookPayload({
                 reward: spinReward,
-                couponApplied: couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0,
-                discountAmount: isDeferredOnly || isNextPurchaseOnly ? 0 : discount,
+                couponApplied: spinDiscount > 0,
+                discountAmount: spinDiscount,
                 cartTotal: total,
                 payableTotal,
                 appliedAt,
             }),
-        [
-          spinReward,
-          couponApplied,
-          discount,
-          total,
-          payableTotal,
-          isDeferredOnly,
-          isNextPurchaseOnly,
-        ]
+        [spinReward, spinDiscount, total, payableTotal]
     );
 
     const handleBack = () => {
@@ -498,7 +552,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
             setPaymentPayload(cashPayment);
             setSpinWheelWebhookData(captureSpinWheelWebhookData());
 
-            if (couponApplied && spinReward && !spinReward.redeemed) {
+            if (spinDiscount > 0 && spinReward && !spinReward.redeemed) {
                 markRewardRedeemed();
             }
 
@@ -575,7 +629,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 }
             })();
         },
-        [items, payableTotal, total, discount, machineId, machineName, machineLocation, router, couponApplied, spinReward, markRewardRedeemed, captureSpinWheelWebhookData]
+        [items, payableTotal, total, discount, spinDiscount, machineId, machineName, machineLocation, router, spinReward, markRewardRedeemed, captureSpinWheelWebhookData]
     );
 
     return (
@@ -757,11 +811,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                             >
                                 {paymentMethod === null ? (
                                     <PaymentMethodChooser
-                                        amount={
-                                          couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0
-                                            ? payableTotal
-                                            : total
-                                        }
+                                        amount={discount > 0 ? payableTotal : total}
                                         onSelect={(m) => {
                                             setPaymentMethod(m);
                                             speakMessage("payment");
@@ -769,11 +819,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                     />
                                 ) : paymentMethod === "cash" ? (
                                     <CashAgentPayment
-                                        amount={
-                                          couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0
-                                            ? payableTotal
-                                            : total
-                                        }
+                                        amount={discount > 0 ? payableTotal : total}
                                         onBack={() => setPaymentMethod(null)}
                                         onConfirmed={handleCashConfirmed}
                                     />
@@ -827,7 +873,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                             method: paymentMode,
                                         });
 
-                                        if (couponApplied && spinReward && !spinReward.redeemed) {
+                                        if (spinDiscount > 0 && spinReward && !spinReward.redeemed) {
                                             markRewardRedeemed();
                                         }
 
@@ -936,171 +982,27 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                             </Box>
                         ) : step === "checkout" ? (
                             <>
-                                <Box sx={{ bgcolor: "#fff", borderRadius: 2, p: 2, border: "1px solid #e5e7eb" }}>
-                                    <Typography sx={{ fontWeight: 700, fontSize: 28, mb: 2 }}>
-                                        Review your order
-                                    </Typography>
+                                <CheckoutOrderReview items={items} total={total} />
 
-                                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25 }}>
-                                        {items.map((it, idx) => {
-                                            const lineTotal = parsePrice(it.priceText) * (it.quantity || 0);
-                                            return (
-                                                <Box key={`${it.id || it.name}-${idx}-checkout`} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                                    <Box
-                                                        sx={{
-                                                            width: 80,
-                                                            height: 80,
-                                                            borderRadius: 1,
-                                                            bgcolor: "#f3f4f6",
-                                                            overflow: "hidden",
-                                                            position: "relative",
-                                                            flex: "0 0 auto",
-                                                        }}
-                                                    >
-                                                        {it.imageUrl ? (
-                                                            <Box
-                                                                component="img"
-                                                                src={it.imageUrl}
-                                                                alt={it.name}
-                                                                sx={{
-                                                                    width: "100%",
-                                                                    height: "100%",
-                                                                    objectFit: "contain",
-                                                                    display: "block",
-                                                                }}
-                                                            />
-                                                        ) : null}
-                                                    </Box>
+                                <ThubCouponSection
+                                  applied={thubCouponApplied}
+                                  discountAmount={thubDiscount}
+                                  disabled={spinDiscount > 0}
+                                  onToggle={handleToggleThubCoupon}
+                                  onRemove={handleRemoveThubCoupon}
+                                />
 
-                                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                        <Typography
-                                                            sx={{
-                                                                fontWeight: 500,
-                                                                fontSize: 24,
-                                                                lineHeight: 1.2,
-                                                                overflow: "hidden",
-                                                                textOverflow: "ellipsis",
-                                                                whiteSpace: "nowrap",
-                                                            }}
-                                                        >
-                                                            {capitalizeWords(it.name)} &nbsp; x{it.quantity || 1}
-                                                        </Typography>
-                                                    </Box>
-
-                                                    <ProductPrice
-                                                        retailPrice={it.originalPrice}
-                                                        discountValue={it.discountValue}
-                                                        priceText={it.priceText || ""}
-                                                        productId={it.id}
-                                                        productName={it.name}
-                                                    />
-                                                </Box>
-                                            );
-                                        })}
-                                    </Box>
-
-                                    <Divider sx={{ my: 1.5 }} />
-
-                                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                        <Typography sx={{ fontWeight: 700, fontSize: 24 }}>Total</Typography>
-                                        <Typography sx={{ fontWeight: 700, fontSize: 24 }}>Rs.{Math.round(total)}/-</Typography>
-                                    </Box>
-                                </Box>
-
-                                <Box sx={{ mt: 2, bgcolor: "#fff", borderRadius: 2, p: 2, border: "2px solid #9E1B3D" }}>
-                                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                                        <Typography sx={{ fontWeight: 600, fontSize: 24, color: "#9E1B3D" }}>
-                                            Spin Wheel Reward
-                                        </Typography>
-                                    </Box>
-                                    {spinReward ? (
-                                        <>
-                                            <Box sx={{ display: "flex", alignItems: "center", minHeight: 48 }}>
-                                                <Box
-                                                    sx={{
-                                                        flex: "1 1 auto",
-                                                        border: "1px solid #d1d5db",
-                                                        borderRadius: couponApplied ? "6px 0 0 6px" : "6px",
-                                                        borderRight: couponApplied ? "none" : "1px solid #d1d5db",
-                                                        px: 2,
-                                                        py: 1.25,
-                                                        bgcolor: "#fff",
-                                                    }}
-                                                >
-                                                    <Typography sx={{ fontSize: 18, color: "#333", fontWeight: 700 }}>
-                                                        {spinReward.code}
-                                                    </Typography>
-                                                    <Typography sx={{ fontSize: 16, color: "#6b7280", mt: 0.5 }}>
-                                                        {spinReward.title}
-                                                        {spinReward.redeemed ? " (used)" : ""}
-                                                    </Typography>
-                                                </Box>
-                                                {!couponApplied &&
-                                                !spinReward.redeemed &&
-                                                spinValidation.canApply &&
-                                                !isNextPurchaseOnly &&
-                                                !isDeferredOnly ? (
-                                                    <Button
-                                                        variant="contained"
-                                                        disableElevation
-                                                        onClick={handleApplySpinCoupon}
-                                                        sx={{
-                                                            textTransform: "none",
-                                                            fontWeight: 600,
-                                                            fontSize: 18,
-                                                            borderRadius: "0 6px 6px 0",
-                                                            minWidth: 100,
-                                                            bgcolor: "#9E1B3D",
-                                                            "&:hover": { bgcolor: "#7C1230" },
-                                                        }}
-                                                    >
-                                                        Apply
-                                                    </Button>
-                                                ) : null}
-                                            </Box>
-                                            {couponMessage ? (
-                                                <Typography sx={{ fontSize: 16, color: "#6b7280", mt: 1 }}>
-                                                    {couponMessage}
-                                                </Typography>
-                                            ) : null}
-                                        </>
-                                    ) : (
-                                        <Typography sx={{ fontSize: 18, color: "#6b7280" }}>
-                                            Spin the wheel on the home screen to win a reward before checkout.
-                                        </Typography>
-                                    )}
-                                </Box>
-                                {couponApplied && discount > 0 && !isDeferredOnly && !isNextPurchaseOnly ? (
-                                    <Box sx={{ mt: 1.5, display: "flex", alignItems: "flex-start", gap: 1, bgcolor: "#fdf2f8", borderRadius: 2, p: 1.5, border: "1px solid #fbcfe8" }}>
-                                        <Box sx={{ flex: 1 }}>
-                                            <Typography sx={{ fontWeight: 700, fontSize: 20, color: "#9E1B3D" }}>
-                                                Reward applied successfully!
-                                            </Typography>
-                                            <Typography sx={{ fontSize: 18, color: "#7A4757", mt: 0.3 }}>
-                                                {couponMessage || `You save Rs.${Math.round(discount)}/- on this order.`}
-                                            </Typography>
-                                        </Box>
-                                        <IconButton size="small" onClick={handleRemoveSpinCoupon} sx={{ color: "#6b7280", p: 0.3 }}>
-                                            <CloseIcon sx={{ fontSize: 20 }} />
-                                        </IconButton>
-                                    </Box>
-                                ) : null}
-                                {spinReward &&
-                                !spinReward.redeemed &&
-                                (isNextPurchaseOnly ||
-                                    isDeferredOnly ||
-                                    spinValidation.reason === "min_order_not_met" ||
-                                    spinValidation.reason === "next_purchase_only" ||
-                                    spinValidation.reason === "birthday_only") ? (
-                                    <Box sx={{ mt: 1.5, bgcolor: "#fff7ed", borderRadius: 2, p: 1.5, border: "1px solid #fed7aa" }}>
-                                        <Typography sx={{ fontSize: 18, color: "#9a3412" }}>
-                                            {spinValidation.message ||
-                                              (isNextPurchaseOnly
-                                                ? "₹100 OFF is for your next purchase only and will not be applied to this order."
-                                                : couponMessage)}
-                                        </Typography>
-                                    </Box>
-                                ) : null}
+                                <SpinWheelRewardSection
+                                  spinReward={spinReward}
+                                  spinValidation={spinValidation}
+                                  couponApplied={couponApplied}
+                                  couponMessage={couponMessage}
+                                  spinDiscount={spinDiscount}
+                                  isNextPurchaseOnly={isNextPurchaseOnly}
+                                  isDeferredOnly={isDeferredOnly}
+                                  onApply={handleApplySpinCoupon}
+                                  onRemove={handleRemoveSpinCoupon}
+                                />
                             </>
                         ) : items.length === 0 ? (
                             <Box sx={{ py: 2, textAlign: "center" }}>
@@ -1273,98 +1175,14 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                     </Box>
 
                     <Divider />
-                    <Box sx={{ px: 2, py: 1.5, bgcolor: "#fff" }}>
-                        <Typography sx={{ fontSize: 24, color: "text.secondary" }}>TO PAY</Typography>
-                        <Box sx={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", mt: 0.5 }}>
-                            <Box>
-                                <Typography sx={{
-                                    mt: 2,
-                                    mb: 0.75,
-                                    fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
-                                    fontWeight: 510,
-                                    fontSize: "24px",
-                                    lineHeight: "100%",
-                                    letterSpacing: "0%",
-                                }}>
-                                    Your Cart total
-                                </Typography>
-                                <Typography
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => setShowPriceDetails((v) => !v)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" || e.key === " ") setShowPriceDetails((v) => !v);
-                                    }}
-                                    sx={{
-                                        fontSize: 24,
-                                        color: "text.secondary",
-                                        textDecoration: "underline",
-                                        cursor: "pointer",
-                                        userSelect: "none",
-                                    }}
-                                >
-                                    Tap to view details
-                                </Typography>
-                            </Box>
-                            <Box sx={{ textAlign: "right" }}>
-                                {couponApplied && discount > 0 && !isDeferredOnly && !isNextPurchaseOnly ? (
-                                    <Typography sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}>
-                                        Rs.{Math.round(total)}/-
-                                    </Typography>
-                                ) : null}
-                                <Typography sx={{ fontWeight: 900, fontSize: 24 }}>
-                                    Rs.{" "}
-                                    {Math.round(
-                                      couponApplied && !isDeferredOnly && !isNextPurchaseOnly && discount > 0
-                                        ? payableTotal
-                                        : Number.isFinite(total)
-                                          ? total
-                                          : 0
-                                    )}
-                                    /-
-                                </Typography>
-                            </Box>
-                        </Box>
-
-                        <Collapse in={showPriceDetails} timeout="auto" unmountOnExit>
-                            <Box sx={{ mt: 2, pt: 1.5, borderTop: "1px solid #e5e7eb" }}>
-                                {items.map((it, idx) => {
-                                    const lineTotal = parsePrice(it.priceText) * (it.quantity || 0);
-                                    return (
-                                        <Box
-                                            key={`${it.id || it.name}-${idx}-line`}
-                                            sx={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "flex-start",
-                                                py: 1,
-                                            }}
-                                        >
-                                            <Box sx={{ minWidth: 0, pr: 2 }}>
-                                                <Typography
-                                                    sx={{
-                                                        fontWeight: 700,
-                                                        fontSize: 24,
-                                                        lineHeight: 1.2,
-                                                        overflow: "hidden",
-                                                        textOverflow: "ellipsis",
-                                                        display: "-webkit-box",
-                                                        WebkitLineClamp: 2,
-                                                        WebkitBoxOrient: "vertical",
-                                                    }}
-                                                >
-                                                    {capitalizeWords(it.name)}
-                                                </Typography>
-                                            </Box>
-                                            <Typography sx={{ fontWeight: 700, fontSize: 24, whiteSpace: "nowrap" }}>
-                                                Rs. {Math.round(Number.isFinite(lineTotal) ? lineTotal : 0)}/-
-                                            </Typography>
-                                        </Box>
-                                    );
-                                })}
-                            </Box>
-                        </Collapse>
-                    </Box>
+                    <CartToPayFooter
+                      items={items}
+                      total={total}
+                      payableTotal={payableTotal}
+                      discount={discount}
+                      showPriceDetails={showPriceDetails}
+                      onToggleDetails={() => setShowPriceDetails((v) => !v)}
+                    />
 
                     {/* Bottom action buttons hidden - moved to top header */}
                 </Box>

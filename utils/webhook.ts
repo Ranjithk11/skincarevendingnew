@@ -802,6 +802,8 @@ export async function sendSlotUpdateWebhook(
 
 // ---------------------------------------------------------------------------
 // Free consultation lead webhook
+// All consultation requests (report popup, free-consultation flow, selfie, etc.)
+// → https://hook.eu1.make.com/l35iie6ib0pdzol0hlv7jztdeonumrkg
 // ---------------------------------------------------------------------------
 
 const DEFAULT_CONSULTATION_WEBHOOK_URL =
@@ -904,11 +906,21 @@ export async function sendConsultationWebhook(
 }
 
 // ---------------------------------------------------------------------------
-// Birthday spin-wheel offer webhook
+// Spin-wheel lead webhook (birthday, next-purchase, spin consultation, etc.)
+// All spin-wheel leads → https://hook.eu1.make.com/gimljdauory9hjmmh3tzp8jotqwq67jd
 // ---------------------------------------------------------------------------
 
-const DEFAULT_BIRTHDAY_OFFER_WEBHOOK_URL =
+const DEFAULT_SPIN_WHEEL_LEAD_WEBHOOK_URL =
   "https://hook.eu1.make.com/gimljdauory9hjmmh3tzp8jotqwq67jd";
+
+/** @deprecated Prefer DEFAULT_SPIN_WHEEL_LEAD_WEBHOOK_URL — kept for older env names. */
+const DEFAULT_BIRTHDAY_OFFER_WEBHOOK_URL = DEFAULT_SPIN_WHEEL_LEAD_WEBHOOK_URL;
+
+export type SpinWheelLeadEvent =
+  | "birthday_offer_lead"
+  | "next_purchase_offer_lead"
+  | "spin_wheel_consultation_lead"
+  | "spin_wheel_discount_lead";
 
 export interface BirthdayOfferUserInfo {
   userId?: string;
@@ -919,8 +931,8 @@ export interface BirthdayOfferUserInfo {
 }
 
 export interface BirthdayOfferPayload {
-  /** Defaults to birthday_offer_lead. Use next_purchase_offer_lead for ₹100 next visit. */
-  event?: "birthday_offer_lead" | "next_purchase_offer_lead";
+  /** Defaults to birthday_offer_lead. */
+  event?: SpinWheelLeadEvent;
   user?: BirthdayOfferUserInfo;
   machineName?: string;
   machineLocation?: string;
@@ -932,17 +944,24 @@ export interface BirthdayOfferPayload {
   };
 }
 
+function resolveSpinWheelLeadWebhookUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_SPIN_WHEEL_LEAD_WEBHOOK_URL ||
+    process.env.NEXT_PUBLIC_BIRTHDAY_OFFER_WEBHOOK_URL ||
+    DEFAULT_SPIN_WHEEL_LEAD_WEBHOOK_URL
+  );
+}
+
 /**
- * Best-effort POST of a spin-wheel lead (birthday / next-purchase) to the birthday webhook URL.
+ * Best-effort POST of any spin-wheel lead (birthday, ₹100 next purchase,
+ * spin free consultation, discount claims, …) to the spin-wheel Make webhook.
  * Failures are swallowed so the UI is never blocked.
  */
-export async function sendBirthdayOfferWebhook(
+export async function sendSpinWheelLeadWebhook(
   payload: BirthdayOfferPayload
 ): Promise<boolean> {
   try {
-    const url =
-      process.env.NEXT_PUBLIC_BIRTHDAY_OFFER_WEBHOOK_URL ||
-      DEFAULT_BIRTHDAY_OFFER_WEBHOOK_URL;
+    const url = resolveSpinWheelLeadWebhookUrl();
 
     const body = {
       event: payload.event || "birthday_offer_lead",
@@ -974,7 +993,16 @@ export async function sendBirthdayOfferWebhook(
 
     return res.ok;
   } catch (err) {
-    console.warn("[spin offer webhook] request failed:", err);
+    console.warn("[spin-wheel lead webhook] request failed:", err);
     return false;
   }
+}
+
+/**
+ * @deprecated Use {@link sendSpinWheelLeadWebhook}. Kept so existing callers keep working.
+ */
+export async function sendBirthdayOfferWebhook(
+  payload: BirthdayOfferPayload
+): Promise<boolean> {
+  return sendSpinWheelLeadWebhook(payload);
 }

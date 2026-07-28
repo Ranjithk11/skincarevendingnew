@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import React from "react";
 import { APP_ROUTES } from "@/utils/routes";
 import { useSpinWheel } from "@/contexts/SpinWheelContext";
-import { clearSpinWheelSession } from "@/lib/spin-wheel/session";
+import { clearVisitorSession } from "@/utils/clearVisitorSession";
 import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
 
 interface TopLogoProps {
@@ -132,7 +132,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
     (() => router.push(buildSpinWheelHref(pathname)));
 
   const handleLogoClick = async () => {
-    clearSpinWheelSession();
+    clearVisitorSession();
     try {
       await signOut({ redirect: false });
     } catch {}
