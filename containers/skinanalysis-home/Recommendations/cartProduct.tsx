@@ -983,14 +983,14 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                         ) : step === "checkout" ? (
                             <>
                                 <CheckoutOrderReview items={items} total={total} />
-
+{/* 
                                 <ThubCouponSection
                                   applied={thubCouponApplied}
                                   discountAmount={thubDiscount}
                                   disabled={spinDiscount > 0}
                                   onToggle={handleToggleThubCoupon}
                                   onRemove={handleRemoveThubCoupon}
-                                />
+                                /> */}
 
                                 <SpinWheelRewardSection
                                   spinReward={spinReward}
