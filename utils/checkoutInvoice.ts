@@ -4,6 +4,8 @@ const CGST_RATE = 9;
 const SGST_RATE = 9;
 
 export type CheckoutInvoiceItem = {
+  id?: string;
+  slotId?: string | number;
   name: string;
   quantity: number;
   hsnSac: string;
@@ -51,6 +53,31 @@ export type CheckoutInvoiceData = {
   machineId: string;
   machineName: string;
   machineLocation: string;
+  /** Product rows for Make webhook (id / slot / retail / amount). */
+  products: Array<{
+    id: string;
+    name: string;
+    quantity: number;
+    slotId: string;
+    retailPrice: number;
+    amount: number;
+  }>;
+  transaction?: {
+    orderId?: string;
+    paymentId?: string;
+    amount?: number;
+    currency?: string;
+    status?: string;
+    method?: string;
+  };
+  command?: {
+    productId?: string;
+    productName?: string;
+    slotId?: string;
+    command?: string;
+    timestamp?: string;
+  };
+  pdfUrl?: string;
 };
 
 export const parseCheckoutPrice = (priceText?: string): number => {
@@ -67,12 +94,14 @@ function round2(n: number): number {
 }
 
 type RawCheckoutItem = {
+  id?: string;
   name?: string;
   quantity?: number;
   priceText?: string;
   originalPrice?: number;
   discountValue?: number;
   retail_price?: number;
+  slotId?: string | number;
 };
 
 export function buildCheckoutInvoice(params: {
@@ -80,7 +109,14 @@ export function buildCheckoutInvoice(params: {
     total?: number;
     discount?: number;
     payableTotal?: number;
-    payment?: { orderId?: string };
+    payment?: {
+      orderId?: string;
+      paymentId?: string;
+      amount?: number;
+      currency?: string;
+      status?: string;
+      method?: string;
+    };
   };
   checkoutItems: RawCheckoutItem[];
   invoiceNo: string;
@@ -96,6 +132,8 @@ export function buildCheckoutInvoice(params: {
   gstin?: string;
   state?: string;
   placeOfSupply?: string;
+  command?: CheckoutInvoiceData["command"];
+  pdfUrl?: string;
 }): CheckoutInvoiceData {
   const payableTotal = round2(Number(params.checkoutSummary.payableTotal || 0));
   const orderDiscount = round2(Math.max(0, Number(params.checkoutSummary.discount || 0)));
@@ -141,6 +179,8 @@ export function buildCheckoutInvoice(params: {
       line.lineMrp > 0 ? round2(((line.lineMrp - lineFinal) / line.lineMrp) * 100) : 0;
 
     return {
+      id: line.item.id || "",
+      slotId: line.item.slotId ?? "",
       name: line.item.name || "",
       quantity: line.qty,
       hsnSac: DEFAULT_HSN,
@@ -188,6 +228,29 @@ export function buildCheckoutInvoice(params: {
     };
   });
 
+  const products = items.map((item) => ({
+    id: item.id || "",
+    name: item.name || "",
+    quantity: item.quantity,
+    slotId: item.slotId !== undefined && item.slotId !== "" ? String(item.slotId) : "",
+    retailPrice: item.rateInclTax,
+    amount: item.amount,
+  }));
+
+  const payment = params.checkoutSummary.payment || {};
+  const firstProduct = products[0];
+  const command =
+    params.command ||
+    (firstProduct
+      ? {
+          productId: firstProduct.id,
+          productName: firstProduct.name,
+          slotId: firstProduct.slotId,
+          command: firstProduct.slotId ? `RQ${firstProduct.slotId}` : "DISPENSE",
+          timestamp: new Date().toISOString(),
+        }
+      : undefined);
+
   return {
     invoiceNo: params.invoiceNo,
     invoiceDate: params.invoiceDate,
@@ -215,5 +278,16 @@ export function buildCheckoutInvoice(params: {
     machineId: params.machineId,
     machineName: params.machineName,
     machineLocation: params.machineLocation,
+    products,
+    transaction: {
+      orderId: payment.orderId || "",
+      paymentId: payment.paymentId || "",
+      amount: Number(payment.amount ?? payableTotal) || payableTotal,
+      currency: payment.currency || "INR",
+      status: payment.status || "paid",
+      method: payment.method || "upi",
+    },
+    command,
+    pdfUrl: params.pdfUrl || "",
   };
 }

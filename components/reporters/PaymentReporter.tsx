@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
+  paymentWebhookDedupeKeys,
   sendPaymentWebhook,
   type PaymentUserInfo,
   type PaymentProductInfo,
@@ -33,19 +34,50 @@ export default function PaymentReporter({
 }: PaymentReporterProps) {
   const lastFiredKeyRef = useRef<string | null>(null);
 
+  // Stabilize identity so parent re-renders (new products[] each time) don't re-trigger.
+  const txIdentity = useMemo(
+    () =>
+      [
+        transaction?.orderId || "",
+        transaction?.paymentId || "",
+        transaction?.qrCodeId || "",
+        transaction?.amount ?? "",
+        transaction?.method || "",
+      ].join("|"),
+    [
+      transaction?.orderId,
+      transaction?.paymentId,
+      transaction?.qrCodeId,
+      transaction?.amount,
+      transaction?.method,
+    ]
+  );
+
   useEffect(() => {
     if (!active) return;
-    if (!transaction?.orderId && !transaction?.paymentId && !transaction?.qrCodeId) return;
+    if (!transaction?.orderId && !transaction?.paymentId && !transaction?.qrCodeId) {
+      return;
+    }
 
     let cancelled = false;
 
     void (async () => {
-      const resolvedTx = (await resolvePaymentForWebhook(transaction)) || transaction;
+      const resolvedTx =
+        (await resolvePaymentForWebhook(transaction)) || transaction;
       if (cancelled) return;
       if (!resolvedTx.orderId && !resolvedTx.paymentId) return;
 
-      const key = `payment_success::${resolvedTx.orderId || resolvedTx.paymentId || ""}`;
+      const keys = paymentWebhookDedupeKeys(resolvedTx);
+      const key = keys[0] || "";
+      if (!key) return;
       if (lastFiredKeyRef.current === key) return;
+      // Also skip if we already fired under a sibling id (order vs payment).
+      if (
+        lastFiredKeyRef.current &&
+        keys.some((k) => k === lastFiredKeyRef.current)
+      ) {
+        return;
+      }
       lastFiredKeyRef.current = key;
 
       void sendPaymentWebhook({
@@ -63,7 +95,9 @@ export default function PaymentReporter({
     return () => {
       cancelled = true;
     };
-  }, [active, user, products, transaction, selectedSlots, machineLocation, machineName, spinWheel]);
+    // intentionally keyed on txIdentity — not products/user object identity
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, txIdentity, machineLocation, machineName]);
 
   return null;
 }

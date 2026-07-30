@@ -21,13 +21,6 @@ import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { APP_ROUTES } from "@/utils/routes";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
-import { useSession } from "next-auth/react";
-import PaymentReporter from "@/components/reporters/PaymentReporter";
-import {
-  getWalkInDisplayName,
-  getWebhookUserId,
-  mergeMachineContext,
-} from "@/lib/machineContext";
 import {
     clampCartQuantity,
     fetchMachineStockForProduct,
@@ -38,10 +31,6 @@ import {
   isDeferredSpinReward,
   isNextPurchaseSpinReward,
 } from "@/lib/spin-wheel/rewards";
-import {
-  buildSpinWheelWebhookPayload,
-  type SpinWheelWebhookPayload,
-} from "@/lib/spin-wheel/webhook";
 import { parsePrice } from "./cart/parsePrice";
 import ThubCouponSection from "./cart/ThubCouponSection";
 import SpinWheelRewardSection from "./cart/SpinWheelRewardSection";
@@ -60,7 +49,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const { items, setQuantity, removeItem, clear } = useCart();
     const { speakMessage } = useVoiceMessages();
-    const { data: session } = useSession();
     const [showPriceDetails, setShowPriceDetails] = useState(false);
     const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
     const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -71,10 +59,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const { reward: spinReward, validateForCart, markRewardRedeemed } = useSpinWheel();
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
     const [isDispensing, setIsDispensing] = useState(false);
-    const [paymentSuccess, setPaymentSuccess] = useState(false);
-    const [paymentPayload, setPaymentPayload] = useState<any>(null);
-    const [spinWheelWebhookData, setSpinWheelWebhookData] =
-        useState<SpinWheelWebhookPayload | null>(null);
     const [machineLocation, setMachineLocation] = useState<string>("LeafWater Vending Machine");
     const [machineName, setMachineName] = useState<string>("Vending Machine");
     const [machineId, setMachineId] = useState<string>("");
@@ -85,30 +69,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const thubDefaultedForCheckoutRef = useRef(false);
 
     const cartItemKey = (item: CartItem) => item.id || item.name;
-
-    const machineContext = useMemo(
-        () =>
-            mergeMachineContext({
-                machineId,
-                machineName,
-                machineLocation,
-            }),
-        [machineId, machineName, machineLocation]
-    );
-
-    const webhookUser = useMemo(
-        () => ({
-            userId: getWebhookUserId(session, machineContext),
-            name: getWalkInDisplayName(session, machineContext),
-            email: (session?.user as any)?.email || "",
-            phone:
-                (session?.user as any)?.mobileNumber ||
-                (session?.user as any)?.phoneNumber ||
-                (session?.user as any)?.phone ||
-                "",
-        }),
-        [session, machineContext]
-    );
 
     // Fetch machine location and name from database
     useEffect(() => {
@@ -486,19 +446,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
         return Math.max(0, Math.round(amount * 100));
     }, [payableTotal, total, discount]);
 
-    const captureSpinWheelWebhookData = useCallback(
-        (appliedAt = Date.now()) =>
-            buildSpinWheelWebhookPayload({
-                reward: spinReward,
-                couponApplied: spinDiscount > 0,
-                discountAmount: spinDiscount,
-                cartTotal: total,
-                payableTotal,
-                appliedAt,
-            }),
-        [spinReward, spinDiscount, total, payableTotal]
-    );
-
     const handleBack = () => {
         if (step === "payment") {
             // If a method is chosen, step back to the method chooser first.
@@ -547,10 +494,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 machineName,
                 machineLocation,
             };
-
-            setPaymentSuccess(true);
-            setPaymentPayload(cashPayment);
-            setSpinWheelWebhookData(captureSpinWheelWebhookData());
 
             if (spinDiscount > 0 && spinReward && !spinReward.redeemed) {
                 markRewardRedeemed();
@@ -629,7 +572,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 }
             })();
         },
-        [items, payableTotal, total, discount, spinDiscount, machineId, machineName, machineLocation, router, spinReward, markRewardRedeemed, captureSpinWheelWebhookData]
+        [items, payableTotal, total, discount, spinDiscount, machineId, machineName, machineLocation, router, spinReward, markRewardRedeemed]
     );
 
     return (
@@ -859,19 +802,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
 
                                         console.log("[Payment] onVerified called, items:", items, "payload:", payload);
                                         const itemsToDispense = [...items];
-
-                                        // Trigger payment webhook
-                                        setPaymentSuccess(true);
-                                        setSpinWheelWebhookData(captureSpinWheelWebhookData());
-                                        setPaymentPayload({
-                                            orderId: payload?.orderId,
-                                            paymentId: payload?.paymentId,
-                                            qrCodeId: payload?.qrCodeId,
-                                            amount: payableTotal,
-                                            currency: "INR",
-                                            status: "paid",
-                                            method: paymentMode,
-                                        });
 
                                         if (spinDiscount > 0 && spinReward && !spinReward.redeemed) {
                                             markRewardRedeemed();
@@ -1186,25 +1116,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
 
                     {/* Bottom action buttons hidden - moved to top header */}
                 </Box>
-
-                {/* Payment webhook reporter */}
-                <PaymentReporter
-                    active={paymentSuccess}
-                    user={webhookUser}
-                    products={items.map((item) => ({
-                        id: item.id,
-                        name: item.name,
-                        quantity: item.quantity,
-                        slotId: item.slotId,
-                        retailPrice: parsePrice(item.priceText),
-                        amount: parsePrice(item.priceText) * (item.quantity || 0),
-                    }))}
-                    transaction={paymentPayload}
-                    selectedSlots={items.map((item) => item.slotId).filter((slot): slot is number => slot !== undefined).map(String)}
-                    machineLocation={machineContext.machineLocation}
-                    machineName={machineContext.machineName}
-                    spinWheel={spinWheelWebhookData}
-                />
             </Dialog>
         </>
     );

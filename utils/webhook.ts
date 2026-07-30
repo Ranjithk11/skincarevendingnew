@@ -449,12 +449,39 @@ function persistPaymentFiredToSession() {
   }
 }
 
+/** All identity keys for one payment — order / payment / qr — so enriching IDs can't double-fire. */
+export function paymentWebhookDedupeKeys(transaction?: {
+  orderId?: string;
+  paymentId?: string;
+  qrCodeId?: string;
+}): string[] {
+  const keys: string[] = [];
+  const orderId = String(transaction?.orderId || "").trim();
+  const paymentId = String(transaction?.paymentId || "").trim();
+  const qrCodeId = String(transaction?.qrCodeId || "").trim();
+  if (orderId) keys.push(`payment_success::order::${orderId}`);
+  if (paymentId) keys.push(`payment_success::pay::${paymentId}`);
+  if (qrCodeId) keys.push(`payment_success::qr::${qrCodeId}`);
+  return keys;
+}
+
+function claimPaymentWebhookKeys(keys: string[]): boolean {
+  if (keys.length === 0) return false;
+  loadPaymentFiredFromSession();
+  if (keys.some((k) => paymentFiredKeys.has(k))) {
+    return false;
+  }
+  keys.forEach((k) => paymentFiredKeys.add(k));
+  persistPaymentFiredToSession();
+  return true;
+}
+
 /**
  * Best-effort POST of a `payment_success` event to the configured webhook.
  *
  * Failures are swallowed and logged so they never block the user-facing flow.
- * A simple in-memory + sessionStorage de-duplication guard prevents the same
- * orderId from triggering multiple webhook fires within a single session.
+ * Dedupes by orderId / paymentId / qrCodeId (claimed synchronously before fetch
+ * so concurrent cart + feedback callers cannot all send).
  */
 export async function sendPaymentWebhook(
   payload: PaymentPayload
@@ -464,17 +491,30 @@ export async function sendPaymentWebhook(
       process.env.NEXT_PUBLIC_PAYMENT_WEBHOOK_URL ||
       DEFAULT_PAYMENT_WEBHOOK_URL;
 
-    const dedupeKey =
-      payload.dedupeKey ||
-      `payment_success::${payload.transaction?.paymentId || payload.transaction?.orderId || ""}`;
+    const keys = payload.dedupeKey
+      ? [
+          payload.dedupeKey,
+          ...paymentWebhookDedupeKeys(payload.transaction),
+        ]
+      : paymentWebhookDedupeKeys(payload.transaction);
 
-    loadPaymentFiredFromSession();
-    if (paymentFiredKeys.has(dedupeKey)) {
-      console.warn("[payment webhook] skipped duplicate:", dedupeKey);
+    const uniqueKeys = Array.from(new Set(keys.filter(Boolean)));
+    if (uniqueKeys.length === 0) {
+      console.warn("[payment webhook] skipped — no order/payment id");
+      return;
+    }
+
+    // Claim BEFORE any await so parallel callers see the same lock.
+    if (!claimPaymentWebhookKeys(uniqueKeys)) {
+      console.warn(
+        "[payment webhook] skipped duplicate:",
+        uniqueKeys.join(" | ")
+      );
       return;
     }
 
     const agentName = payload.transaction?.agentName || "";
+    const dedupeKey = uniqueKeys[0];
 
     const body = {
       event: "payment_success",
@@ -520,9 +560,6 @@ export async function sendPaymentWebhook(
     });
 
     console.log("[payment webhook] sent:", dedupeKey, "→", url);
-
-    paymentFiredKeys.add(dedupeKey);
-    persistPaymentFiredToSession();
   } catch (err) {
     console.warn("[payment webhook] unexpected error:", err);
   }

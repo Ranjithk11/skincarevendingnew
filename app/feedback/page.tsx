@@ -596,9 +596,18 @@ export default function FeedbackPage() {
         machineId: machineInfo?.machineId || "",
         machineName: machineInfo?.machineName || "",
         machineLocation: machineInfo?.machineLocation || "",
+        command: dispenseSuccessCommand
+          ? {
+              productId: dispenseSuccessCommand.productId,
+              productName: dispenseSuccessCommand.productName,
+              slotId: String(dispenseSuccessCommand.slotId || ""),
+              command: dispenseSuccessCommand.command,
+              timestamp: dispenseSuccessCommand.timestamp,
+            }
+          : undefined,
       });
     },
-    [checkoutSummary, checkoutItems, session, machineInfo]
+    [checkoutSummary, checkoutItems, session, machineInfo, dispenseSuccessCommand]
   );
 
   const invoiceData = useMemo(() => buildInvoicePayload(), [buildInvoicePayload]);
