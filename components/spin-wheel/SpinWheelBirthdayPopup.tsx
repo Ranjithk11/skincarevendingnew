@@ -247,6 +247,7 @@ export default function SpinWheelBirthdayPopup({
     setSubmitting(true);
 
     await sendBirthdayOfferWebhook({
+      event: "birthday_offer_lead",
       user: {
         userId: user?.userId,
         name: trimmedName,
@@ -259,7 +260,10 @@ export default function SpinWheelBirthdayPopup({
             couponCode: reward.code,
             rewardType: reward.type,
             title: reward.title,
+            description: reward.description,
             segmentId: reward.segmentId,
+            appliesToCart: false,
+            wonAt: reward.wonAt,
           }
         : undefined,
       machineName:
@@ -659,7 +663,7 @@ export default function SpinWheelBirthdayPopup({
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
           <Button
             onClick={() => setConfirmCloseOpen(false)}
-            sx={{ textTransform: "none", fontWeight: 700, fontSize: 16, color: COLORS.primary }}
+            sx={{ textTransform: "none", fontWeight: 700, fontSize: 16, color:"white" }}
           >
             Keep offer
           </Button>

@@ -802,7 +802,8 @@ export async function sendSlotUpdateWebhook(
 
 // ---------------------------------------------------------------------------
 // Free consultation lead webhook
-// All consultation requests (report popup, free-consultation flow, selfie, etc.)
+// All consultation requests (report popup, free-consultation flow, spin free consultation, selfie, etc.)
+// → https://hook.eu1.make.com/l35iie6ib0pdzol0hlv7jztdeonumrkg
 // → https://hook.eu1.make.com/l35iie6ib0pdzol0hlv7jztdeonumrkg
 // ---------------------------------------------------------------------------
 
@@ -906,8 +907,9 @@ export async function sendConsultationWebhook(
 }
 
 // ---------------------------------------------------------------------------
-// Spin-wheel lead webhook (birthday, next-purchase, spin consultation, etc.)
-// All spin-wheel leads → https://hook.eu1.make.com/gimljdauory9hjmmh3tzp8jotqwq67jd
+// Spin-wheel offer webhook (birthday, next-purchase, cart discounts, etc.)
+// All non-consultation spin offers → https://hook.eu1.make.com/gimljdauory9hjmmh3tzp8jotqwq67jd
+// Consultation leads use sendConsultationWebhook (separate Make hook).
 // ---------------------------------------------------------------------------
 
 const DEFAULT_SPIN_WHEEL_LEAD_WEBHOOK_URL =
@@ -919,8 +921,9 @@ const DEFAULT_BIRTHDAY_OFFER_WEBHOOK_URL = DEFAULT_SPIN_WHEEL_LEAD_WEBHOOK_URL;
 export type SpinWheelLeadEvent =
   | "birthday_offer_lead"
   | "next_purchase_offer_lead"
-  | "spin_wheel_consultation_lead"
-  | "spin_wheel_discount_lead";
+  | "spin_wheel_discount_lead"
+  | "spin_wheel_no_prize"
+  | "spin_wheel_offer_lead";
 
 export interface BirthdayOfferUserInfo {
   userId?: string;
@@ -940,7 +943,10 @@ export interface BirthdayOfferPayload {
     couponCode?: string;
     rewardType?: string;
     title?: string;
+    description?: string;
     segmentId?: string;
+    appliesToCart?: boolean;
+    wonAt?: number;
   };
 }
 
@@ -952,9 +958,56 @@ function resolveSpinWheelLeadWebhookUrl(): string {
   );
 }
 
+/** Resolve machine name/location for spin-wheel / consultation webhooks. */
+export async function fetchMachineContext(): Promise<{
+  machineName: string;
+  machineLocation: string;
+}> {
+  const fallbackName =
+    process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine";
+  const fallbackLocation =
+    process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine";
+
+  try {
+    const res = await fetch("/api/admin/machine-name");
+    const data = await res.json();
+    if (data?.success) {
+      return {
+        machineName: String(data.machineName || "").trim() || fallbackName,
+        machineLocation:
+          String(data.machineLocation || "").trim() || fallbackLocation,
+      };
+    }
+  } catch {
+    // ignore — use env fallbacks
+  }
+
+  return { machineName: fallbackName, machineLocation: fallbackLocation };
+}
+
+/** Map a won reward type to the Make `event` field (consultation is not sent here). */
+export function spinWheelLeadEventForRewardType(
+  rewardType?: string
+): SpinWheelLeadEvent {
+  switch (rewardType) {
+    case "PERCENT_BIRTHDAY_15":
+      return "birthday_offer_lead";
+    case "FLAT_100":
+      return "next_purchase_offer_lead";
+    case "PERCENT_EXTRA_5":
+    case "FLAT_200_MIN_2999":
+      return "spin_wheel_discount_lead";
+    case "NO_PRIZE":
+      return "spin_wheel_no_prize";
+    default:
+      return "spin_wheel_offer_lead";
+  }
+}
+
 /**
- * Best-effort POST of any spin-wheel lead (birthday, ₹100 next purchase,
- * spin free consultation, discount claims, …) to the spin-wheel Make webhook.
+ * Best-effort POST of any non-consultation spin-wheel offer
+ * (birthday, ₹100 next purchase, cart discounts, …) to the spin-wheel Make webhook.
+ * Includes user info, machine location, and full offer details.
  * Failures are swallowed so the UI is never blocked.
  */
 export async function sendSpinWheelLeadWebhook(
@@ -964,7 +1017,10 @@ export async function sendSpinWheelLeadWebhook(
     const url = resolveSpinWheelLeadWebhookUrl();
 
     const body = {
-      event: payload.event || "birthday_offer_lead",
+      event:
+        payload.event ||
+        spinWheelLeadEventForRewardType(payload.spinWheel?.rewardType) ||
+        "birthday_offer_lead",
       requested_at: new Date().toISOString(),
       source: "spin_wheel",
       user: {
@@ -980,7 +1036,12 @@ export async function sendSpinWheelLeadWebhook(
         coupon_code: payload.spinWheel?.couponCode || "",
         reward_type: payload.spinWheel?.rewardType || "",
         title: payload.spinWheel?.title || "",
+        description: payload.spinWheel?.description || "",
         segment_id: payload.spinWheel?.segmentId || "",
+        applies_to_cart: Boolean(payload.spinWheel?.appliesToCart),
+        won_at: payload.spinWheel?.wonAt
+          ? new Date(payload.spinWheel.wonAt).toISOString()
+          : "",
       },
     };
 

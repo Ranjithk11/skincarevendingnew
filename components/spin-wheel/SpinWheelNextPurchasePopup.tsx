@@ -224,13 +224,19 @@ export default function SpinWheelNextPurchasePopup({
             couponCode: reward.code,
             rewardType: reward.type,
             title: reward.title,
+            description: reward.description,
             segmentId: reward.segmentId,
+            appliesToCart: false,
+            wonAt: reward.wonAt,
           }
         : {
             couponCode: "SPIN-OFF100",
             rewardType: "FLAT_100",
             title: "₹100 OFF ON NEXT PURCHASE",
+            description:
+              "Get ₹100 off on your next purchase above ₹1,000. Share your details — this offer is for your next visit only and is not applied to the current purchase.",
             segmentId: "flat_100",
+            appliesToCart: false,
           },
       machineName:
         machineRef.current.machineName ||

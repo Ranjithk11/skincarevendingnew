@@ -7,6 +7,7 @@ import { useSpinWheel } from "@/contexts/SpinWheelContext";
 import {
   SPIN_WHEEL_SEGMENTS,
   isNextPurchaseSpinReward,
+  type SpinWheelReward,
 } from "@/lib/spin-wheel/rewards";
 import { drawSpinWheelIcon } from "@/lib/spin-wheel/drawIcons";
 import {
@@ -16,7 +17,11 @@ import {
   isNextPurchaseLeadClaimed,
   markNextPurchaseLeadClaimed,
 } from "@/lib/spin-wheel/session";
-import { sendBirthdayOfferWebhook } from "@/utils/webhook";
+import {
+  fetchMachineContext,
+  sendSpinWheelLeadWebhook,
+  spinWheelLeadEventForRewardType,
+} from "@/utils/webhook";
 import { APP_ROUTES } from "@/utils/routes";
 import SpinWheelConsultationPopup from "@/components/spin-wheel/SpinWheelConsultationPopup";
 import SpinWheelBirthdayPopup from "@/components/spin-wheel/SpinWheelBirthdayPopup";
@@ -222,7 +227,11 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
   const submitNextPurchaseLead = useCallback(
     async (nextReward: typeof reward) => {
       if (!nextReward) return;
-      await sendBirthdayOfferWebhook({
+      const machine = await fetchMachineContext();
+      const segment = SPIN_WHEEL_SEGMENTS.find(
+        (s) => s.id === nextReward.segmentId
+      );
+      await sendSpinWheelLeadWebhook({
         event: "next_purchase_offer_lead",
         user: {
           userId: sessionUser.userId,
@@ -230,11 +239,16 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
           phone: sessionUser.phone,
           email: sessionUser.email,
         },
+        machineName: machine.machineName,
+        machineLocation: machine.machineLocation,
         spinWheel: {
           couponCode: nextReward.code,
           rewardType: nextReward.type,
           title: nextReward.title,
+          description: nextReward.description || segment?.description,
           segmentId: nextReward.segmentId,
+          appliesToCart: segment?.appliesToCart ?? false,
+          wonAt: nextReward.wonAt,
         },
       });
       markNextPurchaseLeadClaimed(scopeId);
@@ -242,6 +256,44 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
       setNextPurchaseDismissed(true);
     },
     [scopeId, sessionUser]
+  );
+
+  /** Cart discounts (5% / ₹200) and Better Luck Next Time — no claim form; send + session user + machine. */
+  const notifyImmediateSpinOutcome = useCallback(
+    async (nextReward: SpinWheelReward) => {
+      if (
+        nextReward.type !== "PERCENT_EXTRA_5" &&
+        nextReward.type !== "FLAT_200_MIN_2999" &&
+        nextReward.type !== "NO_PRIZE"
+      ) {
+        return;
+      }
+      const machine = await fetchMachineContext();
+      const segment = SPIN_WHEEL_SEGMENTS.find(
+        (s) => s.id === nextReward.segmentId
+      );
+      await sendSpinWheelLeadWebhook({
+        event: spinWheelLeadEventForRewardType(nextReward.type),
+        user: {
+          userId: sessionUser.userId,
+          name: sessionUser.name,
+          phone: sessionUser.phone,
+          email: sessionUser.email,
+        },
+        machineName: machine.machineName,
+        machineLocation: machine.machineLocation,
+        spinWheel: {
+          couponCode: nextReward.code,
+          rewardType: nextReward.type,
+          title: nextReward.title,
+          description: nextReward.description || segment?.description,
+          segmentId: nextReward.segmentId,
+          appliesToCart: segment?.appliesToCart ?? false,
+          wonAt: nextReward.wonAt,
+        },
+      });
+    },
+    [sessionUser]
   );
 
   // Only ask for details on the spin-wheel page when contact is missing and not already claimed.
@@ -416,6 +468,16 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
         setNextPurchaseDismissed(false);
         return;
       }
+
+      // Immediate outcomes (cart discounts + better luck) — notify Make with outcome + user + machine.
+      if (
+        nextReward.type === "PERCENT_EXTRA_5" ||
+        nextReward.type === "FLAT_200_MIN_2999" ||
+        nextReward.type === "NO_PRIZE"
+      ) {
+        void notifyImmediateSpinOutcome(nextReward);
+      }
+
       setShowResult(true);
     }, 6100);
   }, [
@@ -429,6 +491,7 @@ export default function SpinWheel({ onContinue }: SpinWheelProps) {
     setIsSpinning,
     spinning,
     submitNextPurchaseLead,
+    notifyImmediateSpinOutcome,
   ]);
 
   const forceFlat100 = searchParams.get("force") === "flat_100";
