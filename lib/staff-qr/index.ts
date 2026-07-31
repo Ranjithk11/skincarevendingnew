@@ -19,6 +19,7 @@ export {
 export {
   extractHashFromQrText,
   normalizeStaffFromUpstream,
+  parseStaffnamePipe,
   toVerifyFailure,
 } from "./normalize";
 

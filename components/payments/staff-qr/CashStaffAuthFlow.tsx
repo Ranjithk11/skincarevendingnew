@@ -295,7 +295,7 @@ export default function CashStaffAuthFlow({
               {errorMessage || copy.detail}
             </Typography>
 
-            <Button
+            {/* <Button
               fullWidth
               variant="contained"
               onClick={goScan}
@@ -312,7 +312,7 @@ export default function CashStaffAuthFlow({
               }}
             >
               Try again
-            </Button>
+            </Button> */}
 
             {/* <Button
               fullWidth

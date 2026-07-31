@@ -401,6 +401,12 @@ export interface PaymentTransactionInfo {
   method?: string;
   /** Agent who authorized a cash sale */
   agentName?: string;
+  /** How cash staff was authenticated */
+  staffAuthMethod?: "qr" | "password";
+  staffHash?: string;
+  staffRole?: string;
+  staffBranch?: string;
+  staffPhone?: string;
 }
 
 export interface PaymentPayload {
@@ -475,6 +481,12 @@ export async function sendPaymentWebhook(
     }
 
     const agentName = payload.transaction?.agentName || "";
+    const agentPhone = payload.transaction?.staffPhone || "";
+    const agentBranch = payload.transaction?.staffBranch || "";
+    // Slack-friendly pipe string matching Make QRAUTH staffname format
+    const agentStaffname = [agentName, agentPhone, agentBranch]
+      .filter(Boolean)
+      .join("|");
 
     const body = {
       event: "payment_success",
@@ -482,6 +494,10 @@ export async function sendPaymentWebhook(
       machine_location: payload.machineLocation || "",
       machine_name: payload.machineName || "",
       agent_name: agentName,
+      agent_phone: agentPhone,
+      agent_branch: agentBranch,
+      agent_staffname: agentStaffname,
+      staff_auth_method: payload.transaction?.staffAuthMethod || "",
       amount: payload.transaction?.amount ?? null,
       selected_slots: payload.selectedSlots || [],
       user: {
@@ -506,6 +522,10 @@ export async function sendPaymentWebhook(
         status: payload.transaction?.status || "",
         method: payload.transaction?.method || "",
         agent_name: agentName,
+        agent_phone: agentPhone,
+        agent_branch: agentBranch,
+        agent_staffname: agentStaffname,
+        staff_auth_method: payload.transaction?.staffAuthMethod || "",
       },
       spin_wheel: payload.spinWheel ?? null,
     };

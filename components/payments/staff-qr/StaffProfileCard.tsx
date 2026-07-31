@@ -134,9 +134,9 @@ export default function StaffProfileCard({
         sx={{
           mt: 1,
           textTransform: "none",
-          fontSize: 16,
-          fontWeight: 600,
-          color: "#316D52",
+          fontSize:20,
+          fontWeight: 700,
+         
         }}
       >
         Scan a different QR

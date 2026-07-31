@@ -18,6 +18,26 @@ function asBool(value: unknown, fallback = true): boolean {
 }
 
 /**
+ * Make QRAUTH returns: data.staffname = "Rajesh|9960278391|Aiportm4"
+ * → name | phone | branch/location
+ */
+export function parseStaffnamePipe(raw: string): {
+  name: string;
+  phone?: string;
+  branch?: string;
+  display: string;
+} {
+  const display = String(raw || "").trim();
+  if (!display) return { name: "", display: "" };
+
+  const parts = display.split("|").map((p) => p.trim());
+  const name = parts[0] || display;
+  const phone = parts[1] || undefined;
+  const branch = parts[2] || undefined;
+  return { name, phone, branch, display };
+}
+
+/**
  * Normalize heterogeneous upstream JSON (Make.com / custom API) into VerifiedStaff.
  * Accepts common field aliases so swapping APIs later is low-friction.
  */
@@ -29,6 +49,7 @@ export function normalizeStaffFromUpstream(
   const root = data as Record<string, unknown>;
 
   // Nested shapes: { staff: {...} } | { data: {...} } | { user: {...} } | flat
+  // Make QRAUTH: { success, data: { staffname: "Name|Phone|Branch" } }
   const nested =
     (root.staff as Record<string, unknown> | undefined) ||
     (root.data as Record<string, unknown> | undefined) ||
@@ -36,8 +57,21 @@ export function normalizeStaffFromUpstream(
     (root.value as Record<string, unknown> | undefined) ||
     root;
 
+  // Pipe format from Make: "Rajesh|9960278391|Aiportm4"
+  const staffnameRaw =
+    asString(nested.staffname) ||
+    asString(nested.staff_name) ||
+    asString(nested.StaffName) ||
+    (typeof root.data === "string" ? asString(root.data) : "");
+
+  const fromPipe = staffnameRaw.includes("|")
+    ? parseStaffnamePipe(staffnameRaw)
+    : null;
+
   const name =
+    fromPipe?.name ||
     asString(nested.name) ||
+    asString(nested.staffname) ||
     asString(nested.staff_name) ||
     asString(nested.agentName) ||
     asString(nested.agent_name);
@@ -49,7 +83,6 @@ export function normalizeStaffFromUpstream(
     true
   );
 
-  // status: "inactive" string handled via asBool when value is string
   const statusStr = asString(nested.status).toLowerCase();
   const activeFromStatus =
     statusStr === ""
@@ -59,16 +92,27 @@ export function normalizeStaffFromUpstream(
   return {
     hash: asString(nested.hash) || asString(nested.key) || hash,
     name,
-    phone: asString(nested.phone) || asString(nested.mobile) || undefined,
+    phone:
+      fromPipe?.phone ||
+      asString(nested.phone) ||
+      asString(nested.mobile) ||
+      undefined,
     role: asString(nested.role) || asString(nested.designation) || undefined,
-    branch: asString(nested.branch) || asString(nested.location) || undefined,
+    branch:
+      fromPipe?.branch ||
+      asString(nested.branch) ||
+      asString(nested.location) ||
+      undefined,
     active: active && activeFromStatus,
     qrUrl:
       asString(nested.qr_url) ||
       asString(nested.qrUrl) ||
       asString(nested.qr_image_url) ||
       undefined,
-    raw: nested,
+    raw: {
+      ...nested,
+      staffname_display: fromPipe?.display || staffnameRaw || name,
+    },
   };
 }
 

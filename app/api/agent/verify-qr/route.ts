@@ -76,9 +76,6 @@ export async function POST(request: NextRequest) {
         headers,
         body: JSON.stringify({
           hash,
-          machine_id: body?.machineId || "",
-          machine_name: body?.machineName || "",
-          machine_location: body?.machineLocation || "",
         }),
         signal: controller.signal,
       });
@@ -99,31 +96,24 @@ export async function POST(request: NextRequest) {
 
     const payload = await upstreamRes.json().catch(() => null);
 
-    if (!upstreamRes.ok) {
-      const message =
-        (payload && (payload.message || payload.error || payload.detail)) ||
-        "Invalid QR code or staff not found.";
-      return NextResponse.json(
-        toVerifyFailure(
-          upstreamRes.status === 404 ? "not_found" : "unknown",
-          String(message)
-        ),
-        { status: upstreamRes.status === 401 ? 401 : 404 }
-      );
-    }
-
-    // Explicit failure flags from Make scenarios
+    // Make may return HTTP 200 with success:false, or HTTP 400
     if (
+      !upstreamRes.ok ||
       payload?.success === false ||
       payload?.ok === false ||
       payload?.found === false
     ) {
+      const message =
+        (payload && (payload.message || payload.error || payload.detail)) ||
+        "Invalid QR code or staff not found.";
+      const notFound =
+        upstreamRes.status === 404 ||
+        upstreamRes.status === 400 ||
+        payload?.code === 400 ||
+        /not found/i.test(String(message));
       return NextResponse.json(
-        toVerifyFailure(
-          "not_found",
-          String(payload?.message || "Invalid QR code or staff not found.")
-        ),
-        { status: 404 }
+        toVerifyFailure(notFound ? "not_found" : "unknown", String(message)),
+        { status: notFound ? 404 : upstreamRes.status === 401 ? 401 : 400 }
       );
     }
 
