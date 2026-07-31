@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
+  dispenseErrorWebhookDedupeKeys,
   sendDispenseErrorWebhook,
   type DispenseErrorPaymentInfo,
   type DispenseErrorProductInfo,
@@ -24,13 +25,8 @@ interface DispenseErrorReporterProps {
 }
 
 /**
- * Side-effect-only React component that fires the `dispense_error` webhook
- * exactly once per `(errorMessage + orderId)` per browser session whenever
- * `active` becomes `true`.
- *
- * It renders nothing — it lives purely to encapsulate the side effect so the
- * parent component (e.g., `app/feedback/page.tsx`) doesn't get cluttered with
- * webhook plumbing.
+ * Fires `dispense_error` once per order/payment + message.
+ * Uses stable payment identity deps so pickup timers / re-renders don't cancel it.
  */
 export default function DispenseErrorReporter({
   active,
@@ -43,26 +39,55 @@ export default function DispenseErrorReporter({
   machineName,
 }: DispenseErrorReporterProps) {
   const lastFiredKeyRef = useRef<string | null>(null);
+  const payloadRef = useRef({
+    user,
+    products,
+    raw,
+    machineLocation,
+    machineName,
+  });
+  payloadRef.current = {
+    user,
+    products,
+    raw,
+    machineLocation,
+    machineName,
+  };
+
+  const paymentIdentity = useMemo(
+    () =>
+      [
+        payment?.orderId || "",
+        payment?.paymentId || "",
+        payment?.qrCodeId || "",
+        errorMessage || "",
+      ].join("|"),
+    [payment?.orderId, payment?.paymentId, payment?.qrCodeId, errorMessage]
+  );
 
   useEffect(() => {
     if (!active) return;
     if (!errorMessage) return;
 
-    const key = `dispense_error::${payment?.paymentId || payment?.orderId || ""}::${errorMessage}`;
+    const keys = dispenseErrorWebhookDedupeKeys(payment, errorMessage);
+    const key = keys[0] || "";
+    if (!key) return;
     if (lastFiredKeyRef.current === key) return;
     lastFiredKeyRef.current = key;
 
+    const latest = payloadRef.current;
     void sendDispenseErrorWebhook({
       errorMessage,
-      user,
-      products,
+      user: latest.user,
+      products: latest.products,
       payment,
-      raw,
-      machineLocation,
-      machineName,
+      raw: latest.raw,
+      machineLocation: latest.machineLocation,
+      machineName: latest.machineName,
       dedupeKey: key,
     });
-  }, [active, errorMessage, user, products, payment, raw, machineLocation, machineName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, paymentIdentity]);
 
   return null;
 }

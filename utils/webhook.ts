@@ -296,13 +296,35 @@ function persistDispenseErrorFiredToSession() {
   }
 }
 
+export function dispenseErrorWebhookDedupeKeys(payment?: {
+  orderId?: string;
+  paymentId?: string;
+  qrCodeId?: string;
+}, errorMessage?: string): string[] {
+  const msg = String(errorMessage || "unknown").trim();
+  const keys: string[] = [];
+  const orderId = String(payment?.orderId || "").trim();
+  const paymentId = String(payment?.paymentId || "").trim();
+  const qrCodeId = String(payment?.qrCodeId || "").trim();
+  if (orderId) keys.push(`dispense_error::order::${orderId}::${msg}`);
+  if (paymentId) keys.push(`dispense_error::pay::${paymentId}::${msg}`);
+  if (qrCodeId) keys.push(`dispense_error::qr::${qrCodeId}::${msg}`);
+  if (keys.length === 0) keys.push(`dispense_error::msg::${msg}`);
+  return keys;
+}
+
+function claimDispenseErrorWebhookKeys(keys: string[]): boolean {
+  if (keys.length === 0) return false;
+  loadDispenseErrorFiredFromSession();
+  if (keys.some((k) => dispenseErrorFiredKeys.has(k))) return false;
+  keys.forEach((k) => dispenseErrorFiredKeys.add(k));
+  persistDispenseErrorFiredToSession();
+  return true;
+}
+
 /**
  * Best-effort POST of a `dispense_error` event to the configured webhook.
- *
- * Failures are swallowed and logged so they never block the user-facing flow.
- * A simple in-memory + sessionStorage de-duplication guard prevents the same
- * (errorMessage + orderId) combination from triggering multiple webhook fires
- * within a single session.
+ * Dedupes by order/payment/qr + message; claim is synchronous before fetch.
  */
 export async function sendDispenseErrorWebhook(
   payload: DispenseErrorPayload
@@ -312,16 +334,23 @@ export async function sendDispenseErrorWebhook(
       process.env.NEXT_PUBLIC_DISPENSE_ERROR_WEBHOOK_URL ||
       DEFAULT_DISPENSE_ERROR_WEBHOOK_URL;
 
-    const dedupeKey =
-      payload.dedupeKey ||
-      `dispense_error::${payload.payment?.paymentId || payload.payment?.orderId || ""}::${payload.errorMessage}`;
+    const keys = payload.dedupeKey
+      ? [
+          payload.dedupeKey,
+          ...dispenseErrorWebhookDedupeKeys(payload.payment, payload.errorMessage),
+        ]
+      : dispenseErrorWebhookDedupeKeys(payload.payment, payload.errorMessage);
+    const uniqueKeys = Array.from(new Set(keys.filter(Boolean)));
 
-    loadDispenseErrorFiredFromSession();
-    if (dispenseErrorFiredKeys.has(dedupeKey)) {
-      console.warn("[dispense_error webhook] skipped duplicate:", dedupeKey);
+    if (!claimDispenseErrorWebhookKeys(uniqueKeys)) {
+      console.warn(
+        "[dispense_error webhook] skipped duplicate:",
+        uniqueKeys.join(" | ")
+      );
       return;
     }
 
+    const dedupeKey = uniqueKeys[0];
     const body = {
       event: "dispense_error",
       error_message: payload.errorMessage || "Unknown dispense error",
@@ -363,9 +392,6 @@ export async function sendDispenseErrorWebhook(
     });
 
     console.log("[dispense_error webhook] sent:", dedupeKey, "→", url);
-
-    dispenseErrorFiredKeys.add(dedupeKey);
-    persistDispenseErrorFiredToSession();
   } catch (err) {
     console.warn("[dispense_error webhook] unexpected error:", err);
   }
@@ -650,13 +676,35 @@ function persistDispenseSuccessFiredToSession() {
   }
 }
 
+export function dispenseSuccessWebhookDedupeKeys(transaction?: {
+  orderId?: string;
+  paymentId?: string;
+  qrCodeId?: string;
+}, slotOrProductKey?: string): string[] {
+  const slotKey = String(slotOrProductKey || "").trim();
+  const keys: string[] = [];
+  const orderId = String(transaction?.orderId || "").trim();
+  const paymentId = String(transaction?.paymentId || "").trim();
+  const qrCodeId = String(transaction?.qrCodeId || "").trim();
+  const suffix = slotKey ? `::${slotKey}` : "";
+  if (orderId) keys.push(`dispense_success::order::${orderId}${suffix}`);
+  if (paymentId) keys.push(`dispense_success::pay::${paymentId}${suffix}`);
+  if (qrCodeId) keys.push(`dispense_success::qr::${qrCodeId}${suffix}`);
+  return keys;
+}
+
+function claimDispenseSuccessWebhookKeys(keys: string[]): boolean {
+  if (keys.length === 0) return false;
+  loadDispenseSuccessFiredFromSession();
+  if (keys.some((k) => dispenseSuccessFiredKeys.has(k))) return false;
+  keys.forEach((k) => dispenseSuccessFiredKeys.add(k));
+  persistDispenseSuccessFiredToSession();
+  return true;
+}
+
 /**
  * Best-effort POST of a `dispense_success` event to the configured webhook.
- *
- * Failures are swallowed and logged so they never block the user-facing flow.
- * A simple in-memory + sessionStorage de-duplication guard prevents the same
- * (orderId + productId) combination from triggering multiple webhook fires
- * within a single session.
+ * Dedupes by order/payment/qr (+ slot); claim is synchronous before fetch.
  */
 export async function sendDispenseSuccessWebhook(
   payload: DispenseSuccessPayload
@@ -666,18 +714,32 @@ export async function sendDispenseSuccessWebhook(
       process.env.NEXT_PUBLIC_DISPENSE_WEBHOOK_URL ||
       DEFAULT_DISPENSE_WEBHOOK_URL;
 
-    const dedupeKey =
-      payload.dedupeKey ||
-      `dispense_success::${payload.transaction?.paymentId || payload.transaction?.orderId || ""}::${payload.command?.slotId ?? payload.command?.productId ?? ""}`;
+    const slotKey =
+      payload.command?.slotId ?? payload.command?.productId ?? "";
+    const keys = payload.dedupeKey
+      ? [
+          payload.dedupeKey,
+          ...dispenseSuccessWebhookDedupeKeys(payload.transaction, String(slotKey)),
+        ]
+      : dispenseSuccessWebhookDedupeKeys(payload.transaction, String(slotKey));
+    const uniqueKeys = Array.from(new Set(keys.filter(Boolean)));
 
-    loadDispenseSuccessFiredFromSession();
-    if (dispenseSuccessFiredKeys.has(dedupeKey)) {
-      console.warn("[dispense_success webhook] skipped duplicate:", dedupeKey);
+    if (uniqueKeys.length === 0) {
+      console.warn("[dispense_success webhook] skipped — no order/payment id");
+      return;
+    }
+
+    if (!claimDispenseSuccessWebhookKeys(uniqueKeys)) {
+      console.warn(
+        "[dispense_success webhook] skipped duplicate:",
+        uniqueKeys.join(" | ")
+      );
       return;
     }
 
     const agentName =
       payload.agentName || payload.transaction?.agentName || "";
+    const dedupeKey = uniqueKeys[0];
 
     const body = {
       event: "dispense_success",
@@ -728,9 +790,6 @@ export async function sendDispenseSuccessWebhook(
     });
 
     console.log("[dispense_success webhook] sent:", dedupeKey, "→", url);
-
-    dispenseSuccessFiredKeys.add(dedupeKey);
-    persistDispenseSuccessFiredToSession();
   } catch (err) {
     console.warn("[dispense_success webhook] unexpected error:", err);
   }

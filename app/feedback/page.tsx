@@ -38,6 +38,13 @@ import {
   getWalkInDisplayName,
 } from "@/lib/machineContext";
 import { resolveCheckoutPaymentClient } from "@/lib/checkoutPaymentResolve";
+import {
+  sendDispenseErrorWebhook,
+  sendDispenseSuccessWebhook,
+} from "@/utils/webhook";
+
+/** STM32 / network hang: fail with dispense_error instead of staying silent. */
+const DISPENSE_TIMEOUT_MS = 90_000;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -390,6 +397,67 @@ export default function FeedbackPage() {
       if (checkoutItems.length === 0) return;
       setDispenseState({ status: "running" });
 
+      const payment = checkoutSummary?.payment;
+      const productsForWebhook = checkoutItems.map((item: any) => ({
+        id: item?.id,
+        name: item?.name,
+        quantity: item?.quantity,
+        slotId: item?.slotId,
+        retailPrice: item?.retail_price,
+        amount: item?.amount,
+      }));
+
+      const fireError = async (message: string, raw?: unknown) => {
+        setDispenseState({ status: "error", message });
+        const resolvedTx =
+          (await resolveCheckoutPaymentClient(payment, 4)) || payment;
+        void sendDispenseErrorWebhook({
+          errorMessage: message,
+          user: webhookUser,
+          products: productsForWebhook,
+          payment: resolvedTx,
+          raw,
+          machineLocation: mergedMachine.machineLocation,
+          machineName: mergedMachine.machineName || "Vending Machine",
+        });
+      };
+
+      const fireSuccess = async (results: unknown) => {
+        setDispenseState({ status: "done", results });
+        const resolvedTx =
+          (await resolveCheckoutPaymentClient(payment, 4)) || payment;
+        const resultList = Array.isArray(results)
+          ? (results as Array<{ productCode?: string; ok?: boolean }>)
+          : [];
+        const firstOk = resultList.find(
+          (r) => r?.ok && String(r?.productCode || "").toUpperCase() !== "TRAY"
+        );
+        const item = checkoutItems[0];
+        const slotId = item?.slotId || firstOk?.productCode || "";
+        void sendDispenseSuccessWebhook({
+          user: webhookUser,
+          products: productsForWebhook,
+          transaction: resolvedTx,
+          command: {
+            productId: item?.id || "",
+            productName: item?.name || "",
+            slotId,
+            command: firstOk?.productCode
+              ? `RQ${firstOk.productCode}`
+              : slotId
+                ? `RQ${slotId}`
+                : "DISPENSE",
+            timestamp: new Date().toISOString(),
+          },
+          agentName: payment?.agentName,
+          machineLocation: mergedMachine.machineLocation,
+          machineName: mergedMachine.machineName || "Vending Machine",
+        });
+      };
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), DISPENSE_TIMEOUT_MS);
+
       try {
         const productCodes: string[] = [];
         for (const item of checkoutItems) {
@@ -409,7 +477,7 @@ export default function FeedbackPage() {
           const encodedName = encodeURIComponent(name);
           const slotsUrl = `/api/admin/products/${cleanProductId || "unknown"}/slots?name=${encodedName}`;
 
-          const slotsResponse = await fetch(slotsUrl);
+          const slotsResponse = await fetch(slotsUrl, { signal: controller.signal });
           const slotsData = await slotsResponse.json();
           const slots = Array.isArray(slotsData?.slots) ? slotsData.slots : [];
           
@@ -452,7 +520,7 @@ export default function FeedbackPage() {
         }
 
         if (productCodes.length === 0) {
-          setDispenseState({ status: "error", message: "No slots found for dispensing" });
+          await fireError("No slots found for dispensing");
           return;
         }
 
@@ -460,22 +528,36 @@ export default function FeedbackPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ productCodes }),
+          signal: controller.signal,
         });
         const result = await response.json();
         if (!response.ok || !result?.success) {
           const msg = result?.error?.message || "Dispense failed";
-          setDispenseState({ status: "error", message: msg });
+          await fireError(msg, result);
           return;
         }
 
-        setDispenseState({ status: "done", results: result?.data?.results });
+        await fireSuccess(result?.data?.results);
       } catch (e: any) {
-        setDispenseState({ status: "error", message: e?.message || "Dispense failed" });
+        const aborted = e?.name === "AbortError" || controller.signal.aborted;
+        const msg = aborted
+          ? `Dispense timed out after ${Math.round(DISPENSE_TIMEOUT_MS / 1000)}s`
+          : e?.message || "Dispense failed";
+        await fireError(msg, e);
+      } finally {
+        window.clearTimeout(timeoutId);
       }
     };
 
     void run();
-  }, [checkoutItems, checkoutSummary, dispenseState.status]);
+  }, [
+    checkoutItems,
+    checkoutSummary,
+    dispenseState.status,
+    webhookUser,
+    mergedMachine.machineLocation,
+    mergedMachine.machineName,
+  ]);
 
   const handleStarClick = (starIndex: number) => {
     setRating(starIndex);
