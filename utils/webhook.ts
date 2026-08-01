@@ -245,6 +245,7 @@ export interface DispenseErrorProductInfo {
 export interface DispenseErrorPaymentInfo {
   orderId?: string;
   paymentId?: string;
+  qrCodeId?: string;
   amount?: number;
   currency?: string;
   status?: string;
