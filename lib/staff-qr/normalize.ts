@@ -38,38 +38,86 @@ export function parseStaffnamePipe(raw: string): {
 }
 
 /**
+ * Make / HTTP modules sometimes return:
+ * - raw JSON object
+ * - a JSON string
+ * - { body: "<json string>", status: 200, headers: [...] }
+ * - [ { body, status, headers } ]
+ */
+export function unwrapUpstreamPayload(data: unknown): unknown {
+  if (data == null) return null;
+
+  if (typeof data === "string") {
+    const trimmed = data.trim();
+    if (!trimmed) return null;
+    try {
+      return unwrapUpstreamPayload(JSON.parse(trimmed));
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof data !== "object") return null;
+
+  // Make HTTP module / webhook response sometimes wraps as an array
+  if (Array.isArray(data)) {
+    if (data.length === 0) return null;
+    return unwrapUpstreamPayload(data[0]);
+  }
+
+  const root = data as Record<string, unknown>;
+
+  // HTTP-module style envelope
+  if (typeof root.body === "string" && root.body.trim()) {
+    try {
+      return unwrapUpstreamPayload(JSON.parse(root.body));
+    } catch {
+      // fall through
+    }
+  }
+  if (root.body && typeof root.body === "object") {
+    return unwrapUpstreamPayload(root.body);
+  }
+
+  return root;
+}
+
+/**
  * Normalize heterogeneous upstream JSON (Make.com / custom API) into VerifiedStaff.
- * Accepts common field aliases so swapping APIs later is low-friction.
  */
 export function normalizeStaffFromUpstream(
   hash: string,
   data: unknown
 ): VerifiedStaff | null {
-  if (!data || typeof data !== "object") return null;
-  const root = data as Record<string, unknown>;
+  const unwrapped = unwrapUpstreamPayload(data);
+  if (!unwrapped || typeof unwrapped !== "object") return null;
+  const root = unwrapped as Record<string, unknown>;
 
-  // Nested shapes: { staff: {...} } | { data: {...} } | { user: {...} } | flat
   // Make QRAUTH: { success, data: { staffname: "Name|Phone|Branch" } }
-  const nested =
-    (root.staff as Record<string, unknown> | undefined) ||
-    (root.data as Record<string, unknown> | undefined) ||
-    (root.user as Record<string, unknown> | undefined) ||
-    (root.value as Record<string, unknown> | undefined) ||
-    root;
+  let nested: Record<string, unknown> = root;
+  if (root.data && typeof root.data === "object") {
+    nested = root.data as Record<string, unknown>;
+  } else if (root.staff && typeof root.staff === "object") {
+    nested = root.staff as Record<string, unknown>;
+  } else if (root.user && typeof root.user === "object") {
+    nested = root.user as Record<string, unknown>;
+  } else if (root.value && typeof root.value === "object") {
+    nested = root.value as Record<string, unknown>;
+  }
 
-  // Pipe format from Make: "Rajesh|9960278391|Aiportm4"
   const staffnameRaw =
     asString(nested.staffname) ||
     asString(nested.staff_name) ||
     asString(nested.StaffName) ||
+    asString(nested.Staffname) ||
     (typeof root.data === "string" ? asString(root.data) : "");
 
-  const fromPipe = staffnameRaw.includes("|")
+  const fromPipe = staffnameRaw
     ? parseStaffnamePipe(staffnameRaw)
     : null;
 
   const name =
-    fromPipe?.name ||
+    (fromPipe?.name && fromPipe.name) ||
     asString(nested.name) ||
     asString(nested.staffname) ||
     asString(nested.staff_name) ||
@@ -77,6 +125,8 @@ export function normalizeStaffFromUpstream(
     asString(nested.agent_name);
 
   if (!name) return null;
+
+  if (root.success === false || root.ok === false) return null;
 
   const active = asBool(
     nested.active ?? nested.is_active ?? nested.enabled ?? nested.status,
@@ -127,10 +177,12 @@ export function extractHashFromQrText(raw: string): string {
   const text = String(raw || "").trim();
   if (!text) return "";
 
-  // Plain hash
+  // Prefer a full 64-char hex SHA-256 (Make staff QR hashes)
+  const sha256 = text.match(/[a-fA-F0-9]{64}/);
+  if (sha256) return sha256[0];
+
   if (/^[A-Za-z0-9_-]{8,256}$/.test(text)) return text;
 
-  // JSON payload { "hash": "..." }
   if (text.startsWith("{")) {
     try {
       const parsed = JSON.parse(text) as Record<string, unknown>;
@@ -145,7 +197,6 @@ export function extractHashFromQrText(raw: string): string {
     }
   }
 
-  // URL ?hash=... or /verify/HASH
   try {
     if (text.includes("://") || text.startsWith("http")) {
       const url = new URL(text);
@@ -162,7 +213,6 @@ export function extractHashFromQrText(raw: string): string {
     /* ignore */
   }
 
-  // Fallback: first token that looks like a hash
   const match = text.match(/[A-Za-z0-9_-]{8,256}/);
   return match?.[0] || text;
 }

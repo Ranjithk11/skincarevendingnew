@@ -21,6 +21,7 @@ export {
   normalizeStaffFromUpstream,
   parseStaffnamePipe,
   toVerifyFailure,
+  unwrapUpstreamPayload,
 } from "./normalize";
 
 export { verifyStaffQr } from "./client";
