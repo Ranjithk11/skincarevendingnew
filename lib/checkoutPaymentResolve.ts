@@ -7,6 +7,12 @@ export type CheckoutPayment = {
   status?: string;
   method?: string;
   agentName?: string;
+  /** How cash staff was authenticated */
+  staffAuthMethod?: "qr" | "password";
+  staffHash?: string;
+  staffRole?: string;
+  staffBranch?: string;
+  staffPhone?: string;
   machineId?: string;
   machineName?: string;
   machineLocation?: string;
