@@ -76,14 +76,6 @@ function numberToWords(num: number): string {
   return result;
 }
 
-function generateInvoiceNo(orderId?: string): string {
-  const now = new Date();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const yy = String(now.getFullYear()).slice(-2);
-  const seq = orderId ? orderId.replace(/\D/g, "").slice(-3).padStart(3, "0") : "001";
-  return `LW/${mm}/${yy}/${seq}`;
-}
-
 function formatDate(d: Date): string {
   const day = d.getDate();
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -136,6 +128,8 @@ export default function FeedbackPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState<string>("");
+  // Stable unique invoice number allocated server-side (SQLite monthly sequence)
+  const [invoiceNo, setInvoiceNo] = useState<string>("");
 
   // Keyboard target: which field the virtual keyboard is typing into
   const [keyboardTarget, setKeyboardTarget] = useState<"notes" | "email">("notes");
@@ -650,9 +644,39 @@ export default function FeedbackPage() {
     emailInitializedRef.current = true;
   }, [session, machineInfo, machineInfoReady]);
 
+  // Allocate a unique invoice number once per payment/order (idempotent on server).
+  useEffect(() => {
+    if (!checkoutSummary?.payment || invoiceNo) return;
+    const orderId = String(checkoutSummary.payment.orderId || "").trim();
+    const paymentId = String(checkoutSummary.payment.paymentId || "").trim();
+    const qrCodeId = String(checkoutSummary.payment.qrCodeId || "").trim();
+    if (!orderId && !paymentId && !qrCodeId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/invoice/allocate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId, paymentId, qrCodeId }),
+        });
+        const data = await res.json();
+        if (!cancelled && data?.success && data?.invoiceNo) {
+          setInvoiceNo(String(data.invoiceNo));
+        }
+      } catch (err) {
+        console.warn("[FeedbackPage] Invoice number allocate failed:", err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutSummary, invoiceNo]);
+
   const buildInvoicePayload = useCallback(
     (buyerEmailOverride?: string) => {
-      if (!checkoutSummary) return null;
+      if (!checkoutSummary || !invoiceNo) return null;
       const now = new Date();
       const orderId = checkoutSummary?.payment?.orderId || "";
       const buyerEmail = buyerEmailOverride ?? (session?.user as any)?.email ?? "";
@@ -660,7 +684,7 @@ export default function FeedbackPage() {
       return buildCheckoutInvoice({
         checkoutSummary,
         checkoutItems,
-        invoiceNo: generateInvoiceNo(orderId),
+        invoiceNo,
         invoiceDate: formatDate(now),
         orderReference: orderId ? `${orderId} dated ${formatDate(now)}` : formatDate(now),
         amountInWords: numberToWords,
@@ -689,7 +713,7 @@ export default function FeedbackPage() {
           : undefined,
       });
     },
-    [checkoutSummary, checkoutItems, session, machineInfo, dispenseSuccessCommand]
+    [checkoutSummary, checkoutItems, session, machineInfo, dispenseSuccessCommand, invoiceNo]
   );
 
   const invoiceData = useMemo(() => buildInvoicePayload(), [buildInvoicePayload]);

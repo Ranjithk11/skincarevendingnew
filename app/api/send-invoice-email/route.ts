@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { sqliteDb } from "@/lib/sqlite-db";
 
 const DEFAULT_INVOICE_EMAIL_WEBHOOK_URL =
   process.env.INVOICE_EMAIL_WEBHOOK_URL ||
@@ -107,6 +108,22 @@ export async function POST(request: NextRequest) {
     const command = invoice.command || {};
     const firstProduct = products[0];
 
+    // Prefer a server-allocated unique invoice number (idempotent per order/payment).
+    const allocateKeys = [payment.orderId, payment.paymentId, payment.qrCodeId]
+      .map((k: unknown) => String(k || "").trim())
+      .filter(Boolean);
+    let invoiceNo = String(invoice.invoiceNo || "").trim();
+    if (allocateKeys.length > 0) {
+      try {
+        invoiceNo = sqliteDb.allocateInvoiceNo(allocateKeys);
+      } catch (err) {
+        console.warn(
+          "[send-invoice-email] Invoice allocate failed, using client value:",
+          err
+        );
+      }
+    }
+
     const webhookPayload = {
       event: "invoice_email",
       timestamp: occurredAt,
@@ -124,7 +141,7 @@ export async function POST(request: NextRequest) {
       place_of_supply: invoice.placeOfSupply || "",
 
       // Invoice header
-      invoice_no: invoice.invoiceNo || "",
+      invoice_no: invoiceNo,
       invoice_date: invoice.invoiceDate || "",
       delivery_note: invoice.deliveryNote || "",
       mode_of_payment: invoice.modeOfPayment || "Online",

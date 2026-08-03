@@ -547,16 +547,13 @@ export async function sendPaymentWebhook(
     }
 
     const agentName = payload.transaction?.agentName || "";
-<<<<<<< HEAD
     const dedupeKey = uniqueKeys[0];
-=======
     const agentPhone = payload.transaction?.staffPhone || "";
     const agentBranch = payload.transaction?.staffBranch || "";
     // Slack-friendly pipe string matching Make QRAUTH staffname format
     const agentStaffname = [agentName, agentPhone, agentBranch]
       .filter(Boolean)
       .join("|");
->>>>>>> QRCASH
 
     const body = {
       event: "payment_success",

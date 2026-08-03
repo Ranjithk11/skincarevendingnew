@@ -547,6 +547,19 @@ function initDb() {
     )
   `);
 
+  // Stable invoice numbers per payment/order (LW/MM/YY/NNN).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS invoice_allocations (
+      source_key TEXT PRIMARY KEY,
+      invoice_no TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_invoice_allocations_invoice_no
+      ON invoice_allocations(invoice_no)
+  `);
+
   // Settings table - additional settings
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -1686,6 +1699,80 @@ export const sqliteDb = {
 
   setMachineLocation(location: string): boolean {
     return this.setSetting('machine_location', location, 'Machine physical location');
+  },
+
+  /**
+   * Allocate a unique tax-invoice number for a payment/order.
+   * Format: LW/MM/YY/NNN (monthly sequence, 3+ digits).
+   * Idempotent for the same source keys (orderId / paymentId / qrCodeId).
+   */
+  allocateInvoiceNo(sourceKeys: string | string[]): string {
+    const keys = (Array.isArray(sourceKeys) ? sourceKeys : [sourceKeys])
+      .map((k) => String(k || "").trim())
+      .filter(Boolean);
+    const uniqueKeys = [...new Set(keys)];
+    if (uniqueKeys.length === 0) {
+      uniqueKeys.push(
+        `anon_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      );
+    }
+
+    const run = db.transaction(() => {
+      for (const key of uniqueKeys) {
+        const existing = db
+          .prepare(
+            `SELECT invoice_no FROM invoice_allocations WHERE source_key = ?`
+          )
+          .get(key) as { invoice_no: string } | undefined;
+        if (existing?.invoice_no) {
+          const insertIgnore = db.prepare(`
+            INSERT OR IGNORE INTO invoice_allocations (source_key, invoice_no)
+            VALUES (?, ?)
+          `);
+          for (const k of uniqueKeys) {
+            insertIgnore.run(k, existing.invoice_no);
+          }
+          return existing.invoice_no;
+        }
+      }
+
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const yy = String(now.getFullYear()).slice(-2);
+      const counterKey = `invoice_seq_${yy}${mm}`;
+      const row = db
+        .prepare(
+          `SELECT setting_value FROM app_settings WHERE setting_key = ?`
+        )
+        .get(counterKey) as { setting_value: string } | undefined;
+      const next = (parseInt(row?.setting_value || "0", 10) || 0) + 1;
+      const nowIso = now.toISOString();
+
+      db.prepare(`
+        INSERT INTO app_settings (setting_key, setting_value, description, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(setting_key) DO UPDATE SET
+          setting_value = excluded.setting_value,
+          updated_at = excluded.updated_at
+      `).run(
+        counterKey,
+        String(next),
+        `Invoice sequence for ${mm}/${yy}`,
+        nowIso
+      );
+
+      const invoiceNo = `LW/${mm}/${yy}/${String(next).padStart(3, "0")}`;
+      const insert = db.prepare(`
+        INSERT INTO invoice_allocations (source_key, invoice_no)
+        VALUES (?, ?)
+      `);
+      for (const k of uniqueKeys) {
+        insert.run(k, invoiceNo);
+      }
+      return invoiceNo;
+    });
+
+    return run();
   },
 
   // ==================== CART ====================
