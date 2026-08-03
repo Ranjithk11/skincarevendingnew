@@ -1669,6 +1669,13 @@ export const sqliteDb = {
     return true;
   },
 
+  deleteSettingsByPrefix(prefix: string): number {
+    const result = db
+      .prepare(`DELETE FROM app_settings WHERE setting_key LIKE ?`)
+      .run(`${prefix}%`);
+    return Number(result.changes || 0);
+  },
+
   getRazorpayMode(): 'test' | 'live' {
     return (this.getSetting('razorpay_mode', 'test') as 'test' | 'live') || 'test';
   },

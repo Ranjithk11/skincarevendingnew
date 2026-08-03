@@ -95,6 +95,13 @@ export default function MachineSettingsModal({
         });
         setSource("database");
         setSaveSuccess(true);
+        // Next home load must re-fetch Make landing image for the new machine.
+        try {
+          localStorage.setItem("kiosk_landing_image_force", "1");
+          localStorage.removeItem("kiosk_landing_machine_fp");
+        } catch {
+          // ignore
+        }
         setTimeout(() => setSaveSuccess(false), 3000);
       } else {
         setError(data.error || "Failed to save machine settings");
@@ -176,9 +183,9 @@ export default function MachineSettingsModal({
                 label="Machine Name"
                 value={machineName}
                 onChange={(e) => setMachineName(e.target.value)}
-                placeholder="e.g., LW VM Floor 1"
+                placeholder="e.g., STUDIO, T-HUB, GMR-AIRPORT-M4"
                 sx={{ mb: 2 }}
-                helperText="Display name for this machine"
+                helperText="Must match Make landing image location code (STUDIO, T-HUB, COMMON, …)"
                 size="medium"
                 InputLabelProps={{ sx: { fontSize: 24, fontWeight: 700 } }}
                 InputProps={{ sx: { fontSize: 24, fontWeight: 600 } }}

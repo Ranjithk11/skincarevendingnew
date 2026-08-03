@@ -17,38 +17,41 @@ export function normalizeLocationCode(location: string): string {
 }
 
 export function extractLandingImageUrl(payload: unknown): string {
-  if (!payload || typeof payload !== "object") return "";
+  return extractLandingImageMeta(payload).imageUrl;
+}
+
+export function extractLandingImageMeta(payload: unknown): {
+  imageUrl: string;
+  updatedAt: string;
+  filename: string;
+} {
+  const empty = { imageUrl: "", updatedAt: "", filename: "" };
+  if (!payload || typeof payload !== "object") return empty;
 
   const root = payload as Record<string, unknown>;
+  if (root.success === false) return empty;
 
-  if (root.success === false) return "";
+  const pick = (obj: Record<string, unknown>) => {
+    const imageUrl = String(
+      obj.imageUrl ?? obj.image_url ?? obj.url ?? obj.image ?? ""
+    ).trim();
+    const updatedAt = String(obj.updatedAt ?? obj.updated_at ?? "").trim();
+    const filename = String(obj.filename ?? obj.fileName ?? "").trim();
+    return { imageUrl, updatedAt, filename };
+  };
 
-  const direct =
-    root.imageUrl ??
-    root.image_url ??
-    root.url ??
-    root.image;
-
-  if (typeof direct === "string" && direct.trim()) {
-    return direct.trim();
-  }
+  const fromRoot = pick(root);
+  if (fromRoot.imageUrl) return fromRoot;
 
   const data = root.data;
   if (data && typeof data === "object") {
     const nested = data as Record<string, unknown>;
-    if (nested.success === false) return "";
-
-    const nestedUrl =
-      nested.imageUrl ??
-      nested.image_url ??
-      nested.url ??
-      nested.image;
-    if (typeof nestedUrl === "string" && nestedUrl.trim()) {
-      return nestedUrl.trim();
-    }
+    if (nested.success === false) return empty;
+    const fromNested = pick(nested);
+    if (fromNested.imageUrl) return fromNested;
   }
 
-  return "";
+  return empty;
 }
 
 /** Returns true only when the remote image responds with HTTP 200 and is not an XML error body. */

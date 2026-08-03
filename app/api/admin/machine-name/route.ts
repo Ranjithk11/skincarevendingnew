@@ -45,12 +45,23 @@ export async function POST(request: NextRequest) {
     if (machineName?.trim()) sqliteDb.setMachineName(machineName.trim());
     if (machineLocation?.trim()) sqliteDb.setMachineLocation(machineLocation.trim());
 
+    // New admin machine name/location → refresh landing image on next request
+    try {
+      const { clearLandingImageCaches } = await import(
+        "@/lib/landing-image.server"
+      );
+      clearLandingImageCaches();
+    } catch {
+      // non-fatal
+    }
+
     return NextResponse.json({
       success: true,
       machineId: machineId.trim(),
       machineName: machineName?.trim() || "",
       machineLocation: machineLocation?.trim() || "",
       message: "Machine settings updated successfully",
+      refreshLandingImage: true,
     });
   } catch (error: any) {
     console.error("[Machine Settings API] Error saving settings:", error);

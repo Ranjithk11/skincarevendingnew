@@ -10,6 +10,10 @@ import { APP_ROUTES } from "@/utils/routes";
 import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
 const FALLBACK_LANDING_IMAGE = "/logo/newLanding.png";
 const MACHINE_LOCATION_KEY = "kiosk_machine_location";
+
+/** Dedupe React Strict Mode double-mount landing fetches. */
+let landingClientInFlight: Promise<string> | null = null;
+
 /** Fixed icon column so scan / cart / spin icons share one vertical axis. */
 const CTA_ICON_BOX = {
   width: { xs: 40, sm: 44 },
@@ -74,40 +78,95 @@ export default function NewPromoLanding() {
   useEffect(() => {
     let cancelled = false;
 
-    const resolveLocation = async (): Promise<string> => {
-      const storedLocation =
-        typeof window !== "undefined"
-          ? localStorage.getItem(MACHINE_LOCATION_KEY)?.trim()
-          : "";
-      if (storedLocation) return storedLocation;
-
-      try {
-        const res = await fetch("/api/admin/machine-name", { cache: "no-store" });
-        if (res.ok) {
-          const json = await res.json();
-          const machineLocation = String(json?.machineLocation ?? "").trim();
-          if (machineLocation) return machineLocation;
-        }
-      } catch {
-        // Fall back to common image below.
-      }
-
-      return "common";
-    };
-
     const loadLandingImage = async () => {
-      try {
-        const location = await resolveLocation();
-        const params = new URLSearchParams();
-        if (location) params.set("location", location);
+      const run = async (): Promise<string> => {
+        const forceFromUrl =
+          typeof window !== "undefined" &&
+          (new URLSearchParams(window.location.search).get("refreshLanding") ===
+            "1" ||
+            new URLSearchParams(window.location.search).get("forceLanding") ===
+              "1");
 
-        const res = await fetch(`/api/landing-image?${params.toString()}`, {
-          cache: "no-store",
-        });
-        if (!res.ok || cancelled) return;
+        const pendingForce =
+          typeof window !== "undefined" &&
+          localStorage.getItem("kiosk_landing_image_force") === "1";
+
+        // Fingerprint = admin machine name only (Make location key).
+        let machineName = "";
+        try {
+          const machineRes = await fetch("/api/admin/machine-name", {
+            cache: "no-store",
+          });
+          if (machineRes.ok) {
+            const machineJson = await machineRes.json();
+            machineName = String(machineJson?.machineName ?? "").trim();
+            if (machineName && typeof window !== "undefined") {
+              localStorage.setItem(MACHINE_LOCATION_KEY, machineName);
+            }
+          }
+        } catch {
+          // landing-image still resolves from SQLite
+        }
+
+        const fingerprint = machineName.toUpperCase();
+        const lastFingerprint =
+          typeof window !== "undefined"
+            ? localStorage.getItem("kiosk_landing_machine_fp") || ""
+            : "";
+        const machineChanged =
+          Boolean(fingerprint) &&
+          Boolean(lastFingerprint) &&
+          fingerprint !== lastFingerprint;
+
+        const params = new URLSearchParams();
+        if (forceFromUrl || pendingForce || machineChanged) {
+          params.set("force", "1");
+        }
+
+        const qs = params.toString();
+        const res = await fetch(
+          `/api/landing-image${qs ? `?${qs}` : ""}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return FALLBACK_LANDING_IMAGE;
 
         const json = await res.json();
         const imageUrl = String(json?.imageUrl ?? "").trim();
+        const resolvedLocation = String(json?.location ?? "").trim();
+
+        if (json?.usedFallback) {
+          console.warn(
+            "[NewPromoLanding] Primary location failed, using fallback:",
+            json.primaryLocation,
+            "→",
+            resolvedLocation,
+            "Make remaining:",
+            json.makeCallsRemaining
+          );
+        }
+
+        if (typeof window !== "undefined") {
+          if (resolvedLocation) {
+            localStorage.setItem(MACHINE_LOCATION_KEY, resolvedLocation);
+          }
+          if (fingerprint) {
+            localStorage.setItem("kiosk_landing_machine_fp", fingerprint);
+          }
+          if (forceFromUrl || pendingForce || machineChanged) {
+            localStorage.removeItem("kiosk_landing_image_force");
+          }
+        }
+
+        return imageUrl || FALLBACK_LANDING_IMAGE;
+      };
+
+      try {
+        if (!landingClientInFlight) {
+          landingClientInFlight = run().finally(() => {
+            landingClientInFlight = null;
+          });
+        }
+        const imageUrl = await landingClientInFlight;
         if (!cancelled && imageUrl) {
           setLandingImageUrl(imageUrl);
         }
@@ -165,10 +224,17 @@ export default function NewPromoLanding() {
     >
       {landingImageUrl.startsWith("http") ? (
         <Box
+          key={landingImageUrl}
           component="img"
           src={landingImageUrl}
           alt="Scan Discover Glow — AI skincare landing"
-          onError={() => setLandingImageUrl(FALLBACK_LANDING_IMAGE)}
+          onError={() => {
+            console.warn(
+              "[NewPromoLanding] Remote landing image failed, using fallback:",
+              landingImageUrl
+            );
+            setLandingImageUrl(FALLBACK_LANDING_IMAGE);
+          }}
           sx={{
             position: "absolute",
             inset: 0,
