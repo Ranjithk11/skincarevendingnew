@@ -71,15 +71,29 @@ export default function CashStaffAuthFlow({
   const [errorMessage, setErrorMessage] = useState("");
   const [scanKey, setScanKey] = useState(0);
   const [confirming, setConfirming] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [leaving, setLeaving] = useState(false);
   const verifyingRef = useRef(false);
 
   const goScan = useCallback(() => {
     verifyingRef.current = false;
     setStaff(null);
     setErrorMessage("");
+    setCameraEnabled(true);
     setStep("scan");
     setScanKey((k) => k + 1);
   }, []);
+
+  /** Stop camera tracks before leaving so Chrome drops "Camera in use". */
+  const handleBackToPayments = useCallback(() => {
+    if (leaving) return;
+    setLeaving(true);
+    setCameraEnabled(false);
+    // Allow StaffQrScanner cleanup / track.stop() to finish
+    window.setTimeout(() => {
+      onBack();
+    }, 250);
+  }, [leaving, onBack]);
 
   const handleScan = useCallback(async (rawText: string) => {
     if (verifyingRef.current) return;
@@ -174,7 +188,8 @@ export default function CashStaffAuthFlow({
         {/* Always visible — returns to Cash / UPI chooser */}
         <Button
           fullWidth
-          onClick={onBack}
+          onClick={handleBackToPayments}
+          disabled={leaving}
           startIcon={<Icon icon="mdi:arrow-left" width={22} />}
           sx={{
             mb: 2,
@@ -189,7 +204,7 @@ export default function CashStaffAuthFlow({
             "&:hover": { bgcolor: "#dcfce7", borderColor: "#234a31" },
           }}
         >
-          Go back to payment options
+          {leaving ? "Releasing camera…" : "Go back to payment options"}
         </Button>
 
         {step === "scan" ? (
@@ -215,27 +230,29 @@ export default function CashStaffAuthFlow({
               </Box>
             ) : null}
 
-            <StaffQrScanner onScan={handleScan} scanKey={scanKey} disabled={false} />
-
-            {/* <Button
-              fullWidth
-              onClick={() => {
-                setErrorMessage("");
-                setStep("password");
-              }}
-              sx={{
-                mt: 2.5,
-                textTransform: "none",
-                fontSize: 17,
-                fontWeight: 600,
-                color: "#374151",
-                border: "1px solid #e5e7eb",
-                borderRadius: 2,
-                py: 1.25,
-              }}
-            >
-              Use password instead
-            </Button> */}
+            {cameraEnabled ? (
+              <StaffQrScanner
+                onScan={handleScan}
+                scanKey={scanKey}
+                disabled={!cameraEnabled}
+              />
+            ) : (
+              <Box
+                sx={{
+                  minHeight: 200,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 3,
+                  bgcolor: "#f8fafc",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <Typography sx={{ color: "#6b7280", fontSize: 17 }}>
+                  Turning camera off…
+                </Typography>
+              </Box>
+            )}
           </>
         ) : null}
 
