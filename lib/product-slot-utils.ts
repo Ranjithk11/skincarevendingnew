@@ -127,6 +127,56 @@ export function getSlotInfoForProduct(
   return undefined;
 }
 
+/**
+ * Sum machine slot quantities for a product (same as admin dashboard inventory).
+ * Includes zero-qty slots in the scan so missing assignments correctly return 0.
+ */
+export function getProductQuantityFromSlots(
+  productId: unknown,
+  slotsData: unknown
+): number {
+  const cleanId = normalizeProductId(productId);
+  if (!cleanId) return 0;
+
+  const slotsArray = Array.isArray(slotsData)
+    ? slotsData
+    : Object.values((slotsData as Record<string, unknown>) || {});
+
+  let total = 0;
+  slotsArray.forEach((slot: any) => {
+    if (!slot?.product_id) return;
+    if (normalizeProductId(slot.product_id) !== cleanId) return;
+    const qty = Number(slot.quantity || 0);
+    if (Number.isFinite(qty) && qty > 0) total += qty;
+  });
+  return total;
+}
+
+/** Slot numbers on this machine for a product (qty > 0 only). */
+export function getProductSlotNumbersFromSlots(
+  productId: unknown,
+  slotsData: unknown
+): number[] {
+  const cleanId = normalizeProductId(productId);
+  if (!cleanId) return [];
+
+  const slotsArray = Array.isArray(slotsData)
+    ? slotsData
+    : Object.values((slotsData as Record<string, unknown>) || {});
+
+  const slotNumbers: number[] = [];
+  slotsArray.forEach((slot: any) => {
+    if (!slot?.product_id) return;
+    if (normalizeProductId(slot.product_id) !== cleanId) return;
+    const qty = Number(slot.quantity || 0);
+    const slotId = Number(slot.slot_id);
+    if (Number.isFinite(qty) && qty > 0 && Number.isFinite(slotId)) {
+      slotNumbers.push(slotId);
+    }
+  });
+  return slotNumbers.sort((a, b) => a - b);
+}
+
 export function isProductInMachine(product: any, slotsMap: SlotsMap): boolean {
   return (getSlotInfoForProduct(product, slotsMap)?.quantity ?? 0) > 0;
 }
@@ -209,12 +259,16 @@ export function getProductBrandId(product: unknown): string {
   const brand = p?.brand as Record<string, unknown> | string | undefined;
   const productBrand = p?.productBrand as Record<string, unknown> | string | undefined;
   return String(
-    p?.brandId ??
-      p?.brand_id ??
-      (typeof brand === "object" && brand ? brand._id : "") ??
-      (typeof productBrand === "object" && productBrand ? productBrand._id : "") ??
-      (typeof brand === "string" ? brand : "") ??
-      (typeof productBrand === "string" ? productBrand : "") ??
+    p?.brandId ||
+      p?.brand_id ||
+      (typeof brand === "object" && brand
+        ? brand._id || brand.id || ""
+        : "") ||
+      (typeof productBrand === "object" && productBrand
+        ? productBrand._id || productBrand.id || ""
+        : "") ||
+      (typeof brand === "string" ? brand : "") ||
+      (typeof productBrand === "string" ? productBrand : "") ||
       ""
   ).trim();
 }
@@ -246,35 +300,42 @@ export function productMatchesBrandFilter(
   const firstWord = normalizeBrandToken(productName.split(/\s+/)[0] ?? "");
   const brandToken = selectedBrandName
     ? normalizeBrandToken(selectedBrandName)
-    : "";
+    : normalizeBrandToken(selectedBrandId);
   const productBrandNameToken = normalizeBrandToken(getProductBrandName(product));
 
-  // 1) Exact brand-id match (same source of truth as admin catalog mapping)
+  // 1) Exact brand-id match
   const productBrandId = getProductBrandId(product);
-  if (productBrandId && productBrandId === String(selectedBrandId)) {
+  if (
+    productBrandId &&
+    String(productBrandId).trim() === String(selectedBrandId).trim()
+  ) {
     return true;
   }
 
-  // 2) Product.brand.name matches selected brand label ("Bio Derma" ↔ "Bioderma")
+  // 2) Product.brand.name matches selected brand label
   if (brandToken && productBrandNameToken) {
     if (
       productBrandNameToken === brandToken ||
       (brandToken.length >= 4 &&
         (productBrandNameToken.startsWith(brandToken) ||
-          brandToken.startsWith(productBrandNameToken)))
+          brandToken.startsWith(productBrandNameToken) ||
+          productBrandNameToken.includes(brandToken) ||
+          brandToken.includes(productBrandNameToken)))
     ) {
       return true;
     }
   }
 
-  // 3) Product title matches brand — including multi-word brands like "The Face Shop"
+  // 3) Product title matches brand (incl. multi-word brands)
   if (brandToken && productNameToken) {
     if (brandToken.length >= 3 && productNameToken.startsWith(brandToken)) {
       return true;
     }
     if (firstWord === brandToken) return true;
+    if (brandToken.length >= 4 && productNameToken.includes(brandToken)) {
+      return true;
+    }
 
-    // Build prefix from successive words: "The" + "Face" + "Shop" → thefaceshop
     const words = productName.split(/\s+/).filter(Boolean);
     let acc = "";
     for (const word of words.slice(0, 4)) {
@@ -285,13 +346,9 @@ export function productMatchesBrandFilter(
       if (
         brandToken.length >= 4 &&
         prefixToken.length >= 4 &&
-        (prefixToken.startsWith(brandToken) || brandToken.startsWith(prefixToken))
+        prefixToken.startsWith(brandToken)
       ) {
-        // Prefer full brand match once we've accumulated enough characters
-        if (prefixToken.startsWith(brandToken)) return true;
-        if (brandToken.startsWith(prefixToken) && prefixToken.length >= brandToken.length - 2) {
-          // keep accumulating
-        }
+        return true;
       }
       if (prefixToken.length >= brandToken.length) break;
     }
@@ -300,11 +357,6 @@ export function productMatchesBrandFilter(
       if (firstWord.startsWith(brandToken) || brandToken.startsWith(firstWord)) {
         return true;
       }
-    }
-
-    // Last resort for long brand tokens embedded in the title
-    if (brandToken.length >= 6 && productNameToken.includes(brandToken)) {
-      return true;
     }
   }
 
@@ -321,16 +373,22 @@ export function productMatchesCategoryFilter(
   const p = product as Record<string, unknown>;
   const productCategory = p?.productCategory as Record<string, unknown> | undefined;
   const categoryId = String(
-    productCategory?._id ?? productCategory?.id ?? p?.categoryId ?? p?.catId ?? ""
+    productCategory?._id ||
+      productCategory?.id ||
+      p?.categoryId ||
+      p?.catId ||
+      ""
   ).trim();
-  if (categoryId && categoryId === String(selectedCategoryId)) return true;
+  if (categoryId && categoryId === String(selectedCategoryId).trim()) return true;
 
   const normalizeTitle = (value: unknown) =>
     String(value ?? "")
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "");
 
-  const selectedToken = normalizeTitle(selectedCategoryTitle);
+  const selectedToken = normalizeTitle(
+    selectedCategoryTitle || selectedCategoryId
+  );
   const productTitles = [
     productCategory?.title,
     productCategory?.name,
@@ -345,15 +403,26 @@ export function productMatchesCategoryFilter(
     return true;
   }
 
-  // Soft match: "Face Wash" ↔ "Facewash" / "face-wash"
+  // Soft match: "Face Wash" ↔ "Facewash" / "face-wash" / partial
   if (
     selectedToken &&
     selectedToken.length >= 4 &&
     productTitles.some(
-      (title) => title.startsWith(selectedToken) || selectedToken.startsWith(title)
+      (title) =>
+        title.startsWith(selectedToken) ||
+        selectedToken.startsWith(title) ||
+        title.includes(selectedToken) ||
+        selectedToken.includes(title)
     )
   ) {
     return true;
+  }
+
+  // Last resort: category words appear in the product name
+  // (helps slot-only rows that lack productCategory metadata)
+  if (selectedToken && selectedToken.length >= 4) {
+    const nameToken = normalizeTitle(p?.name);
+    if (nameToken && nameToken.includes(selectedToken)) return true;
   }
 
   return false;

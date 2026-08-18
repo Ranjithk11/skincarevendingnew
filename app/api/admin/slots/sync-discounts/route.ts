@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchLeafwater } from "@/lib/leafwater-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -10,29 +11,46 @@ export async function POST() {
 
     if (!API_BASE) {
       return NextResponse.json(
-        { success: false, error: "NEXT_PUBLIC_API_URL not configured" },
-        { status: 500 }
+        { success: false, error: "NEXT_PUBLIC_API_URL not configured", skipped: true },
+        { status: 200 }
       );
     }
 
-    // Fetch all products from external API (paginated)
     const productMap = new Map<string, any>();
     let page = 1;
     const limit = 50;
 
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
     if (DB_TOKEN) headers["x-db-token"] = DB_TOKEN;
 
     while (true) {
       const url = `${API_BASE}/product/fetch-by-filter?page=${page}&limit=${limit}`;
-      const response = await fetch(url, { headers, cache: "no-store" });
+      let response: Response;
+      try {
+        response = await fetchLeafwater(url, { headers, cache: "no-store" });
+      } catch (err: any) {
+        console.error("[sync-discounts] Upstream fetch failed:", err?.message || err);
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              err?.cause?.message ||
+              err?.message ||
+              "Could not reach product API",
+            skipped: true,
+          },
+          { status: 200 }
+        );
+      }
 
       if (!response.ok) break;
 
-      const result = await response.json();
+      const result = await response.json().catch(() => null);
       const products = result?.data?.[0]?.products || result?.data || [];
 
-      if (products.length === 0) break;
+      if (!Array.isArray(products) || products.length === 0) break;
 
       for (const p of products) {
         const id = String(p._id || p.id);
@@ -43,16 +61,20 @@ export async function POST() {
 
       if (products.length < limit) break;
       page++;
+      if (page > 40) break;
     }
 
     if (productMap.size === 0) {
       return NextResponse.json(
-        { success: false, error: "Could not fetch products from API" },
-        { status: 502 }
+        {
+          success: false,
+          error: "Could not fetch products from API",
+          skipped: true,
+        },
+        { status: 200 }
       );
     }
 
-    // Get all slots
     const { sqliteDb } = await import("@/lib/sqlite-db");
     const slotsRecord = sqliteDb.getAllSlots();
     const slots = Object.values(slotsRecord);
@@ -63,7 +85,10 @@ export async function POST() {
       if (!slot.product_id || !slot.product_name) continue;
 
       const cleanId = String(slot.product_id).replace(/^products\//, "");
-      let product = productMap.get(String(slot.product_id)) || productMap.get(cleanId) || productMap.get("products/" + cleanId);
+      let product =
+        productMap.get(String(slot.product_id)) ||
+        productMap.get(cleanId) ||
+        productMap.get("products/" + cleanId);
 
       if (!product && slot.product_name) {
         product = productMap.get(slot.product_name.toUpperCase().trim());
@@ -75,10 +100,10 @@ export async function POST() {
       }
 
       const discount = product?.discount;
-      const discountValue = discount?.value || discount?.percentage || discount;
+      const discountValue =
+        discount?.value || discount?.percentage || discount;
 
       if (discountValue && Number(discountValue) > 0) {
-        // Update just the discount_value for this slot
         sqliteDb.assignProductToSlot(
           slot.slot_id,
           slot.product_id,
@@ -101,18 +126,22 @@ export async function POST() {
       success: true,
       updated,
       noDiscount,
+      skipped: noDiscount,
       totalSlots: slots.length,
     });
   } catch (error: any) {
     console.error("[sync-discounts] Error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to sync discounts" },
-      { status: 500 }
+      {
+        success: false,
+        error: error?.message || "Failed to sync discounts",
+        skipped: true,
+      },
+      { status: 200 }
     );
   }
 }
 
-// GET - Also allow triggering via GET for easy startup/cron calls
 export async function GET() {
   return POST();
 }

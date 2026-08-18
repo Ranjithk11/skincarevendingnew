@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchLeafwater } from "@/lib/leafwater-fetch";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +11,17 @@ async function fetchFromApi(path: string) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (DB_TOKEN) headers["x-db-token"] = DB_TOKEN;
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    cache: "no-store",
-    headers,
-  });
-  if (!res.ok) return null;
-  return res.json();
+  try {
+    const res = await fetchLeafwater(`${API_BASE}${path}`, {
+      cache: "no-store",
+      headers,
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch (err) {
+    console.warn("[catalog/categories] Upstream fetch failed:", err);
+    return null;
+  }
 }
 
 /** Derive categories from a product list when the categories API is down. */
@@ -23,9 +29,12 @@ function categoriesFromProducts(products: any[]) {
   const seen = new Map<string, { _id: string; title: string }>();
   products.forEach((p) => {
     const cat = p?.productCategory;
-    const id = String(cat?._id ?? "").trim();
-    const title = String(cat?.title ?? p?.category ?? "").trim();
-    if (!id || !title || seen.has(id)) return;
+    const title = String(cat?.title ?? cat?.name ?? p?.category ?? "").trim();
+    if (!title) return;
+    const id = String(
+      cat?._id ?? cat?.id ?? p?.categoryId ?? p?.catId ?? ""
+    ).trim() || `cat-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    if (seen.has(id)) return;
     seen.set(id, { _id: id, title });
   });
   return Array.from(seen.values()).sort((a, b) =>

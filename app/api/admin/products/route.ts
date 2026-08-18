@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchLeafwater } from "@/lib/leafwater-fetch";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 const DB_TOKEN = process.env.NEXT_PUBLIC_DB_TOKEN;
@@ -131,8 +132,9 @@ export async function GET(request: Request) {
     const brandId = searchParams.get("brandId") || "";
     const page = searchParams.get("page") || "1";
     const limit = searchParams.get("limit") || "1000";
-    const hasBrand = searchParams.get("hasBrand") || "false";
-    const isShopifyAvailable = searchParams.get("isShopifyAvailable") || "";
+    // Only forward these when the client explicitly sets them (admin catalog uses neither).
+    const hasBrand = searchParams.get("hasBrand");
+    const isShopifyAvailable = searchParams.get("isShopifyAvailable");
     // Backend caps page size (~100). fetchAll=1 pages through totalCounts.
     const fetchAll = searchParams.get("fetchAll") === "1" || searchParams.get("fetchAll") === "true";
 
@@ -186,13 +188,15 @@ export async function GET(request: Request) {
       params.append("limit", pageLimit);
       if (catId && catId !== "all") params.append("catId", catId);
       if (brandId && brandId !== "all") params.append("brandId", brandId);
-      if (hasBrand) params.append("hasBrand", hasBrand);
-      if (isShopifyAvailable) params.append("isShopifyAvailable", isShopifyAvailable);
+      if (hasBrand != null && hasBrand !== "") params.append("hasBrand", hasBrand);
+      if (isShopifyAvailable != null && isShopifyAvailable !== "") {
+        params.append("isShopifyAvailable", isShopifyAvailable);
+      }
       return params;
     };
 
     const fetchPage = async (pageNum: number, pageLimit: number) => {
-      const response = await fetch(
+      const response = await fetchLeafwater(
         `${API_BASE}/product/fetch-by-filter?${buildFilterParams(String(pageNum), String(pageLimit)).toString()}`,
         {
           cache: "no-store",
@@ -242,7 +246,7 @@ export async function GET(request: Request) {
       return NextResponse.json(productsWithOverrides);
     }
 
-    const response = await fetch(
+    const response = await fetchLeafwater(
       `${API_BASE}/product/fetch-by-filter?${buildFilterParams(page, limit).toString()}`,
       {
         cache: "no-store",

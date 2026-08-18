@@ -20,14 +20,13 @@ import { useCart } from "@/containers/skinanalysis-home/Recommendations/CartCont
 import CartProduct from "@/containers/skinanalysis-home/Recommendations/cartProduct";
 import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 import {
-  buildSlotsMap,
-  getSlotInfoForProduct,
+  getProductQuantityFromSlots,
+  getProductSlotNumbersFromSlots,
   getSlotDiscountMap,
   mergeCatalogWithSlotProducts,
   normalizeProductDiscount,
   productMatchesBrandFilter,
   productMatchesCategoryFilter,
-  type SlotsMap,
 } from "@/lib/product-slot-utils";
 import {
   fetchCatalogBrands,
@@ -37,6 +36,47 @@ import {
   type CatalogCategory,
 } from "@/lib/catalog-metadata";
 
+/**
+ * Catalog fetch via Leafwater fetch-by-filter (same as admin).
+ * IMPORTANT: upstream products usually omit productCategory — category/brand
+ * membership must be filtered with catId / brandId on the API, not client-side.
+ */
+async function fetchCatalogProducts(filters?: {
+  catId?: string;
+  brandId?: string;
+}): Promise<any[]> {
+  const params = new URLSearchParams({ fetchAll: "1", limit: "100" });
+  if (filters?.catId && filters.catId !== "all") {
+    params.set("catId", filters.catId);
+  }
+  if (filters?.brandId && filters.brandId !== "all") {
+    params.set("brandId", filters.brandId);
+  }
+
+  const res = await fetch(`/api/admin/products?${params.toString()}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    console.warn(`[BrowseProducts] Catalog fetch failed: ${res.status}`);
+    return [];
+  }
+
+  const json = await res.json();
+  const batch = Array.isArray(json) ? json : json?.data?.[0]?.products || [];
+  if (!Array.isArray(batch)) return [];
+
+  const seenIds = new Set<string>();
+  const allProducts: any[] = [];
+  batch.forEach((product: any) => {
+    const id = String(product?.id ?? product?._id ?? "");
+    if (!id || seenIds.has(id)) return;
+    seenIds.add(id);
+    allProducts.push(product);
+  });
+  return allProducts;
+}
 const PageBackground = ({ children }: { children: React.ReactNode }) => {
   return (
     <Box
@@ -124,7 +164,6 @@ export default function BrowseProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [rawSlotsData, setRawSlotsData] = useState<unknown>({});
-  const [slotsMap, setSlotsMap] = useState<SlotsMap>({});
 
   const [categories, setCategories] = useState<CatalogCategory[]>([{ _id: "all", title: "All" }]);
   const [brands, setBrands] = useState<CatalogBrand[]>([]);
@@ -137,23 +176,16 @@ export default function BrowseProductsPage() {
     { dragging: false, moved: false, startX: 0, startScrollLeft: 0 }
   );
 
-  // Single mount load — one catalog + slots + metadata fetch (no duplicate image APIs).
+  // Load categories, brands, slots, and category icons once.
   useEffect(() => {
     let cancelled = false;
 
-    const load = async () => {
+    const loadMeta = async () => {
       try {
-        setIsLoading(true);
-
-        const [cats, brs, slotsRes, productsRes] = await Promise.all([
+        const [cats, brs, slotsRes] = await Promise.all([
           fetchCatalogCategories(),
           fetchCatalogBrands(),
           fetch("/api/admin/slots", { cache: "no-store" }),
-          fetch("/api/admin/products?fetchAll=1", {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            cache: "no-store",
-          }),
         ]);
 
         if (cancelled) return;
@@ -162,92 +194,117 @@ export default function BrowseProductsPage() {
         setBrands(brs);
 
         if (slotsRes.ok) {
-          const slotsData = await slotsRes.json();
-          if (!cancelled) {
-            setRawSlotsData(slotsData);
-            setSlotsMap(buildSlotsMap(slotsData));
-          }
+          const slotsPayload = await slotsRes.json();
+          if (!cancelled) setRawSlotsData(slotsPayload);
         }
 
-        if (productsRes.ok) {
-          const json = await productsRes.json();
-          const list = Array.isArray(json) ? json : json?.data?.[0]?.products || [];
-          console.log(`[BrowseProducts] Loaded ${list.length} catalog products`);
-          if (!cancelled) setProducts(list);
-        } else {
-          console.warn("[BrowseProducts] Failed to load catalog:", productsRes.status);
-          if (!cancelled) setProducts([]);
-        }
-
-        // Category icons: lightweight one-image-per-category fetch (brands filled from products).
         const catImgs = await fetchCategoryImages();
         if (!cancelled && catImgs && typeof catImgs === "object") {
           setCategoryImages(catImgs);
         }
       } catch (e) {
-        console.warn("[BrowseProducts] Failed to load page data:", e);
+        console.warn("[BrowseProducts] Failed to load catalog metadata:", e);
+      }
+    };
+
+    void loadMeta();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Refetch products whenever category/brand changes.
+  // Leafwater omits productCategory on product rows — must filter via catId/brandId.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProducts = async () => {
+      try {
+        setIsLoading(true);
+        const catalog = await fetchCatalogProducts({
+          catId: selectedCategory,
+          brandId: selectedBrand,
+        });
+        if (cancelled) return;
+
+        // Stamp selected category onto rows so search/UI still know the active bucket
+        // (upstream often returns products without productCategory populated).
+        const categoryMeta =
+          selectedCategory !== "all"
+            ? {
+                _id: selectedCategory,
+                title:
+                  categories.find((c) => c._id === selectedCategory)?.title ||
+                  selectedCategory,
+              }
+            : null;
+
+        const stamped = categoryMeta
+          ? catalog.map((product) => ({
+              ...product,
+              category: product?.category || categoryMeta.title,
+              productCategory: product?.productCategory || categoryMeta,
+            }))
+          : catalog;
+
+        console.log(
+          `[BrowseProducts] Loaded ${stamped.length} products (cat=${selectedCategory}, brand=${selectedBrand})`
+        );
+        setProducts(stamped);
+      } catch (e) {
+        console.warn("[BrowseProducts] Failed to load products:", e);
         if (!cancelled) setProducts([]);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     };
 
-    void load();
+    void loadProducts();
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const selectedBrandName = useMemo(() => {
-    if (selectedBrand === "all") return undefined;
-    return brands.find((b) => b._id === selectedBrand)?.name;
-  }, [selectedBrand, brands]);
-
-  const selectedCategoryTitle = useMemo(() => {
-    if (selectedCategory === "all") return undefined;
-    return categories.find((c) => c._id === selectedCategory)?.title;
-  }, [selectedCategory, categories]);
+  }, [selectedCategory, selectedBrand, categories]);
 
   const machineProducts = useMemo(
-    // Keep the full catalog here; brand/category filters run in sortedProducts
-    // so unavailable products still appear for every brand (same as admin inventory).
     () => mergeCatalogWithSlotProducts(products, rawSlotsData),
     [products, rawSlotsData]
   );
 
-  const slotDiscountMap = useMemo(() => getSlotDiscountMap(rawSlotsData), [rawSlotsData]);
+  const slotDiscountMap = useMemo(
+    () => getSlotDiscountMap(rawSlotsData),
+    [rawSlotsData]
+  );
 
   const sortedProducts = useMemo(() => {
+    // Category/brand already applied by API (catId/brandId). Only decorate + sort here.
     const decorated = machineProducts.map((product: any) => {
-      const slotInfo = getSlotInfoForProduct(product, slotsMap);
-      // Prefer live slot qty; fall back to catalog/override quantity (same as admin inventory).
-      const quantity = Math.max(
-        Number(slotInfo?.quantity ?? 0),
-        Number(product?.quantity ?? 0)
-      );
-      return { product, slotInfo, quantity, isAvailable: quantity > 0 };
+      const productId = product?.id ?? product?._id;
+      // Same availability rule as admin inventory: machine slot qty only
+      const quantity = getProductQuantityFromSlots(productId, rawSlotsData);
+      const slotNumbers = getProductSlotNumbersFromSlots(productId, rawSlotsData);
+      return {
+        product,
+        slotInfo:
+          slotNumbers.length > 0
+            ? { slotNumbers, quantity }
+            : undefined,
+        quantity,
+        isAvailable: quantity > 0,
+      };
     });
 
-    return decorated
-      .filter(
-        (item) =>
-          productMatchesCategoryFilter(
-            item.product,
-            selectedCategory,
-            selectedCategoryTitle
-          ) &&
-          productMatchesBrandFilter(item.product, selectedBrand, selectedBrandName)
-      )
-      .sort((a, b) => {
-        if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
-        if (a.isAvailable && b.isAvailable && a.quantity !== b.quantity) {
-          return b.quantity - a.quantity;
-        }
-        return String(a.product?.name ?? "").localeCompare(String(b.product?.name ?? ""), undefined, {
-          sensitivity: "base",
-        });
-      });
-  }, [machineProducts, slotsMap, selectedBrand, selectedBrandName, selectedCategory, selectedCategoryTitle]);
+    return decorated.sort((a, b) => {
+      if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
+      if (a.isAvailable && b.isAvailable && a.quantity !== b.quantity) {
+        return b.quantity - a.quantity;
+      }
+      return String(a.product?.name ?? "").localeCompare(
+        String(b.product?.name ?? ""),
+        undefined,
+        { sensitivity: "base" }
+      );
+    });
+  }, [machineProducts, rawSlotsData]);
 
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -809,6 +866,10 @@ export default function BrowseProductsPage() {
                       xs={6}
                       md={6}
                       key={`${String(productId)}-${(slotInfo?.slotNumbers || []).join("-") || "na"}-${idx}`}
+                      sx={{
+                        opacity: isAvailable ? 1 : 0.72,
+                        filter: isAvailable ? "none" : "grayscale(0.35)",
+                      }}
                     >
                       <ProductCard
                         {...mapProductToCardProps(product, slotDiscountMap)}
