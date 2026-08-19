@@ -65,8 +65,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
     const [limitNotice, setLimitNotice] = useState({ open: false, message: "" });
     const paymentRecordedRef = useRef<string | null>(null);
-    /** Ensures T-Hub 5% is defaulted once per checkout visit without blocking manual remove. */
-    const thubDefaultedForCheckoutRef = useRef(false);
 
     const cartItemKey = (item: CartItem) => item.id || item.name;
 
@@ -321,8 +319,8 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     }, [thubCouponApplied, total]);
 
     /**
-     * T-Hub scenario: use EITHER default T-Hub 5% OR a spin-wheel cart offer — never both.
-     * Spin-wheel MOV / eligibility still gates spinDiscount only.
+     * Checkout offer: EITHER T-Hub 5% OR a spin-wheel cart offer — never both.
+     * Neither is applied until the user clicks Apply.
      */
     const discount = useMemo(() => {
       if (spinDiscount > 0) return Math.min(Math.max(0, total), spinDiscount);
@@ -330,7 +328,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
       return 0;
     }, [total, spinDiscount, thubDiscount]);
 
-    // Keep spin validation message in sync; never auto-apply spin (user chooses vs T-Hub).
+    // Keep spin validation message in sync; never auto-apply spin or T-Hub (user must click Apply).
     useEffect(() => {
         if (!open || step !== "checkout") return;
 
@@ -354,25 +352,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
         }
     }, [open, step, spinReward, total, validateForCart]);
 
-    // Default T-Hub 5% once when entering checkout (unless a spin cart offer is already active).
-    useEffect(() => {
-        if (!open) {
-            setThubCouponApplied(false);
-            thubDefaultedForCheckoutRef.current = false;
-            return;
-        }
-        if (step !== "checkout") {
-            thubDefaultedForCheckoutRef.current = false;
-            return;
-        }
-        if (thubDefaultedForCheckoutRef.current) return;
-        thubDefaultedForCheckoutRef.current = true;
-        if (spinDiscount <= 0) {
-            setThubCouponApplied(true);
-        }
-    }, [open, step, spinDiscount]);
-
-    // If user applies a spin cart discount, always clear T-Hub (mutual exclusivity).
+    // If user applies a spin cart discount, clear T-Hub (mutual exclusivity).
     useEffect(() => {
         if (spinDiscount > 0 && thubCouponApplied) {
             setThubCouponApplied(false);
@@ -413,8 +393,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const handleRemoveSpinCoupon = useCallback(() => {
         setCouponApplied(false);
         setCouponMessage("");
-        // Restore T-Hub default when spin offer is removed.
-        setThubCouponApplied(true);
     }, []);
 
     const handleApplyThubCoupon = useCallback(() => {
