@@ -40,12 +40,17 @@ import {
  * Catalog fetch via Leafwater fetch-by-filter (same as admin).
  * IMPORTANT: upstream products usually omit productCategory — category/brand
  * membership must be filtered with catId / brandId on the API, not client-side.
+ * `lite=1` skips per-product SQLite slot overrides (browse uses /api/admin/slots instead).
  */
 async function fetchCatalogProducts(filters?: {
   catId?: string;
   brandId?: string;
 }): Promise<any[]> {
-  const params = new URLSearchParams({ fetchAll: "1", limit: "100" });
+  const params = new URLSearchParams({
+    fetchAll: "1",
+    limit: "100",
+    lite: "1",
+  });
   if (filters?.catId && filters.catId !== "all") {
     params.set("catId", filters.catId);
   }
@@ -59,8 +64,7 @@ async function fetchCatalogProducts(filters?: {
     cache: "no-store",
   });
   if (!res.ok) {
-    console.warn(`[BrowseProducts] Catalog fetch failed: ${res.status}`);
-    return [];
+    throw new Error(`Catalog fetch failed: ${res.status}`);
   }
 
   const json = await res.json();
@@ -82,7 +86,6 @@ const PageBackground = ({ children }: { children: React.ReactNode }) => {
     <Box
       sx={{
         minHeight: "100%",
-        height: "100%",
         width: "100%",
         position: "relative",
         overflow: "hidden",
@@ -93,11 +96,13 @@ const PageBackground = ({ children }: { children: React.ReactNode }) => {
         component="svg"
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
+        aria-hidden
         sx={{
           position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
+          top: 0,
+          right: 0,
+          width: "70%",
+          height: "55%",
           zIndex: 0,
           pointerEvents: "none",
         }}
@@ -108,7 +113,9 @@ const PageBackground = ({ children }: { children: React.ReactNode }) => {
         />
       </Box>
 
-      <Box sx={{ position: "relative", zIndex: 1, width: "100%" }}>{children}</Box>
+      <Box sx={{ position: "relative", zIndex: 1, width: "100%", bgcolor: "transparent" }}>
+        {children}
+      </Box>
     </Box>
   );
 };
@@ -142,7 +149,7 @@ const mapProductToCardProps = (product: any, slotDiscountMap?: Record<string, nu
     category: product?.productCategory?.title || product?.category || "",
     compact: false,
     horizontalLayout: true,
-    cardSx: { width: "100%", overflow: "visible" },
+    cardSx: { width: "100%", overflow: "hidden" },
   };
 };
 
@@ -163,6 +170,8 @@ export default function BrowseProductsPage() {
 
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  /** Distinguishes "API failed" from "filters returned zero products". */
+  const [catalogLoadError, setCatalogLoadError] = useState(false);
   const [rawSlotsData, setRawSlotsData] = useState<unknown>({});
 
   const [categories, setCategories] = useState<CatalogCategory[]>([{ _id: "all", title: "All" }]);
@@ -175,6 +184,7 @@ export default function BrowseProductsPage() {
   const categoryDragRef = useRef<{ dragging: boolean; moved: boolean; startX: number; startScrollLeft: number }>(
     { dragging: false, moved: false, startX: 0, startScrollLeft: 0 }
   );
+  const productFetchRequestIdRef = useRef(0);
 
   // Load categories, brands, slots, and category icons once.
   useEffect(() => {
@@ -213,49 +223,93 @@ export default function BrowseProductsPage() {
     };
   }, []);
 
-  // Refetch products whenever category/brand changes.
-  // Leafwater omits productCategory on product rows — must filter via catId/brandId.
+  const selectedBrandName = useMemo(() => {
+    if (selectedBrand === "all") return undefined;
+    return brands.find((b) => b._id === selectedBrand)?.name;
+  }, [selectedBrand, brands]);
+
+  const selectedCategoryTitle = useMemo(() => {
+    if (selectedCategory === "all") return undefined;
+    return categories.find((c) => c._id === selectedCategory)?.title;
+  }, [selectedCategory, categories]);
+
+  const activeCatalogFilters = useMemo(
+    () => ({
+      brandId: selectedBrand,
+      brandName: selectedBrandName,
+      categoryId: selectedCategory,
+      categoryTitle: selectedCategoryTitle,
+    }),
+    [selectedBrand, selectedBrandName, selectedCategory, selectedCategoryTitle]
+  );
+
+  // Refetch only when the selected filter ids change (not when label metadata arrives).
   useEffect(() => {
     let cancelled = false;
+    const requestId = ++productFetchRequestIdRef.current;
+    const catId = selectedCategory;
+    const brandId = selectedBrand;
 
     const loadProducts = async () => {
       try {
         setIsLoading(true);
-        const catalog = await fetchCatalogProducts({
-          catId: selectedCategory,
-          brandId: selectedBrand,
-        });
-        if (cancelled) return;
+        setCatalogLoadError(false);
+        setProducts([]);
 
-        // Stamp selected category onto rows so search/UI still know the active bucket
-        // (upstream often returns products without productCategory populated).
+        const catalog = await fetchCatalogProducts({ catId, brandId });
+        if (cancelled || requestId !== productFetchRequestIdRef.current) return;
+
         const categoryMeta =
-          selectedCategory !== "all"
+          catId !== "all"
             ? {
-                _id: selectedCategory,
+                _id: catId,
                 title:
-                  categories.find((c) => c._id === selectedCategory)?.title ||
-                  selectedCategory,
+                  categories.find((c) => c._id === catId)?.title || catId,
+              }
+            : null;
+        const brandMeta =
+          brandId !== "all"
+            ? {
+                _id: brandId,
+                name: brands.find((b) => b._id === brandId)?.name || brandId,
               }
             : null;
 
-        const stamped = categoryMeta
-          ? catalog.map((product) => ({
-              ...product,
-              category: product?.category || categoryMeta.title,
-              productCategory: product?.productCategory || categoryMeta,
-            }))
-          : catalog;
+        const stamped = catalog.map((product) => {
+          let next = product;
+          if (categoryMeta) {
+            next = {
+              ...next,
+              category: next?.category || categoryMeta.title,
+              productCategory: next?.productCategory || categoryMeta,
+            };
+          }
+          if (brandMeta) {
+            next = {
+              ...next,
+              brandId: next?.brandId || brandMeta._id,
+              brand: next?.brand || brandMeta,
+              productBrand: next?.productBrand || brandMeta,
+            };
+          }
+          return next;
+        });
 
         console.log(
-          `[BrowseProducts] Loaded ${stamped.length} products (cat=${selectedCategory}, brand=${selectedBrand})`
+          `[BrowseProducts] Loaded ${stamped.length} products (cat=${catId}, brand=${brandId})`
         );
         setProducts(stamped);
+        setCatalogLoadError(false);
       } catch (e) {
         console.warn("[BrowseProducts] Failed to load products:", e);
-        if (!cancelled) setProducts([]);
+        if (!cancelled && requestId === productFetchRequestIdRef.current) {
+          setProducts([]);
+          setCatalogLoadError(true);
+        }
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!cancelled && requestId === productFetchRequestIdRef.current) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -263,11 +317,24 @@ export default function BrowseProductsPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedCategory, selectedBrand, categories]);
+    // categories/brands are read for stamping labels only; do not refetch when they hydrate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory, selectedBrand]);
+
+  const selectCategory = useCallback((categoryId: string) => {
+    setSelectedCategory(categoryId);
+  }, []);
+
+  const selectBrand = useCallback((brandId: string) => {
+    setSelectedBrand(brandId);
+  }, []);
 
   const machineProducts = useMemo(
-    () => mergeCatalogWithSlotProducts(products, rawSlotsData),
-    [products, rawSlotsData]
+    () =>
+      mergeCatalogWithSlotProducts(products, rawSlotsData, {
+        catalogFilters: activeCatalogFilters,
+      }),
+    [products, rawSlotsData, activeCatalogFilters]
   );
 
   const slotDiscountMap = useMemo(
@@ -276,22 +343,30 @@ export default function BrowseProductsPage() {
   );
 
   const sortedProducts = useMemo(() => {
-    // Category/brand already applied by API (catId/brandId). Only decorate + sort here.
-    const decorated = machineProducts.map((product: any) => {
-      const productId = product?.id ?? product?._id;
-      // Same availability rule as admin inventory: machine slot qty only
-      const quantity = getProductQuantityFromSlots(productId, rawSlotsData);
-      const slotNumbers = getProductSlotNumbersFromSlots(productId, rawSlotsData);
-      return {
-        product,
-        slotInfo:
-          slotNumbers.length > 0
-            ? { slotNumbers, quantity }
-            : undefined,
-        quantity,
-        isAvailable: quantity > 0,
-      };
-    });
+    const decorated = machineProducts
+      .filter(
+        (product: any) =>
+          productMatchesCategoryFilter(
+            product,
+            selectedCategory,
+            selectedCategoryTitle
+          ) &&
+          productMatchesBrandFilter(product, selectedBrand, selectedBrandName)
+      )
+      .map((product: any) => {
+        const productId = product?.id ?? product?._id;
+        const quantity = getProductQuantityFromSlots(productId, rawSlotsData);
+        const slotNumbers = getProductSlotNumbersFromSlots(productId, rawSlotsData);
+        return {
+          product,
+          slotInfo:
+            slotNumbers.length > 0
+              ? { slotNumbers, quantity }
+              : undefined,
+          quantity,
+          isAvailable: quantity > 0,
+        };
+      });
 
     return decorated.sort((a, b) => {
       if (a.isAvailable !== b.isAvailable) return a.isAvailable ? -1 : 1;
@@ -304,7 +379,14 @@ export default function BrowseProductsPage() {
         { sensitivity: "base" }
       );
     });
-  }, [machineProducts, rawSlotsData]);
+  }, [
+    machineProducts,
+    rawSlotsData,
+    selectedBrand,
+    selectedBrandName,
+    selectedCategory,
+    selectedCategoryTitle,
+  ]);
 
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -606,7 +688,7 @@ export default function BrowseProductsPage() {
                       categoryDragRef.current.moved = false;
                       return;
                     }
-                    setSelectedCategory(category._id);
+                    selectCategory(category._id);
                   }}
                   sx={{
                     flex: "0 0 auto",
@@ -681,7 +763,7 @@ export default function BrowseProductsPage() {
             >
               {/* All Brands Option */}
               <Box
-                onClick={() => setSelectedBrand("all")}
+                onClick={() => selectBrand("all")}
                 sx={{
                   flex: "0 0 auto",
                   cursor: "pointer",
@@ -725,7 +807,7 @@ export default function BrowseProductsPage() {
                   return (
                     <Box
                       key={brand._id}
-                      onClick={() => setSelectedBrand(brand._id)}
+                      onClick={() => selectBrand(brand._id)}
                       sx={{
                         flex: "0 0 auto",
                         cursor: "pointer",
@@ -773,13 +855,21 @@ export default function BrowseProductsPage() {
             </Box>
           )}
 
-          {/* Products Grid */}
+          {/* Products Grid — opaque panel so empty/loading never shows clipped ghost cards under the green bg */}
           <Box
+            key={`results-${selectedCategory}-${selectedBrand}-${searchQuery}`}
             sx={{
               width: "100%",
               mb: 2,
               pb: isKeyboardOpen ? "340px" : 0,
               fontFamily: 'Roboto, system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
+              position: "relative",
+              zIndex: 2,
+              bgcolor: "#ffffff",
+              borderRadius: 2,
+              overflow: "hidden",
+              isolation: "isolate",
+              minHeight: 280,
             }}
           >
             <TextField
@@ -834,26 +924,48 @@ export default function BrowseProductsPage() {
               }}
             />
             {isLoading ? (
-              <Box sx={{ textAlign: "center", py: 8 }}>
+              <Box
+                sx={{
+                  textAlign: "center",
+                  py: 10,
+                  px: 2,
+                  bgcolor: "#ffffff",
+                  width: "100%",
+                  minHeight: 240,
+                }}
+              >
                 <Typography sx={{ fontSize: 28, color: "#666" }}>
-                  Loading all products...
+                  Loading products...
                 </Typography>
               </Box>
             ) : filteredProducts.length === 0 ? (
-              <Box sx={{ textAlign: "center", py: 8 }}>
+              <Box
+                sx={{
+                  textAlign: "center",
+                  py: 10,
+                  px: 2,
+                  bgcolor: "#ffffff",
+                  width: "100%",
+                  minHeight: 240,
+                }}
+              >
                 <Typography sx={{ fontSize: 20, fontWeight: 600, color: "#4b5563", mb: 1 }}>
                   No products found
                 </Typography>
                 <Typography sx={{ fontSize: 16, color: "#9ca3af" }}>
-                  {products.length === 0
+                  {catalogLoadError
                     ? "Could not load products from the catalog"
                     : searchQuery.trim()
                       ? `No matches for "${searchQuery.trim()}"`
-                      : "Try a different category or brand filter"}
+                      : selectedCategory !== "all" && selectedBrand !== "all"
+                        ? `No ${selectedBrandName || "brand"} products in ${selectedCategoryTitle || "this category"}`
+                        : selectedCategory !== "all" || selectedBrand !== "all"
+                          ? "Try a different category or brand filter"
+                          : "No products available right now"}
                 </Typography>
               </Box>
             ) : (
-              <Grid container spacing={2}>
+              <Grid container spacing={2} sx={{ overflow: "hidden" }}>
                 {filteredProducts.map((row: any, idx: number) => {
                   const product = row?.product;
                   const slotInfo = row?.slotInfo;
@@ -869,6 +981,7 @@ export default function BrowseProductsPage() {
                       sx={{
                         opacity: isAvailable ? 1 : 0.72,
                         filter: isAvailable ? "none" : "grayscale(0.35)",
+                        overflow: "hidden",
                       }}
                     >
                       <ProductCard

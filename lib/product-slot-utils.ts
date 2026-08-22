@@ -483,6 +483,11 @@ export function mergeCatalogWithSlotProducts(
 ): any[] {
   const { catalogFilters } = options;
   const slotDiscountMap = getSlotDiscountMap(slotsData);
+  const hasActiveCatalogFilter = Boolean(
+    (catalogFilters?.brandId && catalogFilters.brandId !== "all") ||
+      (catalogFilters?.categoryId && catalogFilters.categoryId !== "all")
+  );
+
   const byId = new Map<string, any>();
   catalogProducts.forEach((product) => {
     const key = normalizeProductId(product?.id ?? product?._id);
@@ -516,6 +521,10 @@ export function mergeCatalogWithSlotProducts(
       }
       return;
     }
+
+    // Filtered browse views are API-authoritative (catId/brandId).
+    // Do not inject unrelated in-stock slot products into those results.
+    if (hasActiveCatalogFilter) return;
 
     const slotProduct = {
       id: slot.product_id,

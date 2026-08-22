@@ -137,6 +137,9 @@ export async function GET(request: Request) {
     const isShopifyAvailable = searchParams.get("isShopifyAvailable");
     // Backend caps page size (~100). fetchAll=1 pages through totalCounts.
     const fetchAll = searchParams.get("fetchAll") === "1" || searchParams.get("fetchAll") === "true";
+    // Browse/kiosk lists only need catalog rows; slot qty is resolved client-side from /api/admin/slots.
+    const lite =
+      searchParams.get("lite") === "1" || searchParams.get("lite") === "true";
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -242,6 +245,7 @@ export async function GET(request: Request) {
       );
 
       const products = allRaw.map(mapRawProduct);
+      if (lite) return NextResponse.json(products);
       const productsWithOverrides = await applyOverrides(products);
       return NextResponse.json(productsWithOverrides);
     }
@@ -259,6 +263,7 @@ export async function GET(request: Request) {
       // Extract products array from response and transform to expected format
       const rawProducts = result?.data?.[0]?.products || result?.data || [];
       const products = (Array.isArray(rawProducts) ? rawProducts : []).map(mapRawProduct);
+      if (lite) return NextResponse.json(products);
       // Apply local overrides to external products (like Flask's SQLite storage)
       const productsWithOverrides = await applyOverrides(products);
       return NextResponse.json(productsWithOverrides);
