@@ -248,10 +248,8 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
       >
         <SideMenuComponent />
       </Drawer> */}
-      {/* Idle videos disabled — home should always show NewPromoLanding (incl. refresh).
-      <IdleVideoOverlay reIdleMs={120_000} sources={IDLE_VIDEO_PLAYLIST} />
-      */}
-      <IdleRedirect defaultIdleMs={120_000} feedbackIdleMs={180_000} excludePaths={["/"]} />
+      {/* Home is included: idle clears cart + signs out, then stays/returns to landing. */}
+      <IdleRedirect defaultIdleMs={120_000} feedbackIdleMs={180_000} />
     </Fragment>
   );
 };

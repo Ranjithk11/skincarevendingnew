@@ -16,9 +16,9 @@ interface IdleRedirectProps {
 }
 
 export default function IdleRedirect({
-  defaultIdleMs = 120_000,   // 2 minutes for most pages
+  defaultIdleMs = 120_000,   // 2 minutes for most pages (including home)
   feedbackIdleMs = 180_000,  // 3 minutes for feedback page
-  excludePaths = ["/"],
+  excludePaths = [],
 }: IdleRedirectProps) {
   const router = useRouter();
   const pathname = usePathname();
