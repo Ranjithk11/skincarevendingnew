@@ -14,6 +14,7 @@ import { Icon } from "@iconify/react";
 import { capitalizeWords } from "@/utils/func";
 import { useCart, CartItem } from "./CartContext";
 import UpiQrPayment from "@/components/payments/UpiQrPayment";
+import CardPayment from "@/components/payments/CardPayment";
 import PaymentMethodChooser, { type PaymentMethod } from "@/components/payments/PaymentMethodChooser";
 import CashAgentPayment from "@/components/payments/CashAgentPayment";
 import { ProductPrice } from "./components";
@@ -562,6 +563,153 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
         [items, payableTotal, total, discount, spinDiscount, machineId, machineName, machineLocation, router, spinReward, markRewardRedeemed]
     );
 
+    const handleOnlinePaymentVerified = useCallback(
+        async (payload: {
+            orderId?: string;
+            paymentId?: string;
+            qrCodeId?: string;
+            signature?: string;
+            method?: string;
+        }) => {
+            const dedupeKey =
+                payload?.paymentId ||
+                payload?.qrCodeId ||
+                payload?.orderId ||
+                "";
+            if (!dedupeKey) return;
+
+            if (paymentRecordedRef.current) {
+                console.log("[Payment] Duplicate onVerified ignored:", dedupeKey);
+                return;
+            }
+            paymentRecordedRef.current = dedupeKey;
+
+            if (typeof window !== "undefined") {
+                const storageKey = `kiosk_order_recorded::${dedupeKey}`;
+                if (window.sessionStorage.getItem(storageKey)) {
+                    console.log("[Payment] Duplicate onVerified ignored (session):", dedupeKey);
+                    return;
+                }
+                window.sessionStorage.setItem(storageKey, "1");
+            }
+
+            const methodForRecord = payload.method || paymentMode;
+            console.log("[Payment] onVerified called, items:", items, "payload:", payload);
+            const itemsToDispense = [...items];
+
+            if (spinDiscount > 0 && spinReward && !spinReward.redeemed) {
+                markRewardRedeemed();
+            }
+
+            if (typeof window !== "undefined") {
+                try {
+                    window.sessionStorage.setItem(
+                        "kiosk_checkout_summary",
+                        JSON.stringify({
+                            items: itemsToDispense,
+                            total,
+                            discount,
+                            payableTotal,
+                            couponApplied,
+                            spinWheelReward: spinReward,
+                            createdAt: Date.now(),
+                            payment: {
+                                orderId: payload?.orderId,
+                                paymentId: payload?.paymentId,
+                                qrCodeId: payload?.qrCodeId,
+                                amount: payableTotal,
+                                currency: "INR",
+                                status: "paid",
+                                method: methodForRecord,
+                                machineId,
+                                machineName,
+                                machineLocation,
+                            },
+                        })
+                    );
+                } catch {
+                }
+            }
+
+            router.push(APP_ROUTES.FEEDBACK);
+
+            void (async () => {
+                try {
+                    const orderItems = itemsToDispense.map((item) => ({
+                        productId: item.id || "",
+                        productName: item.name,
+                        quantity: item.quantity || 1,
+                        price: parsePrice(item.priceText),
+                        slotId: item.slotId,
+                    }));
+
+                    const orderResponse = await fetch("/api/admin/orders", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            items: orderItems,
+                            totalAmount: payableTotal,
+                            paymentId: payload?.paymentId,
+                            qrCodeId: payload?.qrCodeId,
+                            razorpayOrderId: payload?.orderId,
+                            paymentMode: methodForRecord,
+                        }),
+                    });
+                    const orderData = await orderResponse.json();
+                    console.log("[Payment] Order recorded:", orderData);
+
+                    await fetch("/api/admin/transactions", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            transactionId: payload?.paymentId || `txn_${Date.now()}`,
+                            amount: payableTotal,
+                            paymentId: payload?.paymentId,
+                            status: "completed",
+                        }),
+                    }).catch((err) => console.warn("[Payment] Failed to record transaction:", err));
+
+                    const stableOrderId =
+                        orderData?.order?.id ||
+                        payload?.paymentId ||
+                        payload?.orderId ||
+                        dedupeKey;
+
+                    await fetch("/api/posifly/bills", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            orderId: stableOrderId,
+                            items: orderItems,
+                            totalAmount: payableTotal,
+                            discountAmount: discount,
+                            paymentId: payload?.paymentId,
+                            razorpayOrderId: payload?.orderId,
+                            paymentMode: methodForRecord,
+                        }),
+                    }).catch((err) => console.warn("[Payment] Failed to save POSIFLY bill:", err));
+                } catch (err) {
+                    console.error("[Payment] Failed to record order:", err);
+                }
+            })();
+        },
+        [
+            couponApplied,
+            discount,
+            items,
+            machineId,
+            machineLocation,
+            machineName,
+            markRewardRedeemed,
+            payableTotal,
+            paymentMode,
+            router,
+            spinDiscount,
+            spinReward,
+            total,
+        ]
+    );
+
     return (
         <>
             <Dialog
@@ -753,6 +901,26 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                         onBack={() => setPaymentMethod(null)}
                                         onConfirmed={handleCashConfirmed}
                                     />
+                                ) : paymentMethod === "card" ? (
+                                    <CardPayment
+                                        amountPaise={amountPaise}
+                                        currency="INR"
+                                        mode={paymentMode}
+                                        receipt={`cart_card_${Date.now()}`}
+                                        onBack={() => setPaymentMethod(null)}
+                                        onProcessingStart={() => {
+                                            speakMessage("paymentProcessing");
+                                        }}
+                                        onVerified={(payload) =>
+                                            handleOnlinePaymentVerified({
+                                                ...payload,
+                                                method: "card",
+                                            })
+                                        }
+                                        onError={() => {
+                                            setStep("checkout");
+                                        }}
+                                    />
                                 ) : (
                                 <UpiQrPayment
                                     amountPaise={amountPaise}
@@ -763,133 +931,12 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                     onProcessingStart={() => {
                                         speakMessage("paymentProcessing");
                                     }}
-                                    onVerified={async (payload) => {
-                                        const dedupeKey =
-                                            payload?.paymentId ||
-                                            payload?.qrCodeId ||
-                                            payload?.orderId ||
-                                            "";
-                                        if (!dedupeKey) return;
-
-                                        // Claim synchronously before any await (prevents double record).
-                                        if (paymentRecordedRef.current) {
-                                            console.log("[Payment] Duplicate onVerified ignored:", dedupeKey);
-                                            return;
-                                        }
-                                        paymentRecordedRef.current = dedupeKey;
-
-                                        if (typeof window !== "undefined") {
-                                            const storageKey = `kiosk_order_recorded::${dedupeKey}`;
-                                            if (window.sessionStorage.getItem(storageKey)) {
-                                                console.log("[Payment] Duplicate onVerified ignored (session):", dedupeKey);
-                                                return;
-                                            }
-                                            window.sessionStorage.setItem(storageKey, "1");
-                                        }
-
-                                        console.log("[Payment] onVerified called, items:", items, "payload:", payload);
-                                        const itemsToDispense = [...items];
-
-                                        if (spinDiscount > 0 && spinReward && !spinReward.redeemed) {
-                                            markRewardRedeemed();
-                                        }
-
-                                        if (typeof window !== "undefined") {
-                                            try {
-                                                window.sessionStorage.setItem(
-                                                    "kiosk_checkout_summary",
-                                                    JSON.stringify({
-                                                        items: itemsToDispense,
-                                                        total,
-                                                        discount,
-                                                        payableTotal,
-                                                        couponApplied,
-                                                        spinWheelReward: spinReward,
-                                                        createdAt: Date.now(),
-                                                        payment: {
-                                                            orderId: payload?.orderId,
-                                                            paymentId: payload?.paymentId,
-                                                            qrCodeId: payload?.qrCodeId,
-                                                            amount: payableTotal,
-                                                            currency: "INR",
-                                                            status: "paid",
-                                                            method: paymentMode,
-                                                            machineId,
-                                                            machineName,
-                                                            machineLocation,
-                                                        },
-                                                    })
-                                                );
-                                            } catch {
-                                            }
-                                        }
-
-                                        router.push(APP_ROUTES.FEEDBACK);
-
-                                        // Record the sale/order and transaction
-                                        void (async () => {
-                                            try {
-                                                const orderItems = itemsToDispense.map(item => ({
-                                                    productId: item.id || "",
-                                                    productName: item.name,
-                                                    quantity: item.quantity || 1,
-                                                    price: parsePrice(item.priceText),
-                                                    slotId: item.slotId,
-                                                }));
-
-                                                const orderResponse = await fetch("/api/admin/orders", {
-                                                    method: "POST",
-                                                    headers: { "Content-Type": "application/json" },
-                                                    body: JSON.stringify({
-                                                        items: orderItems,
-                                                        totalAmount: payableTotal,
-                                                        paymentId: payload?.paymentId,
-                                                        qrCodeId: payload?.qrCodeId,
-                                                        razorpayOrderId: payload?.orderId,
-                                                        paymentMode,
-                                                    }),
-                                                });
-                                                const orderData = await orderResponse.json();
-                                                console.log("[Payment] Order recorded:", orderData);
-
-                                                // Also record transaction
-                                                await fetch("/api/admin/transactions", {
-                                                    method: "POST",
-                                                    headers: { "Content-Type": "application/json" },
-                                                    body: JSON.stringify({
-                                                        transactionId: payload?.paymentId || `txn_${Date.now()}`,
-                                                        amount: payableTotal,
-                                                        paymentId: payload?.paymentId,
-                                                        status: "completed",
-                                                    }),
-                                                }).catch(err => console.warn("[Payment] Failed to record transaction:", err));
-
-                                                // Stable bill identity: always prefer paymentId (never Date.now()).
-                                                const stableOrderId =
-                                                    orderData?.order?.id ||
-                                                    payload?.paymentId ||
-                                                    payload?.orderId ||
-                                                    dedupeKey;
-
-                                                // Save POSIFLY bill data
-                                                await fetch("/api/posifly/bills", {
-                                                    method: "POST",
-                                                    headers: { "Content-Type": "application/json" },
-                                                    body: JSON.stringify({
-                                                        orderId: stableOrderId,
-                                                        items: orderItems,
-                                                        totalAmount: payableTotal,
-                                                        discountAmount: discount,
-                                                        paymentId: payload?.paymentId,
-                                                        razorpayOrderId: payload?.orderId,
-                                                        paymentMode,
-                                                    }),
-                                                }).catch(err => console.warn("[Payment] Failed to save POSIFLY bill:", err));
-                                            } catch (err) {
-                                                console.error("[Payment] Failed to record order:", err);
-                                            }
-                                        })();
-                                    }}
+                                    onVerified={(payload) =>
+                                        handleOnlinePaymentVerified({
+                                            ...payload,
+                                            method: "upi",
+                                        })
+                                    }
                                     onError={() => {
                                         setStep("checkout");
                                     }}

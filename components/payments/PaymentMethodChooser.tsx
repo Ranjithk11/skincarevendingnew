@@ -4,7 +4,7 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
 
-export type PaymentMethod = "cash" | "upi";
+export type PaymentMethod = "cash" | "upi" | "card";
 
 interface PaymentMethodChooserProps {
   amount: number;
@@ -76,6 +76,21 @@ export default function PaymentMethodChooser({
           </Typography>
           <Typography sx={{ fontSize: 18, color: "#6b7280" }}>
             Scan &amp; pay using any UPI app
+          </Typography>
+        </Box>
+        <Icon icon="mdi:chevron-right" width={28} color="#316D52" />
+      </Box>
+
+      <Box onClick={() => onSelect("card")} sx={{ ...cardSx, mt: 2 }}>
+        <Box sx={iconWrap("#fff", "#e5e7eb")}>
+          <Icon icon="mdi:credit-card-outline" width={30} color="#316D52" />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#111827" }}>
+            Pay Via Card
+          </Typography>
+          <Typography sx={{ fontSize: 18, color: "#6b7280" }}>
+            Enter card details and pay online
           </Typography>
         </Box>
         <Icon icon="mdi:chevron-right" width={28} color="#316D52" />

@@ -5,6 +5,10 @@ import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { APP_ROUTES } from "@/utils/routes";
 import { clearVisitorSession } from "@/utils/clearVisitorSession";
+import {
+  isKioskIdlePaused,
+  subscribeKioskIdlePause,
+} from "@/utils/kioskIdleGate";
 
 interface IdleRedirectProps {
   /** Default idle timeout for most pages (ms). */
@@ -23,6 +27,7 @@ export default function IdleRedirect({
   const router = useRouter();
   const pathname = usePathname();
   const timerRef = useRef<number | null>(null);
+  const pausedRef = useRef(isKioskIdlePaused());
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -41,8 +46,15 @@ export default function IdleRedirect({
 
   const startTimer = useCallback(() => {
     clearTimer();
+    // Never arm idle logout while card OTP / UPI QR payment is in progress.
+    if (pausedRef.current || isKioskIdlePaused()) {
+      pausedRef.current = true;
+      return;
+    }
     const ms = getIdleMs();
     timerRef.current = window.setTimeout(async () => {
+      if (pausedRef.current || isKioskIdlePaused()) return;
+
       clearVisitorSession();
       try {
         await signOut({ redirect: false });
@@ -62,6 +74,17 @@ export default function IdleRedirect({
   const handleActivity = useCallback(() => {
     startTimer();
   }, [startTimer]);
+
+  useEffect(() => {
+    return subscribeKioskIdlePause((paused) => {
+      pausedRef.current = paused;
+      if (paused) {
+        clearTimer();
+        return;
+      }
+      startTimer();
+    });
+  }, [clearTimer, startTimer]);
 
   useEffect(() => {
     // Check if current path should be excluded

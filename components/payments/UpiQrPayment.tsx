@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "react-toastify";
 import { Box, Typography, CircularProgress, Button, ButtonProps } from "@mui/material";
 import ActionButton from "@/components/ui/ActionButton";
+import { pauseKioskIdle, resumeKioskIdle } from "@/utils/kioskIdleGate";
 
 type UpiQrPaymentProps = {
   amountPaise: number;
@@ -51,13 +52,22 @@ export default function UpiQrPayment({
   const hasTriggered = useRef(false);
   const verifiedRef = useRef(false);
   const pollInFlightRef = useRef(false);
+  const idlePausedRef = useRef(false);
+
+  const setIdlePaused = useCallback((paused: boolean) => {
+    if (paused === idlePausedRef.current) return;
+    idlePausedRef.current = paused;
+    if (paused) pauseKioskIdle();
+    else resumeKioskIdle();
+  }, []);
 
   const cleanup = useCallback(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     pollingRef.current = null;
     timeoutRef.current = null;
-  }, []);
+    setIdlePaused(false);
+  }, [setIdlePaused]);
 
   const reportError = useCallback(
     (message: string) => {
@@ -186,6 +196,7 @@ export default function UpiQrPayment({
       setQrCodeId(json.data.qrCodeId);
       setOrderId(json.data.orderId);
       setShowQR(true);
+      setIdlePaused(true);
 
       // Start polling for payment
       startPolling(json.data.qrCodeId, json.data.orderId);
@@ -194,7 +205,7 @@ export default function UpiQrPayment({
       reportError(err.message || "Failed to generate QR code");
       setIsLoading(false);
     }
-  }, [amountPaise, currency, receipt, mode, isLoading, onProcessingStart, reportError, startPolling]);
+  }, [amountPaise, currency, receipt, mode, isLoading, onProcessingStart, reportError, setIdlePaused, startPolling]);
 
   // Auto-trigger on mount if requested
   useEffect(() => {
