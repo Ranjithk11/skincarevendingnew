@@ -2,7 +2,21 @@
 
 import { Box, Checkbox, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
-import { HEADING_WEIGHT, MIN_FONT, REPORT_BORDER, REPORT_GREEN, REPORT_MUTED, TITLE_FONT, TRAVEL_KITS } from "./constants";
+import {
+  HEADING_SIZE,
+  HEADING_WEIGHT,
+  PAGE_PADDING_X,
+  RADIUS_LG,
+  RADIUS_MD,
+  REPORT_BORDER,
+  REPORT_GREEN,
+  SECTION_GAP,
+  SMALL_SIZE,
+  TRAVEL_CARD_HEIGHT,
+  TRAVEL_GRID_GAP,
+  TRAVEL_KITS,
+} from "./constants";
+import { fadeUp, scaleIn, staggerDelay } from "./animations";
 
 type Props = {
   selectedIds: string[];
@@ -11,13 +25,21 @@ type Props = {
 
 export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
   return (
-    <Box sx={{ px: 1.5, py: 0.35, flexShrink: 0 }}>
+    <Box
+      sx={{
+        px: `${PAGE_PADDING_X}px`,
+        py: `${SECTION_GAP / 2}px`,
+        flexShrink: 0,
+        animation: `${fadeUp} 0.5s ease-out 0.3s both`,
+      }}
+    >
       <Box
         sx={{
           border: `1px solid ${REPORT_BORDER}`,
-          borderRadius: 1.5,
-          px: 1.25,
-          py: 0.7,
+          borderRadius: RADIUS_LG,
+          px: "14px",
+          py: "10px",
+          boxSizing: "border-box",
         }}
       >
         <Box
@@ -26,25 +48,44 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 1,
-            mb: 0.35,
+            mb: "8px",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-            <Icon icon="mdi:bag-suitcase-outline" width={20} color={REPORT_GREEN} />
-            <Typography sx={{ fontSize: TITLE_FONT, fontWeight: HEADING_WEIGHT, color: "#111", lineHeight: 1.2 }}>
-              Travel kits
+          <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Icon icon="mdi:bag-suitcase-outline" width={18} color={REPORT_GREEN} />
+            <Typography
+              sx={{
+                fontSize: HEADING_SIZE,
+                fontWeight: HEADING_WEIGHT,
+                color: "#111",
+                lineHeight: 1.2,
+                textTransform: "uppercase",
+              }}
+            >
+              Travel Kits
             </Typography>
           </Box>
-          <Typography sx={{ fontSize: MIN_FONT, color: REPORT_GREEN, fontWeight: 500, lineHeight: 1.2 }}>
-            Available 7 am to 7 pm
+          <Typography
+            sx={{
+              fontSize: 14,
+              color: REPORT_GREEN,
+              fontWeight: 600,
+              lineHeight: 1.2,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Morning 7:00 AM → Evening 6:00 PM
           </Typography>
         </Box>
-        {/* <Typography sx={{ fontSize: MIN_FONT, color: REPORT_MUTED, mb: 0.6, lineHeight: 1.2 }}>
-          Tick a kit to add it to your bill
-        </Typography> */}
 
-        <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0.8 }}>
-          {TRAVEL_KITS.map((kit) => {
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: `${TRAVEL_GRID_GAP}px`,
+          }}
+        >
+          {TRAVEL_KITS.map((kit, index) => {
             const checked = selectedIds.includes(kit.id);
             return (
               <Box
@@ -52,18 +93,26 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
                 onClick={() => onToggle(kit.id)}
                 sx={{
                   position: "relative",
-                  border: `2px solid ${checked ? REPORT_GREEN : REPORT_BORDER}`,
-                  borderRadius: 1.25,
+                  border: `1.5px solid ${checked ? REPORT_GREEN : REPORT_BORDER}`,
+                  borderRadius: RADIUS_MD,
                   overflow: "hidden",
-                  height: 128,
+                  height: TRAVEL_CARD_HEIGHT,
+                  width: "100%",
                   cursor: "pointer",
                   backgroundImage: `url(${kit.imageUrl})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",
+                  boxSizing: "border-box",
+                  animation: `${scaleIn} 0.4s ease-out both`,
+                  animationDelay: staggerDelay(index, 70, 360),
+                  transition: "transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+                  boxShadow: checked
+                    ? "0 6px 16px rgba(47, 93, 70, 0.16)"
+                    : "0 1px 4px rgba(0,0,0,0.05)",
+                  "&:active": { transform: "scale(0.97)" },
                 }}
               >
-                {/* Soft overlays so title/price stay readable on the photo */}
                 <Box
                   sx={{
                     position: "absolute",
@@ -80,14 +129,14 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
                   onClick={(e) => e.stopPropagation()}
                   sx={{
                     position: "absolute",
-                    top: 0,
-                    left: 0,
-                    p: 0.1,
+                    top: 4,
+                    left: 4,
+                    p: 0,
                     zIndex: 2,
                     color: REPORT_GREEN,
                     bgcolor: "rgba(255,255,255,0.75)",
                     borderRadius: 0.5,
-                    "& .MuiSvgIcon-root": { fontSize: 22 },
+                    "& .MuiSvgIcon-root": { fontSize: 20 },
                     "&.Mui-checked": { color: REPORT_GREEN },
                   }}
                 />
@@ -99,16 +148,16 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
                     right: 0,
                     bottom: 0,
                     zIndex: 1,
-                    px: 0.5,
-                    pb: 0.55,
-                    pt: 0.35,
+                    px: "6px",
+                    pb: "8px",
+                    pt: "4px",
                     textAlign: "center",
                   }}
                 >
                   <Typography
                     sx={{
-                      fontSize: MIN_FONT,
-                      fontWeight: 800,
+                      fontSize: SMALL_SIZE,
+                      fontWeight: 700,
                       color: kit.accent,
                       lineHeight: 1.1,
                       whiteSpace: "nowrap",
@@ -119,9 +168,10 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
                   </Typography>
                   <Typography
                     sx={{
-                      fontSize: MIN_FONT,
-                      fontWeight: 800,
-                      color: REPORT_GREEN,
+                      mt: "2px",
+                      fontSize: 18,
+                      fontWeight: 900,
+                      color: "#FF0000",
                       lineHeight: 1.1,
                       textShadow: "0 1px 0 rgba(255,255,255,0.9)",
                     }}

@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import { APP_ROUTES } from "@/utils/routes";
 import { pauseKioskIdle, resumeKioskIdle } from "@/utils/kioskIdleGate";
-import { HEADING_WEIGHT, MIN_FONT, REPORT_GREEN, REPORT_GREEN_DARK, REPORT_MUTED, TITLE_FONT } from "./constants";
+import { HEADING_WEIGHT, MIN_FONT, PAGE_PADDING_X, RADIUS_LG, REPORT_BORDER, REPORT_GREEN, REPORT_GREEN_DARK, REPORT_MUTED, TITLE_FONT } from "./constants";
 import type { ReportProduct } from "./types";
 
 type Props = {
@@ -21,6 +22,7 @@ export default function ScanToPaySection({ products, total }: Props) {
   const [showQR, setShowQR] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
   const [qrImageUrl, setQrImageUrl] = useState("");
+  const [qrContent, setQrContent] = useState("");
   const [qrAmount, setQrAmount] = useState(0);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
@@ -78,6 +80,7 @@ export default function ScanToPaySection({ products, total }: Props) {
     cleanup();
     setShowQR(false);
     setQrImageUrl("");
+    setQrContent("");
     setQrAmount(0);
     setIsLoading(false);
     setIsCompleting(false);
@@ -296,7 +299,8 @@ export default function ScanToPaySection({ products, total }: Props) {
       if (!res.ok || !json.success) {
         throw new Error(json.error?.message || "Failed to create QR code");
       }
-      setQrImageUrl(json.data.imageUrl);
+      setQrImageUrl(json.data.imageUrl || "");
+      setQrContent(typeof json.data.imageContent === "string" ? json.data.imageContent : "");
       setQrAmount(total);
       setShowQR(true);
       setIdlePaused(true);
@@ -309,8 +313,18 @@ export default function ScanToPaySection({ products, total }: Props) {
   }, [isLoading, isCompleting, products.length, total, setIdlePaused, startPolling]);
 
   return (
-    <Box sx={{ px: 1.5, pt: 0.25, pb: 1.25, flexShrink: 0 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.6 }}>
+    <Box
+      sx={{
+        flex: 1,
+        minHeight: 0,
+        px: `${PAGE_PADDING_X}px`,
+        pt: 0.5,
+        pb: 1.25,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.75, flexShrink: 0 }}>
         <Box sx={{ flex: 1, borderTop: "1px dashed #C4C4C4" }} />
         <Typography
           sx={{
@@ -328,32 +342,69 @@ export default function ScanToPaySection({ products, total }: Props) {
 
       <Box
         sx={{
+          flex: 1,
+          minHeight: 240,
           display: "grid",
           gridTemplateColumns: "210px 1fr",
-          gap: 1,
-          alignItems: "center",
+          gap: 1.25,
+          alignItems: "stretch",
+          border: `1px solid ${REPORT_BORDER}`,
+          borderRadius: RADIUS_LG,
+          overflow: "hidden",
+          bgcolor: "#fff",
         }}
       >
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.7, minWidth: 0 }}>
-          <Typography sx={{ fontSize: MIN_FONT, color: REPORT_MUTED, lineHeight: 1.3, fontWeight: 400 }}>
-            Tick items, then generate QR.
-          </Typography>
-          <Typography sx={{ fontSize: MIN_FONT, color: REPORT_MUTED, lineHeight: 1.3, fontWeight: 400 }}>
-            Scan to pay and dispense.
-          </Typography>
-          <Typography sx={{ fontSize: TITLE_FONT, fontWeight: HEADING_WEIGHT, color: REPORT_GREEN, lineHeight: 1.2 }}>
-            ₹{Math.round(total)}
-          </Typography>
-          {showQR && !isCompleting ? (
-            <Typography sx={{ fontSize: MIN_FONT, color: REPORT_MUTED, lineHeight: 1.2 }}>
-              Waiting for payment...
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            gap: 1,
+            minWidth: 0,
+            minHeight: 0,
+            height: "100%",
+            px: 1.5,
+            py: 1.5,
+            bgcolor: "#F7FBF7",
+            borderRight: `1px solid ${REPORT_BORDER}`,
+            overflow: "hidden",
+            boxSizing: "border-box",
+          }}
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, minHeight: 0, flex: 1 }}>
+            {!showQR && !isCompleting ? (
+              <>
+                <Typography sx={{ fontSize: MIN_FONT, color: REPORT_MUTED, lineHeight: 1.3, fontWeight: 400 }}>
+                  Tick items, then generate QR.
+                </Typography>
+                <Typography sx={{ fontSize: MIN_FONT, color: REPORT_MUTED, lineHeight: 1.3, fontWeight: 400 }}>
+                  Scan to pay and dispense.
+                </Typography>
+              </>
+            ) : (
+              <Typography sx={{ fontSize: MIN_FONT, color: REPORT_MUTED, lineHeight: 1.3, fontWeight: 500 }}>
+                {isCompleting ? "Processing payment..." : "Waiting for payment..."}
+              </Typography>
+            )}
+            <Typography
+              sx={{
+                fontSize: 32,
+                fontWeight: HEADING_WEIGHT,
+                color: REPORT_GREEN,
+                lineHeight: 1.1,
+                mt: 0.25,
+              }}
+            >
+              ₹{Math.round(total)}
             </Typography>
-          ) : null}
+          </Box>
+
           {showQR || isCompleting ? (
             <Button
               onClick={handleCancel}
               disabled={isCompleting}
               sx={{
+                flexShrink: 0,
                 alignSelf: "stretch",
                 bgcolor: "#fff",
                 color: "#444",
@@ -361,7 +412,8 @@ export default function ScanToPaySection({ products, total }: Props) {
                 fontWeight: 700,
                 fontSize: MIN_FONT,
                 px: 1.25,
-                py: 0.7,
+                py: 1,
+                minHeight: 48,
                 minWidth: 0,
                 width: "100%",
                 borderRadius: 1,
@@ -376,6 +428,7 @@ export default function ScanToPaySection({ products, total }: Props) {
               onClick={() => void generateQR()}
               disabled={isLoading || products.length === 0 || total <= 0}
               sx={{
+                flexShrink: 0,
                 alignSelf: "stretch",
                 bgcolor: REPORT_GREEN,
                 color: "#fff",
@@ -383,7 +436,8 @@ export default function ScanToPaySection({ products, total }: Props) {
                 fontWeight: 700,
                 fontSize: MIN_FONT,
                 px: 1.25,
-                py: 0.7,
+                py: 1,
+                minHeight: 48,
                 minWidth: 0,
                 width: "100%",
                 borderRadius: 1,
@@ -399,33 +453,102 @@ export default function ScanToPaySection({ products, total }: Props) {
         <Box
           sx={{
             width: "100%",
-            height: 248,
+            height: "100%",
+            minHeight: 220,
             bgcolor: "#fff",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             overflow: "hidden",
+            position: "relative",
           }}
         >
           {isCompleting ? (
-            <CircularProgress size={32} sx={{ color: REPORT_GREEN }} />
-          ) : showQR && qrImageUrl ? (
+            <CircularProgress size={40} sx={{ color: REPORT_GREEN }} />
+          ) : showQR && qrContent ? (
             <Box
-              component="img"
-              src={qrImageUrl}
-              alt="UPI QR"
               sx={{
-                width: "168%",
-                height: "168%",
-                objectFit: "cover",
-                objectPosition: "center",
-                display: "block",
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "#fff",
+                p: 2,
+                boxSizing: "border-box",
               }}
-            />
+            >
+              <Box
+                sx={{
+                  width: "min(100%, 100%)",
+                  height: "min(100%, 100%)",
+                  maxWidth: 320,
+                  maxHeight: 320,
+                  aspectRatio: "1 / 1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <QRCodeSVG
+                  value={qrContent}
+                  size={320}
+                  level="M"
+                  includeMargin={false}
+                  bgColor="#ffffff"
+                  fgColor="#111111"
+                  style={{ width: "100%", height: "100%" }}
+                />
+              </Box>
+            </Box>
+          ) : showQR && qrImageUrl ? (
+            /* Fallback: crop Razorpay branded image down to the QR matrix only */
+            <Box
+              sx={{
+                width: "100%",
+                height: "100%",
+                overflow: "hidden",
+                position: "relative",
+                bgcolor: "#fff",
+              }}
+            >
+              <Box
+                component="img"
+                src={qrImageUrl}
+                alt="UPI QR"
+                sx={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "46%",
+                  width: "220%",
+                  height: "220%",
+                  transform: "translate(-50%, -50%)",
+                  objectFit: "cover",
+                  objectPosition: "center center",
+                  display: "block",
+                }}
+              />
+            </Box>
           ) : isLoading ? (
-            <CircularProgress size={32} sx={{ color: REPORT_GREEN }} />
+            <CircularProgress size={40} sx={{ color: REPORT_GREEN }} />
           ) : (
-            <Icon icon="mdi:qrcode" width={72} color="#D1D5DB" />
+            <Box
+              sx={{
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 1,
+                bgcolor: "#FAFCFA",
+              }}
+            >
+              <Icon icon="mdi:qrcode" width={120} color="#C5D5CB" />
+              <Typography sx={{ fontSize: MIN_FONT, color: REPORT_MUTED, fontWeight: 500 }}>
+                QR will appear here
+              </Typography>
+            </Box>
           )}
         </Box>
       </Box>

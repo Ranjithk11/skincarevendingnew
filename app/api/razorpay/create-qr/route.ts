@@ -80,12 +80,30 @@ export async function POST(req: Request) {
       },
     });
 
+    // Prefer raw UPI payload so the kiosk can render a clean QR (no Razorpay chrome).
+    let imageContent: string | null =
+      typeof qrCode?.image_content === "string" && qrCode.image_content
+        ? qrCode.image_content
+        : null;
+    if (!imageContent && qrCode?.id) {
+      try {
+        const fetched = await (razorpay as any).qrCode.fetch(qrCode.id);
+        if (typeof fetched?.image_content === "string" && fetched.image_content) {
+          imageContent = fetched.image_content;
+        }
+      } catch (fetchErr) {
+        console.warn("[create-qr] Could not fetch image_content:", fetchErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         orderId: order.id,
         qrCodeId: qrCode.id,
         imageUrl: qrCode.image_url,
+        /** Raw UPI payload — render a clean QR locally (no Razorpay chrome). */
+        imageContent,
         amount: Math.round(amount),
         currency,
       },

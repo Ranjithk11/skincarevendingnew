@@ -50,12 +50,15 @@ export default function KioskFrame({ children }: { children: React.ReactNode }) 
             width: KIOSK_WIDTH,
             height: KIOSK_HEIGHT,
             bgcolor: "#fff",
+            background: "linear-gradient(180deg, #FFFFFF 0%, #F7FBF7 100%)",
             transform: `scale(${scale})`,
             transformOrigin: "top left",
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
             position: "relative",
+            boxSizing: "border-box",
+            fontFamily: `"Inter", "Arial", sans-serif`,
           }}
         >
           {children}

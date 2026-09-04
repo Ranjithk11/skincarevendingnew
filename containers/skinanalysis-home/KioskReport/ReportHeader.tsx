@@ -1,11 +1,57 @@
 "use client";
 
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, keyframes } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { APP_ROUTES } from "@/utils/routes";
 import { clearVisitorSession } from "@/utils/clearVisitorSession";
-import { LOGO_HEIGHT, LOGO_WIDTH, MIN_FONT, REPORT_GREEN } from "./constants";
+import {
+  BODY_SIZE,
+  HEADER_HEIGHT,
+  LOGO_HEIGHT,
+  LOGO_WIDTH,
+  PAGE_PADDING_X,
+  REPORT_GREEN,
+  REPORT_LIGHT_GREEN,
+  TITLE_SIZE,
+} from "./constants";
+
+const fadeSlideIn = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+const logoPop = keyframes`
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+`;
+
+const softShimmer = keyframes`
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+`;
+
+const GOLD = "#C4A574";
 
 export default function ReportHeader() {
   const router = useRouter();
@@ -24,78 +70,116 @@ export default function ReportHeader() {
     <Box
       sx={{
         flexShrink: 0,
-        px: 1.5,
-        pt: 1,
-        pb: 0.5,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
+        minHeight: HEADER_HEIGHT,
+        px: `${PAGE_PADDING_X}px`,
+        pt: "12px",
+        pb: "10px",
+        boxSizing: "border-box",
+        overflow: "visible",
+        animation: `${fadeSlideIn} 0.55s ease-out both`,
       }}
     >
       <Box
-        component="button"
-        type="button"
-        onClick={handleLogoClick}
-        aria-label="Go to home"
         sx={{
-          border: 0,
-          p: 0,
-          m: 0,
-          bgcolor: "transparent",
-          cursor: "pointer",
-          display: "block",
-          lineHeight: 0,
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          width: "100%",
+          px: "12px",
+          py: "10px",
+          borderRadius: "16px",
+          bgcolor: REPORT_LIGHT_GREEN,
+          border: "1px solid rgba(47, 93, 70, 0.12)",
+          boxShadow: "0 6px 18px rgba(47, 93, 70, 0.06)",
+          position: "relative",
+          overflow: "hidden",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.45) 48%, transparent 66%)",
+            backgroundSize: "200% 100%",
+            animation: `${softShimmer} 3.2s ease-in-out infinite`,
+            pointerEvents: "none",
+          },
         }}
       >
         <Box
-          component="img"
-          src="/wending/goldlog.svg"
-          alt="Leaf Water"
+          component="button"
+          type="button"
+          onClick={handleLogoClick}
+          aria-label="Go to home"
           sx={{
-            width: LOGO_WIDTH,
-            height: LOGO_HEIGHT,
-            objectFit: "contain",
+            border: 0,
+            p: 0,
+            m: 0,
+            bgcolor: "transparent",
+            cursor: "pointer",
             display: "block",
-           }}
-        />
-      </Box>
-      <Box
-        sx={{
-         
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <Typography
-          sx={{
-            fontSize: MIN_FONT,
-            fontWeight: 600,
-            letterSpacing: 3,
-            textTransform: "uppercase",
-            color: "#C4A574",
-            lineHeight: 1,
+            lineHeight: 0,
+            flexShrink: 0,
+            zIndex: 1,
+            animation: `${logoPop} 0.65s cubic-bezier(0.22, 1, 0.36, 1) both`,
+            transition: "transform 0.2s ease",
+            "&:active": { transform: "scale(0.97)" },
           }}
         >
-          Skin analysis
-        </Typography>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mt: 0.4 }}>
-          <Box sx={{ width: 40, height: 1.5, bgcolor: "#C4A574", borderRadius: 99 }} />
+          <Box
+            component="img"
+            src="/wending/goldlog.svg"
+            alt="Leaf Water"
+            sx={{
+              width: LOGO_WIDTH,
+              height: LOGO_HEIGHT,
+              objectFit: "contain",
+              objectPosition: "left center",
+              display: "block",
+              filter: "drop-shadow(0 2px 4px rgba(196, 165, 116, 0.35))",
+            }}
+          />
+        </Box>
+
+        <Box
+          sx={{
+            flex: 1,
+            minWidth: 0,
+            zIndex: 1,
+            animation: `${fadeSlideIn} 0.6s ease-out 0.12s both`,
+          }}
+        >
           <Typography
             sx={{
-              fontSize: 32,
-              fontWeight: 600,
-              color: REPORT_GREEN,
-              letterSpacing: 0.6,
+              fontSize: TITLE_SIZE,
+              fontWeight: 800,
               lineHeight: 1.15,
-              textAlign: "center",
-              fontFamily: `Georgia, "Times New Roman", serif`,
+              letterSpacing: "0.4px",
+              color: REPORT_GREEN,
+              textTransform: "uppercase",
+              background: `linear-gradient(90deg, ${REPORT_GREEN} 0%, #3d7a5a 45%, ${GOLD} 100%)`,
+              backgroundSize: "200% auto",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+              animation: `${softShimmer} 4s linear infinite`,
             }}
           >
-            Generated Report
+            My Skincare Report
           </Typography>
-          <Box sx={{ width: 40, height: 1.5, bgcolor: "#C4A574", borderRadius: 99 }} />
+
+          <Typography
+            sx={{
+              mt: "6px",
+              fontSize: BODY_SIZE - 2,
+              fontWeight: 500,
+              lineHeight: 1.25,
+              color: "#6B7280",
+              letterSpacing: "0.3px",
+              textTransform: "uppercase",
+            }}
+          >
+            Understand your skin at a glance
+          </Typography>
         </Box>
       </Box>
     </Box>

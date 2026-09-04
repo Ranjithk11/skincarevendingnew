@@ -162,6 +162,12 @@ export function computeOverallHealth(reportSource: any): HealthRating {
 }
 
 function toConcernLabel(raw: string) {
+  const token = normalizeText(raw);
+  const canonical = CANONICAL_CONCERNS.find((c) =>
+    c.keys.some((k) => token.includes(k) || k.includes(token))
+  );
+  if (canonical) return canonical.label;
+
   return raw
     .replace(/_/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
@@ -307,16 +313,23 @@ export function getConcernChipTone(label: string, skinType: SkinTypeId): ChipTon
   return palette[match?.index ?? 0];
 }
 
-function shortenSummary(text: string, maxSentences = 2, maxChars = 220): string {
+/** Keep professional summary to ~2 on-screen lines (656px @ 12px). */
+function shortenSummary(text: string, maxSentences = 2, maxChars = 160): string {
   const clean = String(text || "")
+    .replace(/^-+\s*/gm, "")
+    .replace(/>/g, "")
     .replace(/\s+/g, " ")
     .trim();
   if (!clean) return FALLBACK_SUMMARY;
+
   const sentences = clean.split(/(?<=[.!?])\s+/).filter(Boolean);
   let out = sentences.slice(0, maxSentences).join(" ");
+
   if (out.length > maxChars) {
-    out = out.slice(0, maxChars).replace(/\s+\S*$/, "").trim() + ".";
+    out = out.slice(0, maxChars).replace(/\s+\S*$/, "").trim();
+    if (out && !/[.!?]$/.test(out)) out += ".";
   }
+
   return out || FALLBACK_SUMMARY;
 }
 

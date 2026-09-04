@@ -3,15 +3,51 @@ import type { TravelKit } from "./types";
 export const KIOSK_WIDTH = 720;
 export const KIOSK_HEIGHT = 1280;
 
+/** Page / layout tokens (720×1280 CSS-pixel target). */
+export const PAGE_PADDING_X = 32;
+export const SECTION_GAP = 10;
+export const CARD_GAP = 10;
+export const RADIUS_LG = "14px";
+export const RADIUS_MD = "10px";
+export const RADIUS_SM = "7px";
+
 export const REPORT_GREEN = "#2F5D46";
 export const REPORT_GREEN_DARK = "#244A38";
-export const REPORT_BORDER = "#D9D9D9";
+export const REPORT_BORDER = "#d7e5da";
 export const REPORT_MUTED = "#6B7280";
+export const REPORT_LIGHT_GREEN = "#edf6ed";
+
+/** Typography (kiosk report sections — not Scan to Pay). */
+export const TITLE_SIZE = 26;
+export const HEADING_SIZE = 20;
+export const BODY_SIZE = 18;
+export const SMALL_SIZE = 16;
+
+/** Kept for ScanToPaySection (do not change that section’s look). */
 export const MIN_FONT = 20;
 export const TITLE_FONT = 26;
-export const HEADING_WEIGHT = 800;
-export const LOGO_WIDTH = 470;
-export const LOGO_HEIGHT = 75;
+export const HEADING_WEIGHT = 700;
+
+export const LOGO_WIDTH = 250;
+export const LOGO_HEIGHT = 66;
+
+/** Section heights / key dimensions. */
+export const HEADER_HEIGHT = 100;
+export const ANALYSIS_SECTION_HEIGHT = 210;
+export const SCAN_PHOTO_WIDTH = 190;
+export const SCAN_PHOTO_HEIGHT = 200;
+export const HEALTH_BADGE_WIDTH = 325;
+export const HEALTH_BADGE_HEIGHT = 48;
+export const HEALTH_STATUS_FONT = 22;
+export const CONCERN_ICON_SIZE = 45;
+export const CONCERN_LABEL_FONT = 12;
+export const SUMMARY_MIN_HEIGHT = 78;
+export const PRODUCT_CARD_HEIGHT = 180;
+export const PRODUCT_IMAGE_WIDTH = 110;
+export const PRODUCT_IMAGE_HEIGHT = 120;
+export const PRODUCT_CHECKBOX_SIZE = 22;
+export const TRAVEL_CARD_HEIGHT = 180;
+export const TRAVEL_GRID_GAP = 9;
 
 export const TRAVEL_KITS: TravelKit[] = [
   {
@@ -60,7 +96,7 @@ export const CANONICAL_CONCERNS: Array<{
   { keys: ["acne", "pimple", "breakout"], label: "Acne", icon: "mdi:circle-double" },
   {
     keys: ["dark circle", "dark_circle", "darkcircles", "under eye", "undereye"],
-    label: "Dark circles",
+    label: "Dark Circles",
     icon: "mdi:eye-outline",
   },
   {
@@ -70,18 +106,13 @@ export const CANONICAL_CONCERNS: Array<{
   },
   {
     keys: ["uneven", "texture", "tone"],
-    label: "Uneven skin",
+    label: "Uneven Skin",
     icon: "mdi:dots-grid",
   },
   {
     keys: ["quality", "dull", "radiance", "moisture", "hydration"],
-    label: "Moisture",
+    label: "Skin Quality",
     icon: "mdi:shimmer",
-  },
-  {
-    keys: ["open pore", "pores"],
-    label: "Open pores",
-    icon: "mdi:circle-multiple-outline",
   },
   {
     keys: ["wrinkle", "fine line", "fineline", "aging"],
@@ -91,4 +122,4 @@ export const CANONICAL_CONCERNS: Array<{
 ];
 
 export const FALLBACK_SUMMARY =
-  "Primary concerns are pigmentation and dark circles. A routine with brightening actives, hydration, and sun protection is recommended.";
+  "Pigmentation and dark circles are primary concerns. Brightening, hydration, and SPF are recommended.";
