@@ -83,6 +83,7 @@ export const useVoiceMessages = () => {
     analyzing: "Analyzing your skin",
     analysisCompleteClickRecommendations: "Analysis completed successfully. Please tap Get Our Recommendations.",
     recommendations: "Here are your personalized recommendations",
+    kioskReport: "Here is your skincare report. Tick the products you want, then generate the QR to pay and dispense.",
     error: "An error occurred. Please try again",
     networkError: "Network error. Please check your connection",
     invalidInput: "Invalid input. Please try again",

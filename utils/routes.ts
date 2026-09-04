@@ -8,6 +8,7 @@ export const APP_ROUTES = {
   SELFIE: "/skinanalysis/selfie",
   BROCHURE: "/skinanalysis/brochure",
   RECOMMENDATIONS: "/skinanalysis/recommendations",
+  KIOSK_REPORT: "/skinanalysis/report",
   FEEDBACK: "/feedback",
   SPIN_WHEEL: "/spin-wheel",
   SLOTS: "/slots",

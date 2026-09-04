@@ -52,6 +52,57 @@ const ANALYSIS_MESSAGES = [
   { icon: "mdi:file-document-edit-outline", text: "Preparing your personalised report...", voice: "Almost there. Preparing your personalised report." },
 ];
 
+const ANALYSIS_TIMEOUT_MS = 90_000;
+const FRIENDLY_ANALYSIS_ERROR =
+  "Skin analysis failed. Please retry, or retake your photo.";
+const FRIENDLY_TIMEOUT_ERROR =
+  "The scan took too long. Please retry analysis, or retake your photo.";
+
+function stringifyErrorValue(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (Array.isArray(value)) {
+    return value.map(stringifyErrorValue).filter(Boolean).join(". ");
+  }
+  if (value && typeof value === "object" && "message" in (value as object)) {
+    return stringifyErrorValue((value as { message?: unknown }).message);
+  }
+  return "";
+}
+
+function getRecommendSkinCareError(response: any): string | null {
+  if (!response) return FRIENDLY_ANALYSIS_ERROR;
+
+  const body = response?.error?.data ?? response?.data ?? response;
+  const httpStatus = Number(response?.error?.status ?? body?.statusCode ?? 0);
+  const apiStatus = String(body?.status ?? "").toLowerCase();
+  const rawMessage =
+    stringifyErrorValue(body?.error) ||
+    stringifyErrorValue(body?.message) ||
+    stringifyErrorValue(response?.error?.message);
+
+  const failed =
+    Boolean(response?.error) ||
+    apiStatus === "failure" ||
+    apiStatus === "error" ||
+    (Number.isFinite(httpStatus) && httpStatus >= 400);
+
+  if (!failed) return null;
+
+  if (
+    httpStatus >= 500 ||
+    /status code 5\d\d|internal server/i.test(rawMessage)
+  ) {
+    return FRIENDLY_ANALYSIS_ERROR;
+  }
+  if (/timeout|timed out|network/i.test(rawMessage)) {
+    return FRIENDLY_TIMEOUT_ERROR;
+  }
+  if (rawMessage && !/^request failed/i.test(rawMessage)) {
+    return rawMessage;
+  }
+  return FRIENDLY_ANALYSIS_ERROR;
+}
+
 const AnalysisLoader: React.FC = () => {
   const [index, setIndex] = useState(0);
   const { speak } = useVoice();
@@ -458,6 +509,9 @@ const TakeSelfie = () => {
   const imageRef = useRef<any>();
   const canvasRef = useRef<any>();
   const autoAnalyzeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const analysisTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const analysisRequestIdRef = useRef(0);
+  const analysisAbortRef = useRef<{ abort: () => void } | null>(null);
   const theme = useTheme();
   const isUpMdDevice = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -496,6 +550,12 @@ const TakeSelfie = () => {
         clearTimeout(autoAnalyzeTimerRef.current);
         autoAnalyzeTimerRef.current = null;
       }
+      if (analysisTimeoutRef.current) {
+        clearTimeout(analysisTimeoutRef.current);
+        analysisTimeoutRef.current = null;
+      }
+      analysisAbortRef.current?.abort();
+      analysisAbortRef.current = null;
     };
   }, []);
 
@@ -525,13 +585,21 @@ const TakeSelfie = () => {
       if (hasAnnouncedAnalysisSuccessRef.current) return;
       hasAnnouncedAnalysisSuccessRef.current = true;
       speakMessage(
-        consultationFlow ? "success" : "analysisCompleteClickRecommendations"
+        consultationFlow ? "success" : "kioskReport"
       );
       return;
     }
 
     hasAnnouncedAnalysisSuccessRef.current = false;
   }, [skinAttributeStatus?.type, speakMessage, consultationFlow]);
+
+  useEffect(() => {
+    if (skinAttributeStatus?.type !== "SUCCESS" || consultationFlow) return;
+    const timer = window.setTimeout(() => {
+      router.push(APP_ROUTES.KIOSK_REPORT);
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [skinAttributeStatus?.type, consultationFlow, router]);
 
   const completeConsultationAfterAnalysis = (
     response: unknown,
@@ -709,57 +777,173 @@ const TakeSelfie = () => {
       .then((buf) => new File([buf], filename, { type: mime }));
   };
 
-  const handleSkinAnalysis = () => {
+  const clearAnalysisRequest = () => {
+    if (analysisTimeoutRef.current) {
+      clearTimeout(analysisTimeoutRef.current);
+      analysisTimeoutRef.current = null;
+    }
+    analysisAbortRef.current?.abort();
+    analysisAbortRef.current = null;
+  };
+
+  const failSkinAnalysis = (requestId: number, message: string) => {
+    if (requestId !== analysisRequestIdRef.current) return;
+    clearAnalysisRequest();
+    setIsAutoAnalyzing(false);
+    setSkinAttributeStatus({ type: "ERROR", message });
+    speakMessage("error", message);
+  };
+
+  const startSkinAnalysis = (fileName?: string, imageUrl?: string) => {
     const formValues = getValues();
     if (!resolvedUserId) {
       router.push("/questionnaire");
       return;
     }
-    getRecommnedSkinAttributes({
+    const resolvedFileName = fileName || (session?.user?.selfyImage as string);
+    if (!resolvedFileName) {
+      setIsAutoAnalyzing(false);
+      setSkinAttributeStatus({
+        type: "ERROR",
+        message: "No selfie found. Please retake your photo.",
+      });
+      return;
+    }
+
+    const requestId = ++analysisRequestIdRef.current;
+    clearAnalysisRequest();
+    setSkinAttributeStatus(null);
+    setIsAutoAnalyzing(true);
+
+    const request = getRecommnedSkinAttributes({
       userId: resolvedUserId,
-      fileName: session?.user?.selfyImage as string,
+      fileName: resolvedFileName,
       skinType: formValues?.skinType as string,
-    })
+    });
+    analysisAbortRef.current = request;
+
+    analysisTimeoutRef.current = setTimeout(() => {
+      request.abort?.();
+      failSkinAnalysis(requestId, FRIENDLY_TIMEOUT_ERROR);
+    }, ANALYSIS_TIMEOUT_MS);
+
+    request
       .then((response: any) => {
-        if (response?.error?.data?.error) {
-          setSkinAttributeStatus({
-            type: "ERROR",
-            message: response?.error?.data?.error,
-          });
-        } else if (response?.error) {
-          setSkinAttributeStatus({
-            type: "ERROR",
-            message: response?.error?.message || "Analysis failed. Please try again.",
-          });
-        } else {
-          update({
-            ...session,
-            user: {
-              ...session?.user,
-              skinTypes: formValues?.skinType?.replace("_", " "),
-            },
-          });
-          setSkinAttributeStatus({
-            type: "SUCCESS",
-            message: response?.data?.message || "Analysis completed successfully!",
-          });
-          if (consultationFlow) {
-            completeConsultationAfterAnalysis(response, formValues);
-          }
+        if (requestId !== analysisRequestIdRef.current) return;
+        const aborted =
+          response?.error?.name === "AbortError" ||
+          /abort/i.test(String(response?.error?.message || ""));
+        if (aborted) return;
+        console.log("Skin analysis response:", response);
+        const errorMessage = getRecommendSkinCareError(response);
+        if (errorMessage) {
+          failSkinAnalysis(requestId, errorMessage);
+          return;
+        }
+
+        clearAnalysisRequest();
+        setIsAutoAnalyzing(false);
+        update({
+          ...session,
+          user: {
+            ...session?.user,
+            selfyImage: resolvedFileName,
+            selfyImagePath: imageUrl || (session?.user as any)?.selfyImagePath,
+            skinTypes: formValues?.skinType?.replace("_", " "),
+          },
+        });
+        setSkinAttributeStatus({
+          type: "SUCCESS",
+          message: response?.data?.message || "Analysis completed successfully!",
+        });
+
+        if (consultationFlow) {
+          completeConsultationAfterAnalysis(response, formValues);
+          return;
+        }
+
+        try {
+          const analysisFields = extractScanAnalysisFields(response);
+          fetch("/api/admin/scans", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: resolvedUserId,
+              imageUrl: imageUrl || (session?.user as any)?.selfyImagePath,
+              localCapturedImage: resolvedFileName,
+              skinType: formValues?.skinType,
+              detectedAttributes: analysisFields.detectedAttributes,
+              recommendedProducts: {
+                highRecommendation: analysisFields.highRecommendation,
+              },
+            }),
+          }).catch((err) => console.warn("Failed to save scan to local DB:", err));
+
+          const sessUser = session?.user as any;
+          const scanWebhookPayload = {
+            name: sessUser?.name as string,
+            email: sessUser?.email as string,
+            phone: (sessUser?.mobileNumber ||
+              sessUser?.phoneNumber ||
+              sessUser?.phone) as string,
+            userId: resolvedUserId,
+            skinType: (formValues?.skinType as string) || analysisFields.skinType,
+            detectedAttributes: analysisFields.detectedAttributes,
+            highRecommendation: analysisFields.highRecommendation,
+          };
+
+          const dispatchScanWebhook = (machineName: string, machineLocation: string) => {
+            void sendScanCompletedWebhook({
+              ...scanWebhookPayload,
+              machineName,
+              machineLocation,
+            });
+          };
+
+          fetch("/api/admin/machine-name")
+            .then((res) => res.json())
+            .then((machineData) => {
+              dispatchScanWebhook(
+                (machineData?.success && machineData.machineName) ||
+                  process.env.NEXT_PUBLIC_MACHINE_NAME ||
+                  "Vending Machine",
+                (machineData?.success && machineData.machineLocation) ||
+                  process.env.NEXT_PUBLIC_MACHINE_LOCATION ||
+                  "LeafWater Vending Machine"
+              );
+            })
+            .catch((err) => {
+              console.error("[TakeSelfie] Failed to fetch machine settings:", err);
+              dispatchScanWebhook(
+                process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+                process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine"
+              );
+            });
+        } catch (postAnalysisError) {
+          console.warn("[TakeSelfie] Post-analysis webhook/DB step failed:", postAnalysisError);
         }
       })
       .catch((error) => {
+        if (requestId !== analysisRequestIdRef.current) return;
+        const isAbort =
+          error?.name === "AbortError" ||
+          /abort/i.test(String(error?.message || ""));
+        if (isAbort) return;
         console.error("Skin analysis error:", error);
-        setSkinAttributeStatus({
-          type: "ERROR",
-          message: "Analysis failed. Please try again.",
-        });
+        failSkinAnalysis(
+          requestId,
+          getRecommendSkinCareError({ error }) || FRIENDLY_ANALYSIS_ERROR
+        );
       });
   };
 
+  const handleSkinAnalysis = () => {
+    startSkinAnalysis();
+  };
+
   const handleGetSkinRecommendations = () => {
-    speakMessage('recommendations');
-    router.push(APP_ROUTES.RECOMMENDATIONS);
+    speakMessage('kioskReport');
+    router.push(APP_ROUTES.KIOSK_REPORT);
   };
 
   // handle captured Image
@@ -822,119 +1006,8 @@ const TakeSelfie = () => {
             },
           });
           // Auto-start skin analysis after successful upload
-          const formValues = getValues();
-
           autoAnalyzeTimerRef.current = setTimeout(() => {
-            setIsAutoAnalyzing(true);
-            // Voice-over is handled inside <AnalysisLoader /> for sequential messages
-            getRecommnedSkinAttributes({
-              userId: resolvedUserId,
-              fileName: fileName,
-              skinType: formValues?.skinType as string,
-            })
-              .then((response: any) => {
-                console.log("Skin analysis response:", response);
-                setIsAutoAnalyzing(false);
-                if (response?.error?.data?.error) {
-                  setSkinAttributeStatus({
-                    type: "ERROR",
-                    message: response?.error?.data?.error,
-                  });
-                } else if (response?.error) {
-                  setSkinAttributeStatus({
-                    type: "ERROR",
-                    message: response?.error?.message || "Analysis failed",
-                  });
-                } else {
-                  update({
-                    ...session,
-                    user: {
-                      ...session?.user,
-                      selfyImage: fileName,
-                      selfyImagePath: _res?.config?.url,
-                      skinTypes: formValues?.skinType?.replace("_", " "),
-                    },
-                  });
-                  setSkinAttributeStatus({
-                    type: "SUCCESS",
-                    message: response?.data?.message || "Analysis completed successfully!",
-                  });
-
-                  if (consultationFlow) {
-                    completeConsultationAfterAnalysis(response, formValues);
-                  } else {
-                  // Webhook + scan DB are best-effort — never fail the analysis UI
-                  try {
-                    const analysisFields = extractScanAnalysisFields(response);
-                    fetch('/api/admin/scans', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        userId: resolvedUserId,
-                        imageUrl: _res?.config?.url,
-                        localCapturedImage: fileName,
-                        skinType: formValues?.skinType,
-                        detectedAttributes: analysisFields.detectedAttributes,
-                        recommendedProducts: {
-                          highRecommendation: analysisFields.highRecommendation,
-                        },
-                      }),
-                    }).catch(err => console.warn('Failed to save scan to local DB:', err));
-
-                    const sessUser = session?.user as any;
-                    const scanWebhookPayload = {
-                      name: sessUser?.name as string,
-                      email: sessUser?.email as string,
-                      phone: (sessUser?.mobileNumber ||
-                        sessUser?.phoneNumber ||
-                        sessUser?.phone) as string,
-                      userId: resolvedUserId,
-                      skinType: (formValues?.skinType as string) || analysisFields.skinType,
-                      detectedAttributes: analysisFields.detectedAttributes,
-                      highRecommendation: analysisFields.highRecommendation,
-                    };
-
-                    const dispatchScanWebhook = (machineName: string, machineLocation: string) => {
-                      void sendScanCompletedWebhook({
-                        ...scanWebhookPayload,
-                        machineName,
-                        machineLocation,
-                      });
-                    };
-
-                    fetch("/api/admin/machine-name")
-                      .then(res => res.json())
-                      .then(machineData => {
-                        dispatchScanWebhook(
-                          (machineData?.success && machineData.machineName) ||
-                            process.env.NEXT_PUBLIC_MACHINE_NAME ||
-                            "Vending Machine",
-                          (machineData?.success && machineData.machineLocation) ||
-                            process.env.NEXT_PUBLIC_MACHINE_LOCATION ||
-                            "LeafWater Vending Machine"
-                        );
-                      })
-                      .catch(err => {
-                        console.error("[TakeSelfie] Failed to fetch machine settings:", err);
-                        dispatchScanWebhook(
-                          process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
-                          process.env.NEXT_PUBLIC_MACHINE_LOCATION || "LeafWater Vending Machine"
-                        );
-                      });
-                  } catch (postAnalysisError) {
-                    console.warn("[TakeSelfie] Post-analysis webhook/DB step failed:", postAnalysisError);
-                  }
-                  }
-                }
-              })
-              .catch((error) => {
-                console.error("Auto skin analysis error:", error);
-                setIsAutoAnalyzing(false);
-                setSkinAttributeStatus({
-                  type: "ERROR",
-                  message: "Analysis failed. Please try again.",
-                });
-              });
+            startSkinAnalysis(fileName, _res?.config?.url);
           }, 2000);
         }
       }
@@ -1077,11 +1150,13 @@ const TakeSelfie = () => {
                     component="div"
                     className="selfy_image"
                   >
-                    {skinAttributeStatus?.type === "ERROR" && (
+                    {skinAttributeStatus?.type === "ERROR" && !skinAttributeStatus?.overlayHidden && (
                       <Box component="div" className="errorInfo">
                         <Icon width={55} color="white" icon="bx:error" />
-                        <Typography variant="body1" textAlign="center">
-                          {skinAttributeStatus?.message}
+                        <Typography variant="body1" textAlign="center" sx={{ px: 2, fontSize: "18px !important" }}>
+                          {typeof skinAttributeStatus?.message === "string"
+                            ? skinAttributeStatus.message
+                            : FRIENDLY_ANALYSIS_ERROR}
                         </Typography>
                         <Button
                           size="small"
@@ -1089,7 +1164,11 @@ const TakeSelfie = () => {
                           variant="outlined"
                           sx={{ minWidth: 50 }}
                           fullWidth={false}
-                          onClick={() => setSkinAttributeStatus(null)}
+                          onClick={() =>
+                            setSkinAttributeStatus((prev: any) =>
+                              prev ? { ...prev, overlayHidden: true } : prev
+                            )
+                          }
                         >
                           Ok
                         </Button>
@@ -1117,11 +1196,15 @@ const TakeSelfie = () => {
                         </Button> */}
                       </Box>
                     )}
-                    {(isLoadingSkinAttributes || isAutoAnalyzing) && (
+                    {(isLoadingSkinAttributes || isAutoAnalyzing) &&
+                      skinAttributeStatus?.type !== "ERROR" &&
+                      skinAttributeStatus?.type !== "SUCCESS" && (
                       <AnalysisLoader />
                     )}
                   </Box>
-                  {!isLoadingSkinAttributes && !isAutoAnalyzing && (
+                  {skinAttributeStatus?.type &&
+                    (skinAttributeStatus.type === "ERROR" ||
+                      (!isLoadingSkinAttributes && !isAutoAnalyzing)) && (
                     <Box
                       mt={3}
                       sx={{
@@ -1169,6 +1252,8 @@ const TakeSelfie = () => {
                           fullWidth
                           sx={{ mt: 2, borderColor: "#9ca3af", color: "#1a1a1a" }}
                           onClick={() => {
+                            analysisRequestIdRef.current += 1;
+                            clearAnalysisRequest();
                             if (autoAnalyzeTimerRef.current) {
                               clearTimeout(autoAnalyzeTimerRef.current);
                               autoAnalyzeTimerRef.current = null;

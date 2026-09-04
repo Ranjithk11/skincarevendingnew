@@ -38,6 +38,10 @@ const DEFAULT_DISPENSE_WEBHOOK_URL =
 const DEFAULT_SLOT_UPDATE_WEBHOOK_URL =
   "https://hook.eu1.make.com/5x7cho9eq99j2chogcjedhd3bj0959lg";
 
+/** Daily ~9 AM IST full slot inventory snapshot (all 60 slots). */
+const DEFAULT_MORNING_SLOT_INVENTORY_WEBHOOK_URL =
+  "https://hook.eu1.make.com/csx571sy6qetflxhmf98ojart2l1jjht";
+
 const DEFAULT_RESULT_BASE_URL = "https://skincare.leafwater.in";
 
 export interface ScanCompletedPayload {
@@ -416,6 +420,10 @@ export interface PaymentProductInfo {
   slotId?: string | number;
   retailPrice?: number;
   amount?: number;
+  /** Travel kits paid on kiosk but handed over by an agent. */
+  isTravelKit?: boolean;
+  /** machine = vended; agent_handoff = prepared manually */
+  fulfillment?: "machine" | "agent_handoff";
 }
 
 export interface PaymentTransactionInfo {
@@ -580,7 +588,10 @@ export async function sendPaymentWebhook(
         slot_id: p.slotId ?? "",
         retail_price: p.retailPrice ?? null,
         amount: p.amount ?? null,
+        is_travel_kit: Boolean(p.isTravelKit),
+        fulfillment: p.fulfillment || (p.isTravelKit ? "agent_handoff" : "machine"),
       })),
+      has_travel_kits: (payload.products || []).some((p) => Boolean(p.isTravelKit)),
       transaction: {
         order_id: payload.transaction?.orderId || "",
         payment_id: payload.transaction?.paymentId || "",
@@ -630,6 +641,8 @@ export interface DispenseSuccessProductInfo {
   slotId?: string | number;
   retailPrice?: number;
   amount?: number;
+  isTravelKit?: boolean;
+  fulfillment?: "machine" | "agent_handoff";
 }
 
 export interface DispenseSuccessTransactionInfo {
@@ -782,7 +795,10 @@ export async function sendDispenseSuccessWebhook(
         slot_id: p.slotId ?? "",
         retail_price: p.retailPrice ?? null,
         amount: p.amount ?? null,
+        is_travel_kit: Boolean(p.isTravelKit),
+        fulfillment: p.fulfillment || (p.isTravelKit ? "agent_handoff" : "machine"),
       })),
+      has_travel_kits: (payload.products || []).some((p) => Boolean(p.isTravelKit)),
       transaction: {
         order_id: payload.transaction?.orderId || "",
         payment_id: payload.transaction?.paymentId || "",
@@ -860,6 +876,8 @@ export interface SlotUpdatePayload {
   machineName?: string;
   /** Machine identifier (analytics backend id) */
   machineId?: string;
+  /** Optional override destination (e.g. morning inventory Make hook). */
+  webhookUrl?: string;
 }
 
 /**
@@ -876,6 +894,7 @@ export async function sendSlotUpdateWebhook(
 ): Promise<void> {
   try {
     const url =
+      payload.webhookUrl ||
       process.env.NEXT_PUBLIC_SLOT_UPDATE_WEBHOOK_URL ||
       DEFAULT_SLOT_UPDATE_WEBHOOK_URL;
 
@@ -915,6 +934,13 @@ export async function sendSlotUpdateWebhook(
   } catch (err) {
     console.warn("[slot_update webhook] unexpected error:", err);
   }
+}
+
+export function getMorningSlotInventoryWebhookUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_MORNING_SLOT_INVENTORY_WEBHOOK_URL ||
+    DEFAULT_MORNING_SLOT_INVENTORY_WEBHOOK_URL
+  );
 }
 
 // ---------------------------------------------------------------------------

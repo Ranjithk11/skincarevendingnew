@@ -89,6 +89,45 @@ async function enrichCheckoutPayment(summary: any): Promise<any> {
   return { ...summary, payment: resolved };
 }
 
+function isTravelKitItem(item: any): boolean {
+  if (!item || typeof item !== "object") return false;
+  if (item.isTravelKit === true) return true;
+  if (String(item.category || "") === "Travel Kit") return true;
+  const id = String(item.id || "");
+  return (
+    id === "travel-ready" ||
+    id === "hydration" ||
+    id === "sun" ||
+    id === "simple"
+  );
+}
+
+/** Normalize checkout summary lines for payment / dispense Make webhooks. */
+function mapCheckoutItemForWebhook(item: any) {
+  const isKit = isTravelKitItem(item);
+  const retail =
+    item?.retailPrice ??
+    item?.retail_price ??
+    item?.originalPrice ??
+    null;
+  const amount =
+    item?.amount ??
+    item?.payablePrice ??
+    retail;
+  return {
+    id: item?.id,
+    name: item?.name,
+    quantity: item?.quantity ?? 1,
+    slotId: item?.slotId,
+    retailPrice: retail,
+    amount,
+    isTravelKit: isKit,
+    fulfillment: (isKit ? "agent_handoff" : "machine") as
+      | "agent_handoff"
+      | "machine",
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -168,6 +207,24 @@ export default function FeedbackPage() {
     (session?.user as any)?.machineLocation ||
     (checkoutSummary?.payment?.machineLocation) ||
     "LeafWater Vending Machine";
+
+  const checkoutItems = useMemo(() => {
+    const items = checkoutSummary?.items;
+    return Array.isArray(items) ? items : [];
+  }, [checkoutSummary]);
+
+  const kitItems = useMemo(
+    () => checkoutItems.filter((item: any) => isTravelKitItem(item)),
+    [checkoutItems]
+  );
+
+  const vendableItems = useMemo(
+    () => checkoutItems.filter((item: any) => !isTravelKitItem(item)),
+    [checkoutItems]
+  );
+
+  const hasTravelKits = kitItems.length > 0;
+  const hasVendableProducts = vendableItems.length > 0;
 
   const goHome = async () => {
     hasCompletedRef.current = true;
@@ -250,17 +307,21 @@ export default function FeedbackPage() {
     };
   }, [dispenseState.status]);
 
-  // Pickup timer countdown after dispense succeeds
+  // Pickup timer countdown after machine dispense succeeds (skip for kit-only)
   useEffect(() => {
     if (dispenseState.status !== "done") return;
-    
+    if (!hasVendableProducts) {
+      setPickupTimer(0);
+      return;
+    }
+
     // Start 10 second countdown for pickup
     setPickupTimer(10);
-    
+
     // Announce successful dispense and pickup instruction
-    speakMessage('dispense');
-    speakMessage('dispenseCollect');
-    
+    speakMessage("dispense");
+    speakMessage("dispenseCollect");
+
     const interval = setInterval(() => {
       setPickupTimer((prev) => {
         if (prev <= 1) {
@@ -272,7 +333,7 @@ export default function FeedbackPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [dispenseState.status, speakMessage]);
+  }, [dispenseState.status, speakMessage, hasVendableProducts]);
 
   // Voice announcement for errors
   useEffect(() => {
@@ -280,11 +341,6 @@ export default function FeedbackPage() {
       speakMessage('error');
     }
   }, [dispenseState.status, speakMessage]);
-
-  const checkoutItems = useMemo(() => {
-    const items = checkoutSummary?.items;
-    return Array.isArray(items) ? items : [];
-  }, [checkoutSummary]);
 
   const mergedMachine = useMemo(
     () =>
@@ -336,19 +392,26 @@ export default function FeedbackPage() {
       ? ((dispenseState as { results: Array<{ productCode?: string; ok?: boolean }> }).results)
       : [];
     const firstOk = results.find(
-      (r) => r?.ok && String(r?.productCode || "").toUpperCase() !== "TRAY"
+      (r) =>
+        r?.ok &&
+        String(r?.productCode || "").toUpperCase() !== "TRAY" &&
+        String(r?.productCode || "").toUpperCase() !== "KIT_HANDOFF"
     );
-    const item = checkoutItems[0];
+    const item = vendableItems[0] || kitItems[0] || checkoutItems[0];
     const slotId = item?.slotId || firstOk?.productCode || "";
 
     return {
       productId: item?.id || "",
       productName: item?.name || "",
       slotId,
-      command: firstOk?.productCode ? `RQ${firstOk.productCode}` : "DISPENSE",
+      command: firstOk?.productCode
+        ? `RQ${firstOk.productCode}`
+        : hasTravelKits && !hasVendableProducts
+          ? "KIT_HANDOFF"
+          : "DISPENSE",
       timestamp: new Date().toISOString(),
     };
-  }, [dispenseState, checkoutItems]);
+  }, [dispenseState, checkoutItems, vendableItems, kitItems, hasTravelKits, hasVendableProducts]);
 
   const handleKeyboardKeyPress = (key: string) => {
     const setter = keyboardTarget === "email" ? setUserEmail : setNotes;
@@ -392,14 +455,7 @@ export default function FeedbackPage() {
       setDispenseState({ status: "running" });
 
       const payment = checkoutSummary?.payment;
-      const productsForWebhook = checkoutItems.map((item: any) => ({
-        id: item?.id,
-        name: item?.name,
-        quantity: item?.quantity,
-        slotId: item?.slotId,
-        retailPrice: item?.retail_price,
-        amount: item?.amount,
-      }));
+      const productsForWebhook = checkoutItems.map(mapCheckoutItemForWebhook);
 
       const fireError = async (message: string, raw?: unknown) => {
         setDispenseState({ status: "error", message });
@@ -424,9 +480,12 @@ export default function FeedbackPage() {
           ? (results as Array<{ productCode?: string; ok?: boolean }>)
           : [];
         const firstOk = resultList.find(
-          (r) => r?.ok && String(r?.productCode || "").toUpperCase() !== "TRAY"
+          (r) =>
+            r?.ok &&
+            String(r?.productCode || "").toUpperCase() !== "TRAY" &&
+            String(r?.productCode || "").toUpperCase() !== "KIT_HANDOFF"
         );
-        const item = checkoutItems[0];
+        const item = vendableItems[0] || kitItems[0] || checkoutItems[0];
         const slotId = item?.slotId || firstOk?.productCode || "";
         void sendDispenseSuccessWebhook({
           user: webhookUser,
@@ -440,7 +499,9 @@ export default function FeedbackPage() {
               ? `RQ${firstOk.productCode}`
               : slotId
                 ? `RQ${slotId}`
-                : "DISPENSE",
+                : hasTravelKits && !hasVendableProducts
+                  ? "KIT_HANDOFF"
+                  : "DISPENSE",
             timestamp: new Date().toISOString(),
           },
           agentName: payment?.agentName,
@@ -454,7 +515,9 @@ export default function FeedbackPage() {
 
       try {
         const productCodes: string[] = [];
-        for (const item of checkoutItems) {
+
+        // Travel kits are prepared/handed over by an agent — never send to STM32.
+        for (const item of vendableItems) {
           const quantity = Number(item?.quantity) > 0 ? Number(item.quantity) : 1;
           
           // If slotId is set and quantity is 1, use it directly (user selected specific slot)
@@ -513,7 +576,12 @@ export default function FeedbackPage() {
           }
         }
 
+        // Kit-only purchase: skip machine dispense and mark success for agent handoff UI.
         if (productCodes.length === 0) {
+          if (hasTravelKits && !hasVendableProducts) {
+            await fireSuccess([{ productCode: "KIT_HANDOFF", ok: true }]);
+            return;
+          }
           await fireError("No slots found for dispensing");
           return;
         }
@@ -551,6 +619,9 @@ export default function FeedbackPage() {
     webhookUser,
     mergedMachine.machineLocation,
     mergedMachine.machineName,
+    vendableItems,
+    hasTravelKits,
+    hasVendableProducts,
   ]);
 
   const handleStarClick = (starIndex: number) => {
@@ -807,14 +878,7 @@ export default function FeedbackPage() {
         <PaymentReporter
           active
           user={webhookUser}
-          products={checkoutItems.map((item: any) => ({
-            id: item?.id,
-            name: item?.name,
-            quantity: item?.quantity,
-            slotId: item?.slotId,
-            retailPrice: item?.retail_price,
-            amount: item?.amount,
-          }))}
+          products={checkoutItems.map(mapCheckoutItemForWebhook)}
           transaction={checkoutSummary?.payment}
           machineLocation={mergedMachine.machineLocation}
           machineName={mergedMachine.machineName || "Vending Machine"}
@@ -930,7 +994,13 @@ export default function FeedbackPage() {
           <Box sx={{ width: "min(860px, 100%)", mt: 2 }}>
             {(dispenseState.status === "idle" || dispenseState.status === "running") && (
               <Box sx={{ bgcolor: "#fff", borderRadius: 3, px: 3, py: 2, border: "1px solid #e5e7eb", textAlign: "center" }}>
-                <Typography sx={{ fontSize: 24, color: "#374151" }}>Dispensing your products...</Typography>
+                <Typography sx={{ fontSize: 24, color: "#374151" }}>
+                  {hasVendableProducts
+                    ? "Dispensing your products..."
+                    : hasTravelKits
+                      ? "Confirming your travel kit order..."
+                      : "Processing your order..."}
+                </Typography>
               </Box>
             )}
             {dispenseState.status === "done" && (
@@ -938,23 +1008,55 @@ export default function FeedbackPage() {
                 <DispenseReporter
                   active
                   user={webhookUser}
-                  products={checkoutItems.map((item: any) => ({
-                    id: item?.id, name: item?.name, quantity: item?.quantity,
-                    slotId: item?.slotId, retailPrice: item?.retail_price, amount: item?.amount,
-                  }))}
+                  products={checkoutItems.map(mapCheckoutItemForWebhook)}
                   transaction={checkoutSummary?.payment}
                   command={dispenseSuccessCommand || undefined}
                   agentName={checkoutSummary?.payment?.agentName}
                   machineLocation={mergedMachine.machineLocation}
                   machineName={mergedMachine.machineName || "Vending Machine"}
                 />
-                {pickupTimer > 0 && (
-                  <Box sx={{ bgcolor: "#fef3c7", borderRadius: 2, border: "2px solid #f59e0b", textAlign: "center", p: 2 }}>
+                {hasVendableProducts && pickupTimer > 0 && (
+                  <Box sx={{ bgcolor: "#fef3c7", borderRadius: 2, border: "2px solid #f59e0b", textAlign: "center", p: 2, mb: hasTravelKits ? 2 : 0 }}>
                     <Typography sx={{ fontSize: 24, fontWeight: 700, color: "#92400e" }}>
                       Pickup your product
                     </Typography>
                     <Typography sx={{ fontSize: 36, fontWeight: 800, color: "#d97706", mt: 1 }}>{pickupTimer}s</Typography>
                     <Typography sx={{ fontSize: 24, color: "#92400e", mt: 0.5 }}>Tray door will close soon</Typography>
+                  </Box>
+                )}
+                {hasTravelKits && (
+                  <Box
+                    sx={{
+                      bgcolor: "#ecfdf5",
+                      borderRadius: 2,
+                      border: "2px solid #2F5D46",
+                      p: 2.5,
+                      textAlign: "center",
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1, mb: 1 }}>
+                      <Icon icon="mdi:bag-suitcase-outline" width={32} color="#2F5D46" />
+                      <Typography sx={{ fontSize: 26, fontWeight: 800, color: "#2F5D46" }}>
+                        Travel kit handover
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: 24, color: "#14532d", lineHeight: 1.45, mb: 1.5 }}>
+                      Our agent is preparing your travel kit and will hand it over to you shortly.
+                    </Typography>
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
+                      {kitItems.map((kit: any) => (
+                        <Typography
+                          key={String(kit?.id || kit?.name)}
+                          sx={{ fontSize: 22, fontWeight: 600, color: "#166534" }}
+                        >
+                          {kit?.name || "Travel Kit"}
+                          {kit?.payablePrice != null ? ` · ₹${kit.payablePrice}` : ""}
+                        </Typography>
+                      ))}
+                    </Box>
+                    <Typography sx={{ fontSize: 20, color: "#6b7280", mt: 1.5 }}>
+                      Available 7 am to 7 pm
+                    </Typography>
                   </Box>
                 )}
               </>
@@ -965,10 +1067,7 @@ export default function FeedbackPage() {
                   active
                   errorMessage={dispenseState.message}
                   user={webhookUser}
-                  products={checkoutItems.map((item: any) => ({
-                    id: item?.id, name: item?.name, quantity: item?.quantity,
-                    slotId: item?.slotId, retailPrice: item?.retail_price, amount: item?.amount,
-                  }))}
+                  products={checkoutItems.map(mapCheckoutItemForWebhook)}
                   payment={checkoutSummary?.payment}
                   raw={dispenseState}
                   machineLocation={mergedMachine.machineLocation}

@@ -11,7 +11,7 @@ import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
 
 interface TopLogoProps {
   isKiosk: boolean;
-  onCartClick: () => void;
+  onCartClick?: () => void;
   /** @deprecated Use onSpinWheelClick */
   onScanAgainClick?: () => void;
   onSpinWheelClick?: () => void;
@@ -29,6 +29,8 @@ interface TopLogoProps {
   highlightActiveReward?: boolean;
   /** Temporary attention pulse on the second action button (e.g. after Collect & continue). */
   pulseSecondButton?: boolean;
+  /** When true, hide My cart and Spin & Win (logo only). */
+  hideActions?: boolean;
 }
 
 const ACTION_ICON_SIZE = 24;
@@ -119,6 +121,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
   mode = "actions",
   highlightActiveReward = true,
   pulseSecondButton = false,
+  hideActions = false,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -236,6 +239,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
               </Box>
             </Box>
 
+            {!hideActions && (
             <Box
               sx={{
                 display: "flex",
@@ -380,6 +384,7 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 </Box>
               </Button>
             </Box>
+            )}
           </>
         )}
       </Box>

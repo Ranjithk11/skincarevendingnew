@@ -281,8 +281,8 @@ export default function NewPromoLanding() {
                 width: "100%",
                 height: "100%",
                 objectFit: "contain",
-                // Dark neon CTA — keep the white scan glyph.
-                filter: "none",
+                // SVG fill is dark (#111827) — force white on the neon CTA.
+                filter: "brightness(0) invert(1)",
               }}
             />
           </Box>

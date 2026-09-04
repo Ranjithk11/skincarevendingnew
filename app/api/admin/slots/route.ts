@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendAllSlotsUpdate, maybeDailyFullSync } from "@/lib/slot-webhook";
+import {
+  sendAllSlotsUpdate,
+  maybeDailyFullSync,
+  maybeMorningInventorySync,
+} from "@/lib/slot-webhook";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +35,8 @@ export async function GET() {
     // polls this endpoint regularly, so this guarantees a daily sync even when
     // nothing was changed. Fire-and-forget so it never delays the response.
     maybeDailyFullSync();
+    // ~9 AM IST daily: all 60 slots → morning inventory Make webhook.
+    maybeMorningInventorySync();
 
     return NextResponse.json(slots, {
       headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
