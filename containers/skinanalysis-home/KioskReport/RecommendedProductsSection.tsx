@@ -9,6 +9,7 @@ import {
   PAGE_PADDING_X,
   PRODUCT_CARD_HEIGHT,
   PRODUCT_CHECKBOX_SIZE,
+  PRODUCT_IMAGE_HEIGHT,
   RADIUS_LG,
   RADIUS_MD,
   RADIUS_SM,
@@ -118,11 +119,9 @@ export default function RecommendedProductsSection({
                     overflow: "hidden",
                     cursor: "pointer",
                     boxSizing: "border-box",
-                    bgcolor: "#F3F6F4",
-                    backgroundImage: hasImage ? `url(${product.imageUrl})` : "none",
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                    backgroundRepeat: "no-repeat",
+                    bgcolor: "#fff",
+                    display: "flex",
+                    flexDirection: "column",
                     animation: `${scaleIn} 0.4s ease-out both`,
                     animationDelay: staggerDelay(index, 80, 320),
                     transition: "transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
@@ -132,121 +131,143 @@ export default function RecommendedProductsSection({
                     "&:active": { transform: "scale(0.97)" },
                   }}
                 >
-                  {/* Soft overlays so title/price stay readable on the photo */}
+                  {/* Clear product image — no text overlay on the photo */}
                   <Box
                     sx={{
-                      position: "absolute",
-                      inset: 0,
-                      background: hasImage
-                        ? "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.12) 42%, rgba(255,255,255,0.88) 100%)"
-                        : "transparent",
-                      pointerEvents: "none",
+                      position: "relative",
+                      height: PRODUCT_IMAGE_HEIGHT,
+                      flexShrink: 0,
+                      bgcolor: "#F7FAF8",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderBottom: `1px solid ${REPORT_BORDER}`,
                     }}
-                  />
-
-                  {!hasImage ? (
-                    <Box
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onChange={() => onToggle(product.id)}
+                      onClick={(e) => e.stopPropagation()}
                       sx={{
                         position: "absolute",
-                        inset: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        pointerEvents: "none",
-                      }}
-                    >
-                      <Icon icon="mdi:bottle-tonic-outline" width={48} color="#9CA3AF" />
-                    </Box>
-                  ) : null}
-
-                  <Checkbox
-                    checked={checked}
-                    onChange={() => onToggle(product.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    sx={{
-                      position: "absolute",
-                      top: 4,
-                      left: 4,
-                      p: 0,
-                      zIndex: 2,
-                      color: REPORT_GREEN,
-                      bgcolor: "rgba(255,255,255,0.75)",
-                      borderRadius: 0.5,
-                      "& .MuiSvgIcon-root": { fontSize: PRODUCT_CHECKBOX_SIZE },
-                      "&.Mui-checked": { color: REPORT_GREEN },
-                    }}
-                  />
-
-                  {badge ? (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: 6,
-                        right: 6,
+                        top: 4,
+                        left: 4,
                         zIndex: 2,
-                        minWidth: 28,
-                        height: 24,
-                        px: "6px",
-                        borderRadius: RADIUS_SM,
-                        bgcolor: REPORT_GREEN,
-                        color: "#fff",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        lineHeight: 1,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        p: 0,
+                        color: REPORT_GREEN,
+                        bgcolor: "rgba(255,255,255,0.92)",
+                        borderRadius: 0.5,
+                        "& .MuiSvgIcon-root": { fontSize: PRODUCT_CHECKBOX_SIZE },
+                        "&.Mui-checked": { color: REPORT_GREEN },
                       }}
-                    >
-                      {badge}
-                    </Box>
-                  ) : null}
+                    />
 
+                    {badge ? (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 6,
+                          right: 6,
+                          zIndex: 2,
+                          minWidth: 28,
+                          height: 24,
+                          px: "6px",
+                          borderRadius: RADIUS_SM,
+                          bgcolor: REPORT_GREEN,
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          lineHeight: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {badge}
+                      </Box>
+                    ) : null}
+
+                    {hasImage ? (
+                      <Box
+                        component="img"
+                        src={product.imageUrl}
+                        alt={product.name}
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "contain",
+                          objectPosition: "center",
+                          display: "block",
+                          p: "8px",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                    ) : (
+                      <Icon icon="mdi:bottle-tonic-outline" width={48} color="#9CA3AF" />
+                    )}
+                  </Box>
+
+                  {/* Text sits below the image — no overlap */}
                   <Box
                     sx={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      zIndex: 1,
+                      flex: 1,
+                      minHeight: 0,
                       px: "8px",
-                      pb: "8px",
-                      pt: "4px",
-                      textAlign: "center",
+                      py: "8px",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      bgcolor: "#fff",
                     }}
                   >
                     <Typography
                       sx={{
                         fontSize: 13,
-                        fontWeight: 800,
-                        color: "#1F3D30",
-                        lineHeight: 1.15,
+                        fontWeight: 700,
+                        color: "#111",
+                        lineHeight: 1.2,
+                        textAlign: "center",
                         display: "-webkit-box",
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: "vertical",
                         overflow: "hidden",
-                        textShadow: "0 1px 0 rgba(255,255,255,0.9)",
                       }}
                     >
                       {capitalizeWords(product.name || "")}
                     </Typography>
-                    <Typography
+                    <Box
                       sx={{
-                        mt: "3px",
-                        fontSize: 18,
-                        fontWeight: 900,
-                        color: "#FF0000",
-                        lineHeight: 1.1,
-                        textShadow: "0 1px 0 rgba(255,255,255,0.9)",
+                        mt: "6px",
+                        display: "flex",
+                        alignItems: "baseline",
+                        justifyContent: "center",
+                        gap: 0.75,
+                        flexWrap: "wrap",
                       }}
                     >
-                      ₹{product.payablePrice}
+                      <Typography
+                        sx={{
+                          fontSize: 16,
+                          fontWeight: 800,
+                          color: REPORT_GREEN,
+                          lineHeight: 1.1,
+                        }}
+                      >
+                        ₹{product.payablePrice}
+                      </Typography>
                       {volume ? (
-                        <Box component="span" sx={{ color: REPORT_MUTED, fontWeight: 900, fontSize: 14 }}>
-                          {` · ${volume}`}
-                        </Box>
+                        <Typography
+                          sx={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: REPORT_MUTED,
+                            lineHeight: 1.1,
+                          }}
+                        >
+                          {volume}
+                        </Typography>
                       ) : null}
-                    </Typography>
+                    </Box>
                   </Box>
                 </Box>
               );

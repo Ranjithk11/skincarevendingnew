@@ -157,7 +157,7 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
                   <Typography
                     sx={{
                       fontSize: SMALL_SIZE,
-                      fontWeight: 700,
+                      fontWeight: 900,
                       color: kit.accent,
                       lineHeight: 1.1,
                       whiteSpace: "nowrap",
