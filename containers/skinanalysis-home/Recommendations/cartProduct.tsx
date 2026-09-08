@@ -917,9 +917,6 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                                 method: "card",
                                             })
                                         }
-                                        onError={() => {
-                                            setStep("checkout");
-                                        }}
                                     />
                                 ) : (
                                 <UpiQrPayment

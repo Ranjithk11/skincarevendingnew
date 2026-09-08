@@ -10,11 +10,19 @@ import {
 } from "@mui/material";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
+import { useSession } from "next-auth/react";
 import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
 import { pauseKioskIdle, resumeKioskIdle } from "@/utils/kioskIdleGate";
 
 /** Max time to wait on bank OTP / 3DS after card submit (same window as UPI QR). */
 const CARD_OTP_WAIT_MS = 600_000;
+
+/** Razorpay still needs a contact; we never ask the customer — use session or kiosk fallback. */
+const KIOSK_FALLBACK_MOBILE = normalizeIndianMobile(
+  process.env.NEXT_PUBLIC_KIOSK_PAYMENT_CONTACT || "8977016605"
+);
+const KIOSK_FALLBACK_EMAIL =
+  process.env.NEXT_PUBLIC_KIOSK_PAYMENT_EMAIL || "kiosk@leafwater.in";
 
 type CardField = "number" | "expiry" | "cvv" | "name";
 
@@ -49,38 +57,60 @@ export type CardPaymentProps = {
     paymentId: string;
     signature: string;
   }) => void;
+  /** Fatal payment failures only (not field validation). */
   onError?: (message: string) => void;
   onProcessingStart?: () => void;
 };
 
-const loadRazorpayScript = (retries = 3): Promise<boolean> =>
+const CUSTOM_CHECKOUT_SCRIPT = "https://checkout.razorpay.com/v1/razorpay.js";
+
+/** Custom Checkout (`razorpay.js`) — required for card details → bank OTP. */
+const loadCustomCheckoutScript = (retries = 3): Promise<boolean> =>
   new Promise((resolve) => {
     if (typeof window === "undefined") return resolve(false);
-    if (typeof window.Razorpay === "function") return resolve(true);
+
+    const hasCreatePayment = () => {
+      try {
+        return typeof (window.Razorpay as any)?.prototype?.createPayment === "function";
+      } catch {
+        return false;
+      }
+    };
+
+    if (typeof window.Razorpay === "function" && hasCreatePayment()) {
+      return resolve(true);
+    }
 
     const existing = document.querySelector(
-      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
-    );
+      `script[src="${CUSTOM_CHECKOUT_SCRIPT}"]`
+    ) as HTMLScriptElement | null;
+
     if (existing) {
       setTimeout(() => {
-        if (typeof window.Razorpay === "function") resolve(true);
+        if (hasCreatePayment()) resolve(true);
         else if (retries > 0) {
           existing.remove();
-          loadRazorpayScript(retries - 1).then(resolve);
+          loadCustomCheckoutScript(retries - 1).then(resolve);
         } else resolve(false);
       }, 800);
       return;
     }
 
+    // Prefer Custom Checkout over Standard (`checkout.js`) for this flow.
+    const standard = document.querySelector(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+    );
+    if (standard) standard.remove();
+
     const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.src = CUSTOM_CHECKOUT_SCRIPT;
     script.async = true;
     script.onload = () =>
-      setTimeout(() => resolve(typeof window.Razorpay === "function"), 100);
+      setTimeout(() => resolve(hasCreatePayment() || typeof window.Razorpay === "function"), 100);
     script.onerror = () => {
       if (retries > 1) {
         script.remove();
-        setTimeout(() => loadRazorpayScript(retries - 1).then(resolve), 800);
+        setTimeout(() => loadCustomCheckoutScript(retries - 1).then(resolve), 800);
       } else resolve(false);
     };
     document.body.appendChild(script);
@@ -101,6 +131,12 @@ function formatExpiry(digits: string) {
   return `${d.slice(0, 2)}/${d.slice(2)}`;
 }
 
+function normalizeIndianMobile(raw: string): string {
+  let d = onlyDigits(raw);
+  if (d.startsWith("91") && d.length > 10) d = d.slice(-10);
+  return d.slice(0, 10);
+}
+
 function fieldSx(active: boolean) {
   return {
     "& .MuiOutlinedInput-root": {
@@ -119,8 +155,9 @@ function fieldSx(active: boolean) {
 }
 
 /**
- * Online card payment via Razorpay Custom Checkout.
- * Kiosk-friendly form + on-screen keyboard (no staff auth).
+ * Online card payment via Razorpay.
+ * Customer only enters card details. Phone/email are taken from the logged-in
+ * session (or a silent kiosk fallback) because Razorpay requires contact metadata.
  */
 export default function CardPayment({
   amountPaise,
@@ -132,16 +169,37 @@ export default function CardPayment({
   onError,
   onProcessingStart,
 }: CardPaymentProps) {
+  const { data: session } = useSession();
+  const sessionPhone = normalizeIndianMobile(
+    String(
+      (session?.user as { mobileNumber?: string; phoneNumber?: string; phone?: string } | undefined)
+        ?.mobileNumber ||
+        (session?.user as { phoneNumber?: string } | undefined)?.phoneNumber ||
+        (session?.user as { phone?: string } | undefined)?.phone ||
+        ""
+    )
+  );
+  const sessionEmail = String(
+    (session?.user as { email?: string } | undefined)?.email || ""
+  ).trim();
+  const sessionName = String(
+    (session?.user as { name?: string } | undefined)?.name || ""
+  ).trim();
+
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
-  const [cardName, setCardName] = useState("");
+  const [cardName, setCardName] = useState(sessionName);
   const [activeField, setActiveField] = useState<CardField>("number");
   const [isPaying, setIsPaying] = useState(false);
   const [otpWaitMessage, setOtpWaitMessage] = useState(false);
   const inFlightRef = useRef(false);
   const idlePausedRef = useRef(false);
   const otpTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!cardName && sessionName) setCardName(sessionName);
+  }, [sessionName, cardName]);
 
   const clearOtpTimeout = useCallback(() => {
     if (otpTimeoutRef.current !== null) {
@@ -176,7 +234,7 @@ export default function CardPayment({
   }, [clearOtpTimeout, onError, releasePaymentGate]);
 
   useEffect(() => {
-    void loadRazorpayScript();
+    void loadCustomCheckoutScript();
     return () => {
       clearOtpTimeout();
       if (idlePausedRef.current) {
@@ -194,7 +252,11 @@ export default function CardPayment({
   const keyboardLayout =
     activeField === "name" ? "default" : ("numeric" as const);
 
-  const reportError = useCallback(
+  const showToastError = useCallback((message: string) => {
+    toast.error(message);
+  }, []);
+
+  const reportFatalError = useCallback(
     (message: string) => {
       toast.error(message);
       onError?.(message);
@@ -207,7 +269,11 @@ export default function CardPayment({
       if (key === "shift" || key === "123" || key === "ABC") return;
       if (key === "return") return;
 
-      const apply = (prev: string, maxDigits: number, formatter?: (d: string) => string) => {
+      const apply = (
+        prev: string,
+        maxDigits: number,
+        formatter?: (d: string) => string
+      ) => {
         if (key === "backspace") {
           const digits = onlyDigits(prev).slice(0, -1);
           return formatter ? formatter(digits) : digits;
@@ -245,6 +311,41 @@ export default function CardPayment({
     [activeField]
   );
 
+  // Physical / native keyboard → same path as on-screen VirtualKeyboard.
+  // Fields stay readOnly so OS soft-keyboard doesn't fight the kiosk keyboard,
+  // but USB/hardware keys still update the active field.
+  useEffect(() => {
+    if (isPaying) return;
+
+    const onNativeKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.closest(".simple-keyboard") ||
+          target.closest("[data-virtual-keyboard]"))
+      ) {
+        return;
+      }
+
+      let mapped: string | null = null;
+      if (e.key === "Backspace") mapped = "backspace";
+      else if (e.key === "Enter") mapped = "return";
+      else if (e.key === " ") mapped = "space";
+      else if (e.key.length === 1) mapped = e.key;
+
+      if (!mapped) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      handleKeyPress(mapped);
+    };
+
+    window.addEventListener("keydown", onNativeKeyDown, true);
+    return () => window.removeEventListener("keydown", onNativeKeyDown, true);
+  }, [handleKeyPress, isPaying]);
+
   const validate = useCallback(() => {
     const number = onlyDigits(cardNumber);
     const expDigits = onlyDigits(expiry);
@@ -277,9 +378,18 @@ export default function CardPayment({
     if (inFlightRef.current) return;
     const validationError = validate();
     if (validationError) {
-      reportError(validationError);
+      showToastError(validationError);
       return;
     }
+
+    // Silent contact for Razorpay only — never shown on the kiosk form.
+    const mobile =
+      sessionPhone.length === 10 ? sessionPhone : KIOSK_FALLBACK_MOBILE;
+    // Custom Checkout docs use 10-digit contact (not +91…).
+    const contact = mobile;
+    const mail =
+      sessionEmail ||
+      (mobile ? `kiosk+${mobile}@leafwater.in` : KIOSK_FALLBACK_EMAIL);
 
     try {
       inFlightRef.current = true;
@@ -287,9 +397,9 @@ export default function CardPayment({
       armPaymentGate();
       onProcessingStart?.();
 
-      const loaded = await loadRazorpayScript();
+      const loaded = await loadCustomCheckoutScript();
       if (!loaded || typeof window.Razorpay !== "function") {
-        reportError("Failed to load Razorpay. Check internet connection.");
+        reportFatalError("Failed to load Razorpay Custom Checkout. Check internet.");
         setIsPaying(false);
         inFlightRef.current = false;
         releasePaymentGate();
@@ -316,7 +426,7 @@ export default function CardPayment({
           createOrderJson && "error" in createOrderJson
             ? createOrderJson.error.message
             : `Create order failed (${createOrderRes.status})`;
-        reportError(msg);
+        reportFatalError(msg);
         setIsPaying(false);
         inFlightRef.current = false;
         releasePaymentGate();
@@ -326,6 +436,8 @@ export default function CardPayment({
       const { keyId, order } = createOrderJson.data;
       const expDigits = onlyDigits(expiry);
       const number = onlyDigits(cardNumber);
+      const expiryMonth = expDigits.slice(0, 2);
+      const expiryYear2 = expDigits.slice(2, 4);
 
       const unlock = () => {
         setIsPaying(false);
@@ -354,7 +466,7 @@ export default function CardPayment({
               verifyJson && "error" in verifyJson
                 ? verifyJson.error.message
                 : "Payment verification failed";
-            reportError(msg);
+            reportFatalError(msg);
             return;
           }
 
@@ -365,86 +477,69 @@ export default function CardPayment({
             signature: response.razorpay_signature,
           });
         } catch {
-          reportError("Payment verification failed");
+          reportFatalError("Payment verification failed");
         } finally {
           unlock();
         }
       };
 
+      // Custom Checkout instance (NOT Standard Checkout open()).
       const rzp = new window.Razorpay({
         key: keyId,
-        amount: order.amount,
-        currency: order.currency,
-        order_id: order.id,
-        name: "Leafwater",
-        description: "Card Payment",
         image: "/wending/goldlog.svg",
-        theme: { color: "#316D52" },
-        handler: (response: RazorpayPaymentSuccessResponse) => {
-          void verifyAndComplete(response);
-        },
-        modal: {
-          ondismiss: () => {
-            toast.info("Payment cancelled");
-            unlock();
-          },
-        },
-        prefill: {
-          method: "card",
-          name: cardName.trim(),
-        },
-        method: {
-          card: true,
-          upi: false,
-          netbanking: false,
-          wallet: false,
-          paylater: false,
-          emi: false,
-        },
-        config: {
-          display: {
-            blocks: {
-              card: {
-                name: "Pay via Card",
-                instruments: [{ method: "card" }],
-              },
-            },
-            sequence: ["block.card"],
-            preferences: { show_default_blocks: false },
-          },
-        },
-      });
+      } as any);
 
-      rzp.on("payment.failed", (err: unknown) => {
-        const e = err as { error?: { description?: string; reason?: string } };
-        reportError(e?.error?.description || e?.error?.reason || "Card payment failed");
+      if (typeof (rzp as any).createPayment !== "function") {
+        reportFatalError(
+          "Razorpay Custom Checkout is not enabled on this account. Enable it in Razorpay Dashboard, or use UPI."
+        );
         unlock();
-      });
-
-      // Prefer Custom Checkout with kiosk-entered card details.
-      if (typeof (rzp as any).createPayment === "function") {
-        (rzp as any).createPayment({
-          amount: order.amount,
-          currency: order.currency,
-          order_id: order.id,
-          email: "kiosk@leafwater.in",
-          contact: "9999999999",
-          method: "card",
-          card: {
-            number,
-            name: cardName.trim(),
-            expiry_month: expDigits.slice(0, 2),
-            expiry_year: expDigits.slice(2, 4),
-            cvv,
-          },
-        });
         return;
       }
 
-      // Fallback: Razorpay hosted card checkout (if custom checkout unavailable).
-      rzp.open();
-    } catch {
-      reportError("Something went wrong. Please try again.");
+      rzp.on("payment.success", (response: RazorpayPaymentSuccessResponse) => {
+        void verifyAndComplete(response);
+      });
+
+      rzp.on("payment.error", (err: unknown) => {
+        const e = err as {
+          error?: { description?: string; reason?: string; code?: string };
+        };
+        reportFatalError(
+          e?.error?.description ||
+            e?.error?.reason ||
+            e?.error?.code ||
+            "Card payment failed"
+        );
+        unlock();
+      });
+
+      // Also listen for legacy failed event name used by some builds.
+      rzp.on("payment.failed", (err: unknown) => {
+        const e = err as { error?: { description?: string; reason?: string } };
+        reportFatalError(
+          e?.error?.description || e?.error?.reason || "Card payment failed"
+        );
+        unlock();
+      });
+
+      // Submit card → Razorpay opens bank OTP / 3DS (not Payment Options).
+      (rzp as any).createPayment({
+        amount: order.amount,
+        currency: order.currency || currency,
+        order_id: order.id,
+        email: mail,
+        contact,
+        method: "card",
+        "card[number]": number,
+        "card[name]": cardName.trim(),
+        "card[expiry_month]": expiryMonth,
+        "card[expiry_year]": expiryYear2,
+        "card[cvv]": cvv,
+      });
+    } catch (err) {
+      console.error("[CardPayment]", err);
+      reportFatalError("Something went wrong. Please try again.");
       setIsPaying(false);
       inFlightRef.current = false;
       releasePaymentGate();
@@ -462,7 +557,10 @@ export default function CardPayment({
     onVerified,
     receipt,
     releasePaymentGate,
-    reportError,
+    reportFatalError,
+    sessionEmail,
+    sessionPhone,
+    showToastError,
     validate,
   ]);
 
@@ -491,7 +589,7 @@ export default function CardPayment({
         Pay Via Card
       </Typography>
       <Typography sx={{ fontSize: 18, color: "#6b7280", mb: 3 }}>
-        Enter your card details below. Payment is processed securely by Razorpay.
+        Enter your card details. Payment is processed securely by Razorpay.
       </Typography>
 
       <TextField
@@ -572,6 +670,7 @@ export default function CardPayment({
       ) : null}
 
       <Box
+        data-virtual-keyboard
         sx={{
           position: "fixed",
           left: 0,
