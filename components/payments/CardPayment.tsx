@@ -244,10 +244,11 @@ export default function CardPayment({
     };
   }, [clearOtpTimeout]);
 
-  const amountLabel = useMemo(
-    () => `Rs. ${Math.round(Math.max(0, amountPaise) / 100)}/-`,
+  const amountRupees = useMemo(
+    () => Math.round(Math.max(0, amountPaise) / 100),
     [amountPaise]
   );
+  const amountLabel = useMemo(() => `Rs. ${amountRupees}/-`, [amountRupees]);
 
   const keyboardLayout =
     activeField === "name" ? "default" : ("numeric" as const);
@@ -566,23 +567,88 @@ export default function CardPayment({
 
   return (
     <Box sx={{ width: "100%", maxWidth: 720, mx: "auto", pb: "320px" }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
+          mb: 3,
+          width: "100%",
+        }}
+      >
         <Button
+          variant="text"
           onClick={onBack}
-          startIcon={<Icon icon="mdi:arrow-left" width={22} />}
+          startIcon={<Icon icon="mdi:chevron-left" width={32} />}
           sx={{
             textTransform: "none",
-            fontSize: 18,
+            fontSize: 24,
             fontWeight: 700,
-            color: "#316D52",
+            color: "#234a31",
+            bgcolor: "#E8F2EC",
+            backgroundImage: "none",
+            boxShadow: "none",
+            borderRadius: 999,
+            flex: "0 0 auto",
+            width: "auto",
+            minWidth: "unset",
+            maxWidth: "fit-content",
+            alignSelf: "center",
+            px: 2,
+            py: 1.1,
+            border: "1px solid #C5DDD0",
+            "& .MuiButton-startIcon": { mr: 0.25 },
+            "&:hover": {
+              bgcolor: "#D7EBDF",
+              boxShadow: "none",
+            },
           }}
         >
           Back
         </Button>
-        <Box sx={{ flex: 1 }} />
-        <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#111827" }}>
-          To Pay {amountLabel}
-        </Typography>
+
+        <Box sx={{ flex: "1 1 auto", minWidth: 16 }} />
+
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            flex: "0 0 auto",
+            bgcolor: "#316D52",
+            color: "#fff",
+            borderRadius: 3,
+            px: 2.5,
+            py: 1.25,
+            minWidth: 132,
+            boxShadow: "0 6px 16px rgba(49, 109, 82, 0.28)",
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 24,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              opacity: 0.85,
+              lineHeight: 1.2,
+            }}
+          >
+            To Pay
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: 32,
+              fontWeight: 800,
+              lineHeight: 1.15,
+              whiteSpace: "nowrap",
+            }}
+          >
+            ₹{amountRupees}
+          </Typography>
+        </Box>
       </Box>
 
       <Typography sx={{ fontSize: 28, fontWeight: 800, color: "#111827", mb: 0.5 }}>
@@ -652,9 +718,9 @@ export default function CardPayment({
         }
         sx={{
           textTransform: "none",
-          fontSize: 22,
+          fontSize: 24,
           fontWeight: 700,
-          py: 1.6,
+          py: 1.8,
           borderRadius: 2,
           bgcolor: "#316D52",
           "&:hover": { bgcolor: "#234a31" },

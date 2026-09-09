@@ -107,7 +107,7 @@ export function getSlotInfoForProduct(
   product: any,
   slotsMap: SlotsMap
 ): SlotInventoryEntry | undefined {
-  for (const key of productIdKeys(product?.id ?? product?._id)) {
+  for (const key of productIdKeys(product?.id ?? product?._id ?? product?._key)) {
     const entry = slotsMap[key];
     if (entry && entry.quantity > 0) {
       return entry;

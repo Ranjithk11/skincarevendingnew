@@ -1,8 +1,10 @@
 import {
   buildSlotsMap,
+  findProductInMap,
   getSlotDiscountMap,
   getSlotInfoForProduct,
   getSlotRetailPriceForProduct,
+  indexProductsById,
   mergeCatalogWithSlotProducts,
   normalizeProductDiscount,
   normalizeProductId,
@@ -16,77 +18,6 @@ const normalizeText = (value: unknown) =>
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-
-type StepId = "cleanser" | "daycream" | "sunscreen" | "serum";
-
-const STEP_MATCHERS: Record<
-  StepId,
-  { positives: string[]; negatives: string[]; categoryHints: string[] }
-> = {
-  cleanser: {
-    positives: ["face wash", "facewash", "cleanser", "cleansing water", "micellar"],
-    negatives: [
-      "serum",
-      "sunscreen",
-      "sunblock",
-      "moistur",
-      "night cream",
-      "eye cream",
-      "toner",
-      "mask",
-      "baby",
-      "infant",
-    ],
-    categoryHints: ["face wash", "cleanser"],
-  },
-  daycream: {
-    positives: [
-      "day cream",
-      "moisturizer",
-      "moisturiser",
-      "moisturiz",
-      "moisturis",
-      "hydration",
-      "hydrating",
-    ],
-    negatives: [
-      "cleanser",
-      "face wash",
-      "serum",
-      "sunscreen",
-      "sunblock",
-      "night cream",
-      "eye cream",
-      "mask",
-      "toner",
-      "baby",
-      "infant",
-    ],
-    categoryHints: ["day cream", "moistur"],
-  },
-  sunscreen: {
-    positives: ["sunscreen", "sun screen", "sunblock", "spf", "sun lotion", "sun gel"],
-    negatives: ["cleanser", "face wash", "serum", "moistur", "night cream", "eye cream", "baby", "infant"],
-    categoryHints: ["sunscreen"],
-  },
-  serum: {
-    positives: ["face serum", "serum"],
-    negatives: ["cleanser", "face wash", "sunscreen", "moistur", "night cream", "mask", "baby", "infant"],
-    categoryHints: ["face serum", "serum"],
-  },
-};
-
-function getProductText(product: any): string {
-  return normalizeText(
-    [
-      product?.name,
-      product?.productUse,
-      product?.productCategory?.title,
-      product?.category,
-      product?.productBenefits,
-    ].join(" ")
-  );
-}
 
 function isBabyProduct(product: any): boolean {
   const text = normalizeText(
@@ -103,27 +34,25 @@ function isBabyProduct(product: any): boolean {
   return /\bbaby\b|\binfant\b|\bnewborn\b/.test(text);
 }
 
-function matchesStep(product: any, stepId: StepId): boolean {
-  const matcher = STEP_MATCHERS[stepId];
-  const text = getProductText(product);
-  const category = normalizeText(product?.productCategory?.title || product?.category);
-  const positive =
-    matcher.positives.some((term) => text.includes(term)) ||
-    matcher.categoryHints.some((term) => category.includes(term));
-  if (!positive) return false;
-  if (matcher.negatives.some((term) => text.includes(term))) return false;
-  return true;
-}
-
 export function getReportSource(analysisData: any) {
-  return (
-    analysisData?.data?.[0] ||
-    analysisData?.data?.productRecommendation ||
-    analysisData?.productRecommendation ||
-    analysisData?.data ||
-    analysisData ||
-    null
+  const candidates = [
+    analysisData?.data?.[0],
+    analysisData?.data?.productRecommendation,
+    analysisData?.productRecommendation,
+    analysisData?.data,
+    analysisData,
+  ];
+  // Prefer the object that actually carries recommendedProducts.
+  const withRecs = candidates.find(
+    (c) =>
+      c &&
+      typeof c === "object" &&
+      !Array.isArray(c) &&
+      (c.recommendedProducts?.highRecommendation ||
+        c.productRecommendation?.recommendedProducts?.highRecommendation)
   );
+  if (withRecs) return withRecs;
+  return candidates.find((c) => c && typeof c === "object" && !Array.isArray(c)) || null;
 }
 
 export function computeOverallHealth(reportSource: any): HealthRating {
@@ -415,7 +344,7 @@ export function formatSlotBadge(slotNumbers: number[]): string {
 
 function toReportProduct(product: any, slotsMap: ReturnType<typeof buildSlotsMap>, slotsData: unknown): ReportProduct | null {
   if (isBabyProduct(product)) return null;
-  const id = normalizeProductId(product?._id || product?.id);
+  const id = normalizeProductId(product?._id || product?.id || product?._key);
   if (!id) return null;
   const slotInfo = getSlotInfoForProduct(product, slotsMap);
   if (!slotInfo || slotInfo.quantity <= 0) return null;
@@ -446,14 +375,34 @@ function toReportProduct(product: any, slotsMap: ReturnType<typeof buildSlotsMap
   };
 }
 
-function flattenRecommended(reportSource: any): any[] {
-  const high = reportSource?.recommendedProducts?.highRecommendation;
-  if (!Array.isArray(high)) return [];
-  return high.flatMap((bucket: any) =>
-    Array.isArray(bucket?.products) ? bucket.products : []
+function productCategoryKey(product: any, bucketCategory?: string): string {
+  return normalizeText(
+    bucketCategory ||
+      product?.productCategory?.title ||
+      product?.category ||
+      ""
   );
 }
 
+/** Read highRecommendation from common scan payload shapes. */
+function getHighRecommendationBuckets(reportSource: any): any[] {
+  const candidates = [
+    reportSource?.recommendedProducts?.highRecommendation,
+    reportSource?.productRecommendation?.recommendedProducts?.highRecommendation,
+    reportSource?.data?.recommendedProducts?.highRecommendation,
+    reportSource?.data?.productRecommendation?.recommendedProducts
+      ?.highRecommendation,
+  ];
+  for (const list of candidates) {
+    if (Array.isArray(list) && list.length > 0) return list;
+  }
+  return [];
+}
+
+/**
+ * One in-stock product per category from this user's recommendedProducts.highRecommendation.
+ * Resolves API products to machine catalog/slots. Excludes baby. Max 3.
+ */
 export function pickRecommendedProducts(
   reportSource: any,
   catalogProducts: any[],
@@ -461,57 +410,64 @@ export function pickRecommendedProducts(
 ): ReportProduct[] {
   const slotsMap = buildSlotsMap(slotsData);
   const machineProducts = mergeCatalogWithSlotProducts(catalogProducts, slotsData);
-  const recommended = flattenRecommended(reportSource);
-  const recommendedIds = new Set(
-    recommended.map((p) => normalizeProductId(p?._id || p?.id)).filter(Boolean)
-  );
+  const catalogById = indexProductsById(machineProducts);
+  const high = getHighRecommendationBuckets(reportSource);
 
-  const steps: StepId[] = ["cleanser", "daycream", "sunscreen"];
   const picked: ReportProduct[] = [];
-  const seen = new Set<string>();
+  const seenIds = new Set<string>();
+  const seenCategories = new Set<string>();
 
-  const rankAndPick = (candidates: any[]) => {
-    const ranked = candidates
-      .map((product) => {
-        const mapped = toReportProduct(product, slotsMap, slotsData);
-        if (!mapped) return null;
-        return {
-          mapped,
-          recommended: recommendedIds.has(mapped.id),
-          quantity: getSlotInfoForProduct(product, slotsMap)?.quantity ?? 0,
-        };
-      })
-      .filter(Boolean) as Array<{ mapped: ReportProduct; recommended: boolean; quantity: number }>;
-
-    ranked.sort((a, b) => {
-      if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
-      if (a.quantity !== b.quantity) return b.quantity - a.quantity;
-      return a.mapped.name.localeCompare(b.mapped.name);
-    });
-
-    for (const row of ranked) {
-      if (seen.has(row.mapped.id)) continue;
-      seen.add(row.mapped.id);
-      picked.push(row.mapped);
-      return;
-    }
+  const resolveForMachine = (apiProduct: any) => {
+    const id = apiProduct?._id ?? apiProduct?.id ?? apiProduct?._key;
+    return findProductInMap(catalogById, id) || apiProduct;
   };
 
-  steps.forEach((step) => {
-    if (picked.length >= 3) return;
-    const recMatches = recommended.filter((p) => !isBabyProduct(p) && matchesStep(p, step));
-    const machineMatches = machineProducts.filter((p) => !isBabyProduct(p) && matchesStep(p, step));
-    rankAndPick([...recMatches, ...machineMatches]);
-  });
+  const tryAdd = (apiProduct: any, bucketCategory?: string) => {
+    if (picked.length >= 3) return false;
+    if (isBabyProduct(apiProduct)) return false;
 
+    const product = resolveForMachine(apiProduct);
+    if (isBabyProduct(product)) return false;
+
+    const mapped = toReportProduct(product, slotsMap, slotsData);
+    if (!mapped) return false;
+    if (seenIds.has(mapped.id)) return false;
+
+    const categoryKey = productCategoryKey(
+      product,
+      bucketCategory || mapped.category
+    );
+    if (!categoryKey || seenCategories.has(categoryKey)) return false;
+
+    seenIds.add(mapped.id);
+    seenCategories.add(categoryKey);
+    picked.push(
+      bucketCategory && !mapped.category
+        ? { ...mapped, category: bucketCategory }
+        : mapped
+    );
+    return true;
+  };
+
+  // 1) API recommendedProducts.highRecommendation — one product per category.
+  for (const bucket of high) {
+    if (picked.length >= 3) break;
+    const bucketCategory = String(bucket?.productCategory?.title || "").trim();
+    if (bucketCategory && seenCategories.has(normalizeText(bucketCategory))) {
+      continue;
+    }
+    const products = Array.isArray(bucket?.products) ? bucket.products : [];
+    for (const product of products) {
+      if (tryAdd(product, bucketCategory)) break;
+    }
+  }
+
+  // 2) Fallback: other in-stock products from unused categories only.
   if (picked.length < 3) {
-    machineProducts.forEach((product) => {
-      if (picked.length >= 3) return;
-      const mapped = toReportProduct(product, slotsMap, slotsData);
-      if (!mapped || seen.has(mapped.id)) return;
-      seen.add(mapped.id);
-      picked.push(mapped);
-    });
+    for (const product of machineProducts) {
+      if (picked.length >= 3) break;
+      tryAdd(product);
+    }
   }
 
   return picked.slice(0, 3);
