@@ -295,7 +295,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const isDeferredOnly = isDeferredSpinReward(spinReward);
 
     const spinDiscount = useMemo(() => {
-      if (!couponApplied) return 0;
+        if (!couponApplied) return 0;
       // Hard block: next-visit / birthday rewards never reduce payable total.
       if (isDeferredOnly || isNextPurchaseOnly) return 0;
       if (!spinValidation.canApply) return 0;
