@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 
-/** Poll every 5 minutes so the ~9 AM IST inventory webhook can fire while the kiosk is on. */
+/** Poll every 5 minutes so 9 AM / 6 PM IST inventory webhooks can fire while the kiosk is on. */
 const MORNING_INVENTORY_TICK_MS = 5 * 60 * 1000;
 
 /**
  * Fires once on app startup to sync slot discounts from the external API.
- * Also periodically ticks the morning 60-slot inventory webhook scheduler.
+ * Also periodically ticks the 9 AM + 6 PM IST 60-slot inventory webhook scheduler.
  * No UI rendered.
  */
 export default function StartupSync() {
@@ -32,7 +32,7 @@ export default function StartupSync() {
       fetch("/api/cron/morning-slot-inventory", { cache: "no-store" }).catch(() => {});
     };
 
-    // Immediate check (covers restart after 9 AM IST), then every 5 minutes.
+    // Immediate check (covers restart after a schedule window), then every 5 minutes.
     tickMorningInventory();
     const id = window.setInterval(tickMorningInventory, MORNING_INVENTORY_TICK_MS);
     return () => window.clearInterval(id);

@@ -1,15 +1,8 @@
-// Centralized helpers for pushing vending-machine slot state to the
-// slot-update webhook (Make.com).
+// Centralized helpers for pushing vending-machine slot state to Make.com.
 //
-// Responsibilities:
-//  1. sendAllSlotsUpdate() – send the FULL slot map on every change
-//     (assign / remove / quantity update / manual sync).
-//  2. maybeDailyFullSync() – guarantee the full slot map is pushed at least
-//     once per calendar day, even when nothing was changed. The last-sent date
-//     is persisted in app_settings so restarts / concurrent requests do not
-//     cause duplicate daily sends.
-//  3. maybeMorningInventorySync() – around 9:00 AM IST each day, push all 60
-//     slots (name / slot / price / qty) to the morning inventory Make webhook.
+// Same inventory webhook for:
+//  1. Every slot assign / remove / quantity change (full 60-slot map)
+//  2. Scheduled snapshots at 9:00 AM IST and 6:00 PM IST (full 60 slots)
 //
 // All work is best-effort: failures are logged and never bubble up to the
 // admin flow. On Vercel (no SQLite) everything is a no-op.
@@ -22,10 +15,11 @@ import {
 const IS_VERCEL = process.env.VERCEL === "1";
 
 const DAILY_SYNC_SETTING_KEY = "slot_webhook_last_full_sync";
-const MORNING_INVENTORY_SETTING_KEY = "slot_webhook_morning_inventory_ist";
+/** Tracks IST date+window already sent, e.g. "2026-09-10:am" / "2026-09-10:pm". */
+const SCHEDULED_INVENTORY_SETTING_KEY = "slot_webhook_inventory_ist_window";
 const TOTAL_SLOTS = 60;
-/** First eligible hour (IST) for the morning inventory snapshot. */
 const MORNING_SYNC_HOUR_IST = 9;
+const EVENING_SYNC_HOUR_IST = 18;
 
 /** Map a single DB slot row into the webhook slot payload shape. */
 function mapSlot(slot: any, slotId: number) {
@@ -51,7 +45,6 @@ function mapAllSixtySlots(allSlots: Record<number, any>) {
   return slots;
 }
 
-/** Map the raw DB slot map into the webhook slot payload shape. */
 function mapSlots(allSlots: Record<number, any>) {
   return mapAllSixtySlots(allSlots);
 }
@@ -73,22 +66,26 @@ async function resolveMachineMeta() {
   return { machineLocation, machineName, machineId };
 }
 
+function inventoryWebhookUrl() {
+  return getMorningSlotInventoryWebhookUrl();
+}
+
 /**
- * Send the complete set of slots to the webhook. Called on every slot change
- * so Make.com always receives the full, current inventory picture together
- * with which slot(s) triggered the update.
+ * Send the complete set of slots to the inventory webhook.
+ * Called on every slot assign / remove / quantity update / manual sync.
  */
 export async function sendAllSlotsUpdate(
   affectedSlotIds: number[] = [],
   updateType: string = "slot_assignment"
-): Promise<void> {
-  if (IS_VERCEL) return;
+): Promise<boolean> {
+  if (IS_VERCEL) return false;
   try {
     const { adminDb } = await import("@/lib/admin-db");
     const slots = mapSlots(adminDb.getAllSlots());
     const { machineLocation, machineName, machineId } = await resolveMachineMeta();
+    const webhookUrl = inventoryWebhookUrl();
 
-    await sendSlotUpdateWebhook({
+    const ok = await sendSlotUpdateWebhook({
       slots,
       updateType,
       affectedSlotIds,
@@ -96,12 +93,16 @@ export async function sendAllSlotsUpdate(
       machineLocation,
       machineName,
       machineId,
+      webhookUrl,
     });
+
     console.log(
-      `[slot-webhook] Sent ${slots.length} slots (${updateType}) affected=[${affectedSlotIds.join(",")}]`
+      `[slot-webhook] Sent ${slots.length} slots (${updateType}) affected=[${affectedSlotIds.join(",")}] ok=${ok} → ${webhookUrl}`
     );
+    return ok;
   } catch (error) {
     console.error("[slot-webhook] sendAllSlotsUpdate error:", error);
+    return false;
   }
 }
 
@@ -136,7 +137,6 @@ function getIstClock(now = new Date()): {
     parts.find((p) => p.type === type)?.value || "0";
 
   const hourRaw = Number(get("hour"));
-  // Some environments emit "24" for midnight; normalize to 0.
   const hour = hourRaw === 24 ? 0 : hourRaw;
 
   return {
@@ -146,10 +146,15 @@ function getIstClock(now = new Date()): {
   };
 }
 
+type ScheduleWindow = "am" | "pm";
+
+function windowSettingKey(dateKey: string, window: ScheduleWindow) {
+  return `${dateKey}:${window}`;
+}
+
 /**
- * Push the full slot map to the webhook once per calendar day. Safe to call on
- * every request (e.g. from GET /api/admin/slots which the machine polls
- * regularly) – it only actually sends when a new day has started.
+ * Push the full slot map once per local calendar day (legacy daily sync).
+ * Safe to call often — only sends when a new day has started.
  */
 export async function maybeDailyFullSync(): Promise<void> {
   if (IS_VERCEL || dailySyncInFlight) return;
@@ -159,16 +164,16 @@ export async function maybeDailyFullSync(): Promise<void> {
     const last = sqliteDb.getSetting(DAILY_SYNC_SETTING_KEY);
     if (last === today) return;
 
-    // Reserve today's slot up-front so overlapping requests don't double-send.
     dailySyncInFlight = true;
-    sqliteDb.setSetting(
-      DAILY_SYNC_SETTING_KEY,
-      today,
-      "Last date the full slot map was pushed to the slot-update webhook"
-    );
-
-    await sendAllSlotsUpdate([], "daily_full_sync");
-    console.log(`[slot-webhook] Daily full sync sent for ${today}`);
+    const ok = await sendAllSlotsUpdate([], "daily_full_sync");
+    if (ok) {
+      sqliteDb.setSetting(
+        DAILY_SYNC_SETTING_KEY,
+        today,
+        "Last date the full slot map was pushed to the inventory webhook"
+      );
+      console.log(`[slot-webhook] Daily full sync sent for ${today}`);
+    }
   } catch (error) {
     console.error("[slot-webhook] maybeDailyFullSync error:", error);
   } finally {
@@ -176,64 +181,116 @@ export async function maybeDailyFullSync(): Promise<void> {
   }
 }
 
-let morningSyncInFlight = false;
+let scheduledSyncInFlight = false;
+
+async function sendScheduledWindow(
+  dateKey: string,
+  window: ScheduleWindow
+): Promise<boolean> {
+  const { sqliteDb } = await import("@/lib/sqlite-db");
+  const settingVal = windowSettingKey(dateKey, window);
+  const last = sqliteDb.getSetting(SCHEDULED_INVENTORY_SETTING_KEY);
+  // Support multiple windows stored as comma-separated keys in one setting,
+  // plus legacy single-date morning key.
+  const sentSet = new Set(
+    String(last || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
+  if (sentSet.has(settingVal) || (window === "am" && last === dateKey)) {
+    return false;
+  }
+
+  const { adminDb } = await import("@/lib/admin-db");
+  const slots = mapAllSixtySlots(adminDb.getAllSlots());
+  const { machineLocation, machineName, machineId } = await resolveMachineMeta();
+  const webhookUrl = inventoryWebhookUrl();
+  const updateType =
+    window === "am" ? "morning_inventory_sync" : "evening_inventory_sync";
+
+  const ok = await sendSlotUpdateWebhook({
+    slots,
+    updateType,
+    affectedSlotIds: [],
+    timestamp: new Date().toISOString(),
+    machineLocation,
+    machineName,
+    machineId,
+    webhookUrl,
+  });
+
+  if (!ok) {
+    console.warn(
+      `[slot-webhook] Scheduled ${window.toUpperCase()} inventory sync FAILED for ${dateKey} — will retry`
+    );
+    return false;
+  }
+
+  sentSet.add(settingVal);
+  // Keep only today's windows in the setting to avoid unbounded growth.
+  const pruned = [...sentSet].filter((k) => k.startsWith(`${dateKey}:`));
+  sqliteDb.setSetting(
+    SCHEDULED_INVENTORY_SETTING_KEY,
+    pruned.join(","),
+    "IST date windows already sent for inventory webhook (am/pm)"
+  );
+
+  console.log(
+    `[slot-webhook] Scheduled ${window.toUpperCase()} inventory sync sent for ${dateKey} IST (${slots.length} slots) → ${webhookUrl}`
+  );
+  return true;
+}
 
 /**
- * Around 9:00 AM IST each day, POST all 60 slots (product name, slot, price,
- * quantity) to the morning inventory Make webhook. Safe to call often — only
- * one send per IST calendar day after 09:00.
+ * At/after 9:00 AM IST and 6:00 PM IST, POST all 60 slots to the inventory
+ * webhook. Safe to call often — one send per window per IST day, only marked
+ * after a successful POST.
  */
 export async function maybeMorningInventorySync(): Promise<{
   sent: boolean;
   reason?: string;
   dateKey?: string;
+  windowsSent?: string[];
 }> {
   if (IS_VERCEL) return { sent: false, reason: "vercel" };
-  if (morningSyncInFlight) return { sent: false, reason: "in_flight" };
+  if (scheduledSyncInFlight) return { sent: false, reason: "in_flight" };
 
   try {
     const ist = getIstClock();
+    const windowsSent: string[] = [];
+
+    scheduledSyncInFlight = true;
+
+    // Morning window: due from 09:00 IST onward (catch-up if kiosk was off at 9).
+    if (ist.hour >= MORNING_SYNC_HOUR_IST) {
+      const sentAm = await sendScheduledWindow(ist.dateKey, "am");
+      if (sentAm) windowsSent.push("am");
+    }
+
+    // Evening window: due from 18:00 IST onward.
+    if (ist.hour >= EVENING_SYNC_HOUR_IST) {
+      const sentPm = await sendScheduledWindow(ist.dateKey, "pm");
+      if (sentPm) windowsSent.push("pm");
+    }
+
     if (ist.hour < MORNING_SYNC_HOUR_IST) {
       return { sent: false, reason: "before_9am_ist", dateKey: ist.dateKey };
     }
 
-    const { sqliteDb } = await import("@/lib/sqlite-db");
-    const last = sqliteDb.getSetting(MORNING_INVENTORY_SETTING_KEY);
-    if (last === ist.dateKey) {
-      return { sent: false, reason: "already_sent", dateKey: ist.dateKey };
+    if (windowsSent.length === 0) {
+      return {
+        sent: false,
+        reason: ist.hour < EVENING_SYNC_HOUR_IST ? "am_already_sent_or_pending" : "already_sent",
+        dateKey: ist.dateKey,
+      };
     }
 
-    morningSyncInFlight = true;
-    sqliteDb.setSetting(
-      MORNING_INVENTORY_SETTING_KEY,
-      ist.dateKey,
-      "Last IST date the morning 60-slot inventory webhook was sent"
-    );
-
-    const { adminDb } = await import("@/lib/admin-db");
-    const slots = mapAllSixtySlots(adminDb.getAllSlots());
-    const { machineLocation, machineName, machineId } = await resolveMachineMeta();
-    const webhookUrl = getMorningSlotInventoryWebhookUrl();
-
-    await sendSlotUpdateWebhook({
-      slots,
-      updateType: "morning_inventory_sync",
-      affectedSlotIds: [],
-      timestamp: new Date().toISOString(),
-      machineLocation,
-      machineName,
-      machineId,
-      webhookUrl,
-    });
-
-    console.log(
-      `[slot-webhook] Morning inventory sync sent for ${ist.dateKey} IST (${slots.length} slots) → ${webhookUrl}`
-    );
-    return { sent: true, dateKey: ist.dateKey };
+    return { sent: true, dateKey: ist.dateKey, windowsSent };
   } catch (error) {
     console.error("[slot-webhook] maybeMorningInventorySync error:", error);
     return { sent: false, reason: "error" };
   } finally {
-    morningSyncInFlight = false;
+    scheduledSyncInFlight = false;
   }
 }

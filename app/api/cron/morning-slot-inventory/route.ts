@@ -4,7 +4,7 @@ import { maybeMorningInventorySync } from "@/lib/slot-webhook";
 export const dynamic = "force-dynamic";
 
 /**
- * Lightweight tick for the ~9 AM IST morning slot inventory webhook.
+ * Lightweight tick for the 9 AM + 6 PM IST full slot inventory webhook.
  * Called periodically by the kiosk UI so the send still happens even when
  * nobody is browsing /admin/slots.
  */

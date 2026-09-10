@@ -35,7 +35,7 @@ export async function GET() {
     // polls this endpoint regularly, so this guarantees a daily sync even when
     // nothing was changed. Fire-and-forget so it never delays the response.
     maybeDailyFullSync();
-    // ~9 AM IST daily: all 60 slots → morning inventory Make webhook.
+    // 9 AM + 6 PM IST: all 60 slots → inventory Make webhook.
     maybeMorningInventorySync();
 
     return NextResponse.json(slots, {

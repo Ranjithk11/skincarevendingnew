@@ -38,7 +38,7 @@ const DEFAULT_DISPENSE_WEBHOOK_URL =
 const DEFAULT_SLOT_UPDATE_WEBHOOK_URL =
   "https://hook.eu1.make.com/5x7cho9eq99j2chogcjedhd3bj0959lg";
 
-/** Daily ~9 AM IST full slot inventory snapshot (all 60 slots). */
+/** Inventory webhook: every slot assign + 9 AM / 6 PM IST full 60-slot snapshots. */
 const DEFAULT_MORNING_SLOT_INVENTORY_WEBHOOK_URL =
   "https://hook.eu1.make.com/csx571sy6qetflxhmf98ojart2l1jjht";
 
@@ -891,7 +891,7 @@ export interface SlotUpdatePayload {
  */
 export async function sendSlotUpdateWebhook(
   payload: SlotUpdatePayload
-): Promise<void> {
+): Promise<boolean> {
   try {
     const url =
       payload.webhookUrl ||
@@ -923,16 +923,21 @@ export async function sendSlotUpdateWebhook(
     console.log("[slot_update webhook] Sending webhook to:", url);
     console.log("[slot_update webhook] Payload:", JSON.stringify(body, null, 2));
 
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
       keepalive: true,
-    }).catch((err) => {
-      console.warn("[slot_update webhook] request failed:", err);
     });
+
+    if (!res.ok) {
+      console.warn("[slot_update webhook] non-OK response:", res.status, await res.text().catch(() => ""));
+      return false;
+    }
+    return true;
   } catch (err) {
     console.warn("[slot_update webhook] unexpected error:", err);
+    return false;
   }
 }
 
