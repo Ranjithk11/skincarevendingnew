@@ -17,6 +17,10 @@ export const REPORT_BORDER = "#d7e5da";
 export const REPORT_MUTED = "#6B7280";
 export const REPORT_LIGHT_GREEN = "#edf6ed";
 
+/** Travel kits need staff handoff — only sellable during these IST hours. */
+export const TRAVEL_KIT_AVAILABLE_FROM_HOUR_IST = 7; // 12:00 PM inclusive
+export const TRAVEL_KIT_AVAILABLE_UNTIL_HOUR_IST = 19; // 7:00 PM exclusive (hidden 7 PM → 7 AM)
+
 /** Typography (kiosk report sections — not Scan to Pay). */
 export const TITLE_SIZE = 26;
 export const HEADING_SIZE = 20;

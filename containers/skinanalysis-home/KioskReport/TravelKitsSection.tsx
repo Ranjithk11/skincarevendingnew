@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Box, Checkbox, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
 import {
@@ -10,6 +11,7 @@ import {
   RADIUS_MD,
   REPORT_BORDER,
   REPORT_GREEN,
+  REPORT_MUTED,
   SECTION_GAP,
   SMALL_SIZE,
   TRAVEL_CARD_HEIGHT,
@@ -17,6 +19,7 @@ import {
   TRAVEL_KITS,
 } from "./constants";
 import { fadeUp, scaleIn, staggerDelay } from "./animations";
+import { isTravelKitPurchaseAvailable } from "./utils";
 
 type Props = {
   selectedIds: string[];
@@ -24,6 +27,15 @@ type Props = {
 };
 
 export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
+  const [purchaseAvailable, setPurchaseAvailable] = useState(true);
+
+  useEffect(() => {
+    const refresh = () => setPurchaseAvailable(isTravelKitPurchaseAvailable());
+    refresh();
+    const id = window.setInterval(refresh, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   return (
     <Box
       sx={{
@@ -40,6 +52,7 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
           px: "14px",
           py: "10px",
           boxSizing: "border-box",
+          opacity: purchaseAvailable ? 1 : 0.92,
         }}
       >
         <Box
@@ -68,15 +81,46 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
           <Typography
             sx={{
               fontSize: 14,
-              color: REPORT_GREEN,
+              color: purchaseAvailable ? REPORT_GREEN : "#5B6B8A",
               fontWeight: 600,
               lineHeight: 1.2,
               whiteSpace: "nowrap",
             }}
           >
-            Morning 7:00 AM → Evening 6:00 PM
+            {purchaseAvailable
+              ? "Morning 7:00 AM → Evening 7:00 PM"
+              : "Opens again at 7:00 AM"}
           </Typography>
         </Box>
+
+        {!purchaseAvailable ? (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              mb: "8px",
+              px: "10px",
+              py: "7px",
+              borderRadius: RADIUS_MD,
+              bgcolor: "linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%)",
+              background: "linear-gradient(135deg, #EEF2FF 0%, #F5F3FF 100%)",
+              border: "1px solid #C7D2FE",
+            }}
+          >
+            <Icon icon="mdi:moon-waning-crescent" width={16} color="#6366F1" />
+            <Typography
+              sx={{
+                fontSize: 13,
+                color: "#4338CA",
+                lineHeight: 1.35,
+                fontWeight: 500,
+              }}
+            >
+              Staff handoff unavailable overnight — kits unlock at 7:00 AM.
+            </Typography>
+          </Box>
+        ) : null}
 
         <Box
           sx={{
@@ -86,11 +130,14 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
           }}
         >
           {TRAVEL_KITS.map((kit, index) => {
-            const checked = selectedIds.includes(kit.id);
+            const checked = purchaseAvailable && selectedIds.includes(kit.id);
             return (
               <Box
                 key={kit.id}
-                onClick={() => onToggle(kit.id)}
+                onClick={() => {
+                  if (!purchaseAvailable) return;
+                  onToggle(kit.id);
+                }}
                 sx={{
                   position: "relative",
                   border: `1.5px solid ${checked ? REPORT_GREEN : REPORT_BORDER}`,
@@ -98,7 +145,7 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
                   overflow: "hidden",
                   height: TRAVEL_CARD_HEIGHT,
                   width: "100%",
-                  cursor: "pointer",
+                  cursor: purchaseAvailable ? "pointer" : "not-allowed",
                   backgroundImage: `url(${kit.imageUrl})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
@@ -110,36 +157,87 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
                   boxShadow: checked
                     ? "0 6px 16px rgba(47, 93, 70, 0.16)"
                     : "0 1px 4px rgba(0,0,0,0.05)",
-                  "&:active": { transform: "scale(0.97)" },
+                  filter: purchaseAvailable ? "none" : "saturate(0.75) brightness(1.02)",
+                  "&:active": purchaseAvailable ? { transform: "scale(0.97)" } : undefined,
                 }}
               >
                 <Box
                   sx={{
                     position: "absolute",
                     inset: 0,
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.12) 42%, rgba(255,255,255,0.82) 100%)",
+                    background: purchaseAvailable
+                      ? "linear-gradient(180deg, rgba(255,255,255,0.72) 0%, rgba(255,255,255,0.12) 42%, rgba(255,255,255,0.82) 100%)"
+                      : "linear-gradient(180deg, rgba(238,242,255,0.55) 0%, rgba(245,243,255,0.35) 50%, rgba(255,255,255,0.88) 100%)",
                     pointerEvents: "none",
                   }}
                 />
 
-                <Checkbox
-                  checked={checked}
-                  onChange={() => onToggle(kit.id)}
-                  onClick={(e) => e.stopPropagation()}
-                  sx={{
-                    position: "absolute",
-                    top: 4,
-                    left: 4,
-                    p: 0,
-                    zIndex: 2,
-                    color: REPORT_GREEN,
-                    bgcolor: "rgba(255,255,255,0.75)",
-                    borderRadius: 0.5,
-                    "& .MuiSvgIcon-root": { fontSize: 20 },
-                    "&.Mui-checked": { color: REPORT_GREEN },
-                  }}
-                />
+                {purchaseAvailable ? (
+                  <Checkbox
+                    checked={checked}
+                    onChange={() => onToggle(kit.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    sx={{
+                      position: "absolute",
+                      top: 4,
+                      left: 4,
+                      p: 0,
+                      zIndex: 2,
+                      color: REPORT_GREEN,
+                      bgcolor: "rgba(255,255,255,0.75)",
+                      borderRadius: 0.5,
+                      "& .MuiSvgIcon-root": { fontSize: 20 },
+                      "&.Mui-checked": { color: REPORT_GREEN },
+                    }}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      zIndex: 2,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "3px",
+                      px: "8px",
+                      py: "6px",
+                      minWidth: "72px",
+                      borderRadius: "10px",
+                      background: "linear-gradient(145deg, rgba(99,102,241,0.94) 0%, rgba(79,70,229,0.96) 100%)",
+                      boxShadow: "0 4px 14px rgba(79,70,229,0.35), inset 0 1px 0 rgba(255,255,255,0.25)",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      backdropFilter: "blur(4px)",
+                    }}
+                  >
+                    <Icon icon="mdi:moon-waning-crescent" width={14} color="#E0E7FF" />
+                    <Typography
+                      sx={{
+                        color: "#fff",
+                        fontSize: 9,
+                        fontWeight: 800,
+                        letterSpacing: "0.08em",
+                        lineHeight: 1,
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      Closed
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: "rgba(224,231,255,0.92)",
+                        fontSize: 8,
+                        fontWeight: 600,
+                        lineHeight: 1,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      7 PM
+                    </Typography>
+                  </Box>
+                )}
 
                 <Box
                   sx={{

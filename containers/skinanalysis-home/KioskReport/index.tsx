@@ -19,6 +19,7 @@ import {
   extractProfessionalSummary,
   extractSkinType,
   getReportSource,
+  isTravelKitPurchaseAvailable,
   mapConcerns,
   kitToReportProduct,
   pickRecommendedProducts,
@@ -121,7 +122,10 @@ export default function KioskReportPage() {
     [products, selectedIds]
   );
   const selectedKits = useMemo(
-    () => TRAVEL_KITS.filter((kit) => selectedKitIds.includes(kit.id)).map(kitToReportProduct),
+    () =>
+      isTravelKitPurchaseAvailable()
+        ? TRAVEL_KITS.filter((kit) => selectedKitIds.includes(kit.id)).map(kitToReportProduct)
+        : [],
     [selectedKitIds]
   );
   const checkoutItems = useMemo(
@@ -133,6 +137,18 @@ export default function KioskReportPage() {
     [checkoutItems]
   );
 
+  // Drop kit selections outside staff hours (7 PM → 7 AM IST).
+  useEffect(() => {
+    const clearIfClosed = () => {
+      if (!isTravelKitPurchaseAvailable()) {
+        setSelectedKitIds((prev) => (prev.length ? [] : prev));
+      }
+    };
+    clearIfClosed();
+    const id = window.setInterval(clearIfClosed, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const handleToggle = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -140,6 +156,7 @@ export default function KioskReportPage() {
   };
 
   const handleKitToggle = (id: string) => {
+    if (!isTravelKitPurchaseAvailable()) return;
     setSelectedKitIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );

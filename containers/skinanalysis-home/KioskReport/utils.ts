@@ -9,7 +9,12 @@ import {
   normalizeProductDiscount,
   normalizeProductId,
 } from "@/lib/product-slot-utils";
-import { CANONICAL_CONCERNS, FALLBACK_SUMMARY } from "./constants";
+import {
+  CANONICAL_CONCERNS,
+  FALLBACK_SUMMARY,
+  TRAVEL_KIT_AVAILABLE_FROM_HOUR_IST,
+  TRAVEL_KIT_AVAILABLE_UNTIL_HOUR_IST,
+} from "./constants";
 import type { ChipTone, ConcernItem, HealthRating, ReportProduct, SkinTypeId, TravelKit } from "./types";
 
 const normalizeText = (value: unknown) =>
@@ -18,6 +23,26 @@ const normalizeText = (value: unknown) =>
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+
+/** IST hour 0–23 (Asia/Kolkata). */
+export function getIstHour(now = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const hourRaw = Number(parts.find((p) => p.type === "hour")?.value || "0");
+  return hourRaw === 24 ? 0 : hourRaw;
+}
+
+/** Travel kits require staff — available 7:00 AM–7:00 PM IST only. */
+export function isTravelKitPurchaseAvailable(now = new Date()): boolean {
+  const hour = getIstHour(now);
+  return (
+    hour >= TRAVEL_KIT_AVAILABLE_FROM_HOUR_IST &&
+    hour < TRAVEL_KIT_AVAILABLE_UNTIL_HOUR_IST
+  );
+}
 
 function isBabyProduct(product: any): boolean {
   const text = normalizeText(
