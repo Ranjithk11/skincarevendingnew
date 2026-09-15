@@ -4,6 +4,7 @@ const nextConfig = {
     missingSuspenseWithCSRBailout: false,
     serverComponentsExternalPackages: ["serialport", "@serialport/parser-readline", "better-sqlite3"],
   },
+  transpilePackages: ["@mediapipe/tasks-vision"],
   images: {
     remotePatterns: [
       {

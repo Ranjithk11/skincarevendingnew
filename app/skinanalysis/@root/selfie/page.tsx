@@ -1,10 +1,14 @@
 import { Suspense } from "react";
-import TakeSelfie from "@/containers/skinanalysis-home/TakeSelfie";
+import FaceScanSelfie from "@/containers/skinanalysis-home/FaceScanSelfie";
 
+/**
+ * Questionnaire → /skinanalysis/selfie
+ * Now mounts MediaPipe AI Face Scan (newyolo), not the old face-api TakeSelfie.
+ */
 export default function SelfiePage() {
   return (
     <Suspense fallback={null}>
-      <TakeSelfie />
+      <FaceScanSelfie />
     </Suspense>
   );
 }

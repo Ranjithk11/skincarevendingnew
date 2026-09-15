@@ -53,8 +53,8 @@ export const TRAVEL_KITS: TravelKit[] = [
   {
     id: "travel-ready",
     title: "Travel Ready",
-    price: 699,
-    priceRange: "₹699 - ₹899",
+    price: 943,
+    priceRange: "₹943",
     headerBg: "#C8E6C9",
     accent: "#2E7D32",
     imageUrl: "/kiosk-report/travel-kits/travel-ready.png",
@@ -62,8 +62,8 @@ export const TRAVEL_KITS: TravelKit[] = [
   {
     id: "hydration",
     title: "Hydration",
-    price: 999,
-    priceRange: "₹999 - ₹1,199",
+    price: 991,
+    priceRange: "₹991",
     headerBg: "#BBDEFB",
     accent: "#1565C0",
     imageUrl: "/kiosk-report/travel-kits/hydration.png",
@@ -71,8 +71,8 @@ export const TRAVEL_KITS: TravelKit[] = [
   {
     id: "sun",
     title: "Sun Care",
-    price: 699,
-    priceRange: "₹699 - ₹999",
+    price: 943,
+    priceRange: "₹943",
     headerBg: "#FFE0B2",
     accent: "#EF6C00",
     imageUrl: "/kiosk-report/travel-kits/sun.png",
@@ -80,8 +80,8 @@ export const TRAVEL_KITS: TravelKit[] = [
   {
     id: "simple",
     title: "Simple Care",
-    price: 899,
-    priceRange: "₹899 - ₹1,199",
+    price: 836,
+    priceRange: "₹836",
     headerBg: "#E1BEE7",
     accent: "#7B1FA2",
     imageUrl: "/kiosk-report/travel-kits/simple.png",
