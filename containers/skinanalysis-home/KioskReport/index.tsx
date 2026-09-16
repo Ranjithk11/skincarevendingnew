@@ -63,9 +63,11 @@ export default function KioskReportPage() {
     setSessionReady(true);
   }, []);
 
+  // Skip fetching remote selfies when we already have this scan's preview.
   useEffect(() => {
     if (!session?.user?.id) return;
-    // Best-effort: old API recommendations if any exist for this user.
+    // MediaPipe path does not need the old recommendation API — it slows the report.
+    if (localPreview || mediapipeConcerns.length > 0) return;
     fetchRecommnedSkinAttributes({ userId: session.user.id as string });
     if (session.user.selfyImage) {
       getUploadImageInfo({
@@ -73,11 +75,18 @@ export default function KioskReportPage() {
         fileName: session.user.selfyImage as string,
       });
     }
-  }, [session, fetchRecommnedSkinAttributes, getUploadImageInfo]);
+  }, [
+    session,
+    fetchRecommnedSkinAttributes,
+    getUploadImageInfo,
+    localPreview,
+    mediapipeConcerns.length,
+  ]);
 
   const reportSource = useMemo(() => getReportSource(data), [data]);
 
   useEffect(() => {
+    if (localPreview) return;
     const userId =
       reportSource?.user?._id ||
       reportSource?.userId ||
@@ -98,7 +107,7 @@ export default function KioskReportPage() {
     } else if (userId && capturedFileName) {
       getUploadImageInfo({ userId, fileName: capturedFileName });
     }
-  }, [reportSource, data, session, getAnalysedImageInfo, getUploadImageInfo]);
+  }, [reportSource, data, session, getAnalysedImageInfo, getUploadImageInfo, localPreview]);
 
   // Always load products once session is ready — never hang forever.
   useEffect(() => {
@@ -107,9 +116,35 @@ export default function KioskReportPage() {
 
     const loadProducts = async () => {
       try {
+        const useRandomMachine =
+          mediapipeConcerns.length > 0 || Boolean(localPreview);
+
+        // MediaPipe report: only need local slots (fast). Skip heavy catalog+override path.
+        if (useRandomMachine) {
+          const slotsRes = await fetch("/api/admin/slots");
+          const slotsData = slotsRes.ok ? await slotsRes.json() : {};
+          const seed = [
+            mediapipeScan?.analyzedAt || "",
+            session?.user?.id || "",
+            mediapipeScan?.concerns?.map((c) => c.code).join("-") || "",
+          ].join("|");
+          const picked = pickRandomMachineProducts(
+            [],
+            slotsData,
+            seed || String(Date.now())
+          );
+          if (cancelled) return;
+          setProducts(picked);
+          setSelectedIds(picked.map((p) => p.id));
+          return;
+        }
+
         const [slotsRes, productsRes] = await Promise.all([
           fetch("/api/admin/slots"),
-          fetch("/api/admin/products?limit=1000&hasBrand=true&isShopifyAvailable=true"),
+          // lite=1 skips per-product SQLite slot lookups (huge win).
+          fetch(
+            "/api/admin/products?limit=1000&hasBrand=true&isShopifyAvailable=true&lite=1"
+          ),
         ]);
         const slotsData = slotsRes.ok ? await slotsRes.json() : {};
         const productsPayload = productsRes.ok ? await productsRes.json() : [];
@@ -117,21 +152,11 @@ export default function KioskReportPage() {
           ? productsPayload
           : productsPayload?.data?.[0]?.products || productsPayload?.data || [];
 
-        const useRandomMachine =
-          mediapipeConcerns.length > 0 || Boolean(localPreview);
-        const seed = [
-          mediapipeScan?.analyzedAt || "",
-          session?.user?.id || "",
-          mediapipeScan?.concerns?.map((c) => c.code).join("-") || "",
-        ].join("|");
-
-        const picked = useRandomMachine
-          ? pickRandomMachineProducts(catalog, slotsData, seed || String(Date.now()))
-          : pickRecommendedProducts(
-              data ? getReportSource(data) : null,
-              catalog,
-              slotsData
-            );
+        const picked = pickRecommendedProducts(
+          data ? getReportSource(data) : null,
+          catalog,
+          slotsData
+        );
         if (cancelled) return;
         setProducts(picked);
         setSelectedIds(picked.map((p) => p.id));
@@ -180,8 +205,12 @@ export default function KioskReportPage() {
     return extractProfessionalSummary(reportSource);
   }, [mediapipeConcerns, mediapipeScan, reportSource]);
 
+  // Prefer this scan's MediaPipe frame. Old API analysed photos (green boxes) must not win.
   const userImageUrl =
-    analysedImageInfo?.data?.url || dataImageInfo?.data?.url || localPreview || "";
+    localPreview ||
+    analysedImageInfo?.data?.url ||
+    dataImageInfo?.data?.url ||
+    "";
 
   const selectedProducts = useMemo(
     () => products.filter((p) => selectedIds.includes(p.id)),

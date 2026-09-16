@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Box, CircularProgress } from "@mui/material";
 import axios from "axios";
 import {
   useGetSignedUploadUrlMutation,
@@ -14,12 +16,32 @@ import {
   isFreeConsultationFlow,
   questionnairePathForFlow,
 } from "@/lib/consultationFlow";
-import { LiveSkinScanCamera } from "@/components/skin-analysis";
 import type { SkinAnalysisResult } from "@/components/skin-analysis/types";
 import {
   saveMediapipeScanResult,
   saveMediapipePreview,
 } from "@/lib/mediapipe-scan-session";
+import { prefetchFaceLandmarkerModel } from "@/lib/mediapipe-preload";
+
+/** Client-only: MediaPipe WASM breaks SSR / can crash webpack HMR if bundled eagerly. */
+const LiveSkinScanCamera = dynamic(
+  () => import("@/components/skin-analysis/LiveSkinScanCamera"),
+  {
+    ssr: false,
+    loading: () => (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          display: "grid",
+          placeItems: "center",
+          bgcolor: "#0b0f0d",
+        }}
+      >
+        <CircularProgress sx={{ color: "#2F5D46" }} />
+      </Box>
+    ),
+  }
+);
 
 function base64ToJpegFile(base64String: string, filename: string): File {
   const arr = base64String.split(",");
@@ -61,6 +83,16 @@ export default function FaceScanSelfie() {
   useEffect(() => {
     speakMessage("scanFace");
   }, [speakMessage]);
+
+  // Prefetch model + start Face Landmarker while the camera chunk loads.
+  useEffect(() => {
+    prefetchFaceLandmarkerModel();
+    void import("@/components/skin-analysis/LiveSkinScanCamera")
+      .then((mod) => mod.warmFaceLandmarker?.())
+      .catch(() => {
+        /* camera mount will retry */
+      });
+  }, []);
 
   /** Best-effort upload for report photo — does NOT run skin-analysis API again. */
   const uploadSelfieInBackground = async (base64String: string) => {

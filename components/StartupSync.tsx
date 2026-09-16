@@ -17,14 +17,19 @@ export default function StartupSync() {
     if (hasSynced.current) return;
     hasSynced.current = true;
 
-    fetch("/api/admin/slots/sync-discounts", { method: "POST" })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
-          console.log(`[StartupSync] Discounts synced: ${data.updated} updated, ${data.skipped} skipped`);
-        }
-      })
-      .catch(() => {});
+    // Defer so first navigation (e.g. home → questionnaire) is not blocked by a 3s+ sync.
+    const id = window.setTimeout(() => {
+      fetch("/api/admin/slots/sync-discounts", { method: "POST" })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            console.log(`[StartupSync] Discounts synced: ${data.updated} updated, ${data.skipped} skipped`);
+          }
+        })
+        .catch(() => {});
+    }, 4000);
+
+    return () => window.clearTimeout(id);
   }, []);
 
   useEffect(() => {

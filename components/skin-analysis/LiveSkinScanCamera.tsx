@@ -81,6 +81,11 @@ async function getVideoLandmarker(): Promise<FaceLandmarker> {
   return videoLandmarkerPromise;
 }
 
+/** Start loading the Face Landmarker early (questionnaire → selfie). */
+export function warmFaceLandmarker(): Promise<FaceLandmarker> {
+  return getVideoLandmarker();
+}
+
 function waitForVideoDimensions(video: HTMLVideoElement): Promise<void> {
   if (video.videoWidth > 0 && video.videoHeight > 0) return Promise.resolve();
   return new Promise((resolve, reject) => {

@@ -11,20 +11,17 @@ export type StoredMediapipeScan = {
 /** Persist detected MediaPipe concerns for the kiosk report page. */
 export function saveMediapipeScanResult(result: SkinAnalysisResult) {
   if (typeof window === "undefined") return;
-  const detected = result.scores
-    .filter((s) => s.value >= 3)
+
+  // Use the same topConcerns list shown on the live "TOP VISUAL SIGNALS" panel
+  // so the kiosk report matches the scan screen (not a separate ≥3 filter).
+  const fromTop = (result.topConcerns?.length ? result.topConcerns : result.scores)
+    .slice()
     .sort((a, b) => b.value - a.value)
-    .slice(0, 8)
+    .slice(0, 5)
     .map((s) => ({ code: s.code, name: s.name, value: s.value }));
 
   const payload: StoredMediapipeScan = {
-    concerns: detected.length
-      ? detected
-      : result.topConcerns.slice(0, 5).map((s) => ({
-          code: s.code,
-          name: s.name,
-          value: s.value,
-        })),
+    concerns: fromTop,
     analyzedAt: result.analyzedAt,
   };
 

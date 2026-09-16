@@ -131,7 +131,8 @@ export function mapMediapipeConcerns(
       icon: iconForLabel(label),
     });
   }
-  return items.slice(0, 6);
+  // Match live scan panel: up to 5 top visual signals.
+  return items.slice(0, 5);
 }
 
 export function mapConcerns(reportSource: any): ConcernItem[] {

@@ -1,10 +1,23 @@
 /** @type {import('next').NextConfig} */
+const path = require("path");
+
 const nextConfig = {
   experimental: {
     missingSuspenseWithCSRBailout: false,
     serverComponentsExternalPackages: ["serialport", "@serialport/parser-readline", "better-sqlite3"],
   },
   transpilePackages: ["@mediapipe/tasks-vision"],
+  webpack: (config) => {
+    // Pin MediaPipe to the ESM browser build so webpack doesn't resolve an empty factory.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@mediapipe/tasks-vision": path.join(
+        __dirname,
+        "node_modules/@mediapipe/tasks-vision/vision_bundle.mjs"
+      ),
+    };
+    return config;
+  },
   images: {
     remotePatterns: [
       {
