@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// GET - Get all machine settings (DB values, with env var fallbacks)
+export const dynamic = "force-dynamic";
+
+const IS_VERCEL = process.env.VERCEL === "1";
+
+function envMachineSettings() {
+  return {
+    success: true,
+    machineId: process.env.LW_MACHINE_ID || "",
+    machineName: process.env.LW_MACHINE_NAME || "",
+    machineLocation: process.env.LW_MACHINE_LOCATION || "",
+    source: "env" as const,
+  };
+}
+
+// GET - Machine settings (DB on kiosk, env vars on Vercel)
 export async function GET() {
+  if (IS_VERCEL) {
+    return NextResponse.json(envMachineSettings());
+  }
+
   try {
     const { sqliteDb } = await import("@/lib/sqlite-db");
 
@@ -17,17 +35,24 @@ export async function GET() {
       machineLocation: dbMachineLocation || process.env.LW_MACHINE_LOCATION || "",
       source: dbMachineId ? "database" : "env",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Machine Settings API] Error getting settings:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to get machine settings" },
-      { status: 500 }
-    );
+    return NextResponse.json(envMachineSettings());
   }
 }
 
-// POST - Save machine settings to database
+// POST - Save machine settings to database (kiosk only)
 export async function POST(request: NextRequest) {
+  if (IS_VERCEL) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Machine settings are read-only on Vercel. Set LW_MACHINE_* env vars.",
+      },
+      { status: 503 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { machineId, machineName, machineLocation } = body;
@@ -45,14 +70,13 @@ export async function POST(request: NextRequest) {
     if (machineName?.trim()) sqliteDb.setMachineName(machineName.trim());
     if (machineLocation?.trim()) sqliteDb.setMachineLocation(machineLocation.trim());
 
-    // New admin machine name/location → refresh landing image on next request
     try {
       const { clearLandingImageCaches } = await import(
         "@/lib/landing-image.server"
       );
       clearLandingImageCaches();
     } catch {
-      // non-fatal
+      /* non-fatal */
     }
 
     return NextResponse.json({
@@ -63,11 +87,10 @@ export async function POST(request: NextRequest) {
       message: "Machine settings updated successfully",
       refreshLandingImage: true,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to save machine settings";
     console.error("[Machine Settings API] Error saving settings:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "Failed to save machine settings" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

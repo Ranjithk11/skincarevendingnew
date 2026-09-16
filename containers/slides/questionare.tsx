@@ -23,6 +23,7 @@ import {
   validatePhone,
   wouldNationalDigitsBeTooLong,
 } from "@/utils/phoneValidation";
+import { USE_MEDIAPIPE_FACE_SCAN } from "@/lib/face-scan-mode";
 import { prefetchFaceLandmarkerModel } from "@/lib/mediapipe-preload";
 
 // Email validation - same as Skincare project
@@ -399,8 +400,10 @@ export default function Questionnaire() {
       // Announce completion
       speakMessage('success');
 
-      // Start model download only after form submit — not on questionnaire mount.
-      prefetchFaceLandmarkerModel();
+      // Only warm MediaPipe when that scan mode is enabled.
+      if (USE_MEDIAPIPE_FACE_SCAN) {
+        prefetchFaceLandmarkerModel();
+      }
 
       router.push(
         consultationFlow
