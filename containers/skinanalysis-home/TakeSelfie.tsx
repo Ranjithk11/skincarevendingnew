@@ -25,7 +25,6 @@ import { APP_ROUTES } from "@/utils/routes";
 import SelectInputFieldComponent from "@/components/form-felds/SelectInput";
 import { skinTypes } from "@/utils/constants";
 import { useForm } from "react-hook-form";
-import ARCameraComponent from "../../components/camera/ARCamera";
 import * as faceapi from "face-api.js";
 import SideMenuComponent from "@/views/home/selfie/SideMenu";
 import { Icon } from "@iconify/react";
@@ -35,13 +34,20 @@ import Image from "next/image";
 import { ArrowBack } from "@mui/icons-material";
 import { useVoiceMessages, useVoice } from "@/contexts/VoiceContext";
 import { sendScanCompletedWebhook, extractScanAnalysisFields, sendConsultationWebhook } from "@/utils/webhook";
+import dynamic from "next/dynamic";
 import ConsultationConfirmed from "./Recommendations/ConsultationConfirmed";
+import { CapturedSkinScanView } from "@/components/skin-analysis";
 import {
   FREE_CONSULTATION_FLOW,
   isFreeConsultationFlow,
   questionnairePathForFlow,
   getConsultationTimeLabel,
 } from "@/lib/consultationFlow";
+
+const LiveSkinScanCamera = dynamic(
+  () => import("@/components/skin-analysis/LiveSkinScanCamera"),
+  { ssr: false }
+);
 
 // Friendly progressive-message loader shown while AI analysis is in progress.
 const ANALYSIS_MESSAGES = [
@@ -1074,7 +1080,8 @@ const TakeSelfie = () => {
 
   return (
     <PageBackground showGreenCurve>
-      {/* Top Header with Back Arrow and Logo */}
+      {/* Top Header — hidden during live MediaPipe scan (scanner has its own chrome) */}
+      {!openCamera ? (
       <Box
         sx={{
           position: "fixed",
@@ -1123,8 +1130,9 @@ const TakeSelfie = () => {
           </Box>
         </Box>
       </Box>
+      ) : null}
 
-      <StyledTakeSelfie disableGutters maxWidth="xl" sx={{ pt: 12 }}>
+      <StyledTakeSelfie disableGutters maxWidth="xl" sx={{ pt: openCamera ? 0 : 12 }}>
         {/* {isUpMdDevice && <SideMenuComponent />} */}
 
         {!openCamera && (
@@ -1145,36 +1153,40 @@ const TakeSelfie = () => {
               (!isLoadingImageInfo || isAutoAnalyzing) &&
               previewUrl && (
                 <Fragment>
-                  <Box
-                    sx={{ backgroundImage: `url(${previewUrl})` }}
-                    component="div"
-                    className="selfy_image"
-                  >
-                    {skinAttributeStatus?.type === "ERROR" && !skinAttributeStatus?.overlayHidden && (
-                      <Box component="div" className="errorInfo">
-                        <Icon width={55} color="white" icon="bx:error" />
-                        <Typography variant="body1" textAlign="center" sx={{ px: 2, fontSize: "18px !important" }}>
-                          {typeof skinAttributeStatus?.message === "string"
-                            ? skinAttributeStatus.message
-                            : FRIENDLY_ANALYSIS_ERROR}
-                        </Typography>
-                        <Button
-                          size="small"
-                          color="milkWhite"
-                          variant="outlined"
-                          sx={{ minWidth: 50 }}
-                          fullWidth={false}
-                          onClick={() =>
-                            setSkinAttributeStatus((prev: any) =>
-                              prev ? { ...prev, overlayHidden: true } : prev
-                            )
-                          }
-                        >
-                          Ok
-                        </Button>
-                      </Box>
-                    )}
-                    {skinAttributeStatus?.type === "SUCCESS" && (
+                  {skinAttributeStatus?.type !== "SUCCESS" ? (
+                    <Box
+                      sx={{
+                        width: "var(--selfiePreviewWidth)",
+                        mx: "auto",
+                        position: "relative",
+                      }}
+                    >
+                      <CapturedSkinScanView
+                        imageSrc={String(previewUrl)}
+                        showReport
+                        compactReport
+                      />
+                      {(isLoadingSkinAttributes || isAutoAnalyzing) &&
+                        skinAttributeStatus?.type !== "ERROR" && (
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              inset: 0,
+                              zIndex: 10,
+                              borderRadius: "10px",
+                              overflow: "hidden",
+                            }}
+                          >
+                            <AnalysisLoader />
+                          </Box>
+                        )}
+                    </Box>
+                  ) : (
+                    <Box
+                      sx={{ backgroundImage: `url(${previewUrl})` }}
+                      component="div"
+                      className="selfy_image"
+                    >
                       <Box component="div" className="successInfo">
                         <Icon
                           width={55}
@@ -1184,24 +1196,43 @@ const TakeSelfie = () => {
                         <Typography variant="body1" textAlign="center">
                           {skinAttributeStatus?.message}
                         </Typography>
-                        {/* <Button
-                          size="small"
-                          color="milkWhite"
-                          variant="outlined"
-                          sx={{ minWidth: 50 }}
-                          fullWidth={false}
-                          onClick={() => setSkinAttributeStatus(null)}
-                        >
-                          Ok
-                        </Button> */}
                       </Box>
-                    )}
-                    {(isLoadingSkinAttributes || isAutoAnalyzing) &&
-                      skinAttributeStatus?.type !== "ERROR" &&
-                      skinAttributeStatus?.type !== "SUCCESS" && (
-                      <AnalysisLoader />
-                    )}
-                  </Box>
+                    </Box>
+                  )}
+                  {skinAttributeStatus?.type === "ERROR" && !skinAttributeStatus?.overlayHidden ? (
+                    <Box
+                      sx={{
+                        width: "var(--selfiePreviewWidth)",
+                        mx: "auto",
+                        mt: 2,
+                        px: 2,
+                        py: 2,
+                        borderRadius: "10px",
+                        bgcolor: "rgba(239, 78, 93, 0.12)",
+                        border: "1px solid rgba(239, 78, 93, 0.35)",
+                        textAlign: "center",
+                      }}
+                    >
+                      <Icon width={40} color="#ef4e5d" icon="bx:error" />
+                      <Typography sx={{ mt: 1, fontSize: 16, color: "#991b1b" }}>
+                        {typeof skinAttributeStatus?.message === "string"
+                          ? skinAttributeStatus.message
+                          : FRIENDLY_ANALYSIS_ERROR}
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        sx={{ mt: 1.5, borderColor: "#ef4e5d", color: "#991b1b" }}
+                        onClick={() =>
+                          setSkinAttributeStatus((prev: any) =>
+                            prev ? { ...prev, overlayHidden: true } : prev
+                          )
+                        }
+                      >
+                        Ok
+                      </Button>
+                    </Box>
+                  ) : null}
                   {skinAttributeStatus?.type &&
                     (skinAttributeStatus.type === "ERROR" ||
                       (!isLoadingSkinAttributes && !isAutoAnalyzing)) && (
@@ -1291,18 +1322,6 @@ const TakeSelfie = () => {
             })()}
           </Box>
         )}
-        {openCamera && (
-          <ARCameraComponent
-            autoStart={true}
-            initializing={initializing}
-            modelsReady={modelsReady}
-            disabledSkipBtn={!dataImageInfo}
-            onSkip={() => {
-              setOpenCamera(!openCamera);
-            }}
-            onCaptured={handleAutoCaptured}
-          />
-        )}
         {image && (
           <div hidden={true} className="image-container">
             {image && (
@@ -1329,6 +1348,17 @@ const TakeSelfie = () => {
           </div>
         )}
       </StyledTakeSelfie>
+
+      {/* MediaPipe live scan — full-screen, replaces old ARCamera on this route */}
+      {openCamera ? (
+        <LiveSkinScanCamera
+          autoStart
+          showLiveReport
+          onCaptured={(base64) => handleAutoCaptured(base64)}
+          onBack={() => router.back()}
+        />
+      ) : null}
+
       {showConsultationConfirmed && (
         <ConsultationConfirmed
           phone={String(

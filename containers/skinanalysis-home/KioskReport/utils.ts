@@ -139,6 +139,27 @@ function iconForLabel(label: string): string {
   return match?.icon || "mdi:circle-outline";
 }
 
+/** Prefer MediaPipe scan concerns when present (from AI Face Scan session). */
+export function mapMediapipeConcerns(
+  stored: Array<{ code: string; name: string; value: number }> | null | undefined
+): ConcernItem[] {
+  if (!stored?.length) return [];
+  const items: ConcernItem[] = [];
+  const seen = new Set<string>();
+  for (const s of stored) {
+    const label = toConcernLabel(s.name || s.code);
+    if (!label || seen.has(label)) continue;
+    seen.add(label);
+    items.push({
+      key: label,
+      label,
+      icon: iconForLabel(label),
+    });
+  }
+  // Match live scan panel: up to 5 top visual signals.
+  return items.slice(0, 5);
+}
+
 export function mapConcerns(reportSource: any): ConcernItem[] {
   const fromApi = Array.isArray(reportSource?.keyConcerns) ? reportSource.keyConcerns : [];
   const metrics = reportSource?.skinMetrics;
@@ -333,6 +354,195 @@ export function extractProfessionalSummary(reportSource: any): string {
 
   const joined = summary.map(summaryItemText).filter(Boolean).join(" ");
   return shortenSummary(joined || FALLBACK_SUMMARY);
+}
+
+/** Map MediaPipe concern labels → short care guidance for dynamic summaries. */
+const MEDIAPIPE_CARE_HINTS: Array<{ keys: string[]; tip: string }> = [
+  {
+    keys: ["acne", "pimple", "breakout", "comedone"],
+    tip: "clarifying, non-comedogenic care",
+  },
+  {
+    keys: ["rash", "sensitive", "irritat"],
+    tip: "soothing barrier support",
+  },
+  {
+    keys: ["pore"],
+    tip: "gentle refining and oil balance",
+  },
+  {
+    keys: ["pigment", "melasma", "dark spot", "uneven", "spot", "patch", "tone"],
+    tip: "brightening actives with daily SPF",
+  },
+  {
+    keys: ["wrinkle", "fine line", "aging"],
+    tip: "hydration and firming support",
+  },
+  {
+    keys: ["dark circle", "eye bag", "undereye", "under eye"],
+    tip: "targeted under-eye care",
+  },
+  {
+    keys: ["dark lip"],
+    tip: "nourishing lip care",
+  },
+  {
+    keys: ["mole", "skin tag", "skin bag"],
+    tip: "gentle maintenance and SPF",
+  },
+];
+
+function careTipsForLabels(labels: string[]): string[] {
+  const tips: string[] = [];
+  const seen = new Set<string>();
+  for (const label of labels) {
+    const token = normalizeText(label);
+    const match = MEDIAPIPE_CARE_HINTS.find((row) =>
+      row.keys.some((k) => token.includes(k))
+    );
+    if (!match || seen.has(match.tip)) continue;
+    seen.add(match.tip);
+    tips.push(match.tip);
+  }
+  if (!tips.some((t) => /spf/i.test(t))) tips.push("daily SPF");
+  return tips.slice(0, 3);
+}
+
+function formatConcernList(labels: string[]): string {
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
+/**
+ * Build a professional summary from MediaPipe scan concerns.
+ * Wording changes with which concerns (and severity) were detected.
+ */
+export function buildMediapipeProfessionalSummary(
+  concerns: Array<{ code?: string; name?: string; label?: string; value?: number }> | null | undefined
+): string {
+  if (!concerns?.length) return FALLBACK_SUMMARY;
+
+  const sorted = [...concerns]
+    .map((c) => ({
+      label: toConcernLabel(c.label || c.name || c.code || ""),
+      value: typeof c.value === "number" ? c.value : 0,
+    }))
+    .filter((c) => c.label)
+    .sort((a, b) => b.value - a.value);
+
+  if (!sorted.length) return FALLBACK_SUMMARY;
+
+  const labels = sorted.map((c) => c.label);
+  const primary = labels.slice(0, Math.min(3, labels.length));
+  const secondary = labels.slice(3, 5);
+  const tips = careTipsForLabels(labels);
+  const tipText = tips.length
+    ? tips.length === 1
+      ? tips[0]
+      : `${tips.slice(0, -1).join(", ")} and ${tips[tips.length - 1]}`
+    : "targeted care and daily SPF";
+
+  const highSeverity = sorted.filter((c) => c.value >= 4).length;
+  const focusPhrase =
+    highSeverity >= 2
+      ? "show elevated signals for"
+      : highSeverity === 1
+        ? "highlight"
+        : "indicate";
+
+  let first = `Your AI face scan ${focusPhrase} ${formatConcernList(primary)}.`;
+  if (secondary.length) {
+    first = `Your AI face scan ${focusPhrase} ${formatConcernList(primary)}, with ${formatConcernList(secondary)} also noted.`;
+  }
+
+  const second =
+    tips.length >= 2
+      ? `Prioritise ${tipText} for best results.`
+      : `We recommend ${tipText}.`;
+
+  return shortenSummary(`${first} ${second}`, 2, 175);
+}
+
+function hashSeed(input: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function mulberry32(seed: number): () => number {
+  let a = seed || 1;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function shuffleWithRng<T>(items: T[], rand: () => number): T[] {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+/**
+ * Random in-stock products from this machine (excl. baby).
+ * Seeded so the same scan stays stable on refresh, but each scan/user differs.
+ * Prefers variety across categories when possible.
+ */
+export function pickRandomMachineProducts(
+  catalogProducts: any[],
+  slotsData: unknown,
+  seed = String(Date.now())
+): ReportProduct[] {
+  const slotsMap = buildSlotsMap(slotsData);
+  const machineProducts = mergeCatalogWithSlotProducts(catalogProducts, slotsData);
+  const rand = mulberry32(hashSeed(seed));
+  const shuffled = shuffleWithRng(
+    machineProducts.filter((p) => !isBabyProduct(p)),
+    rand
+  );
+
+  const picked: ReportProduct[] = [];
+  const seenIds = new Set<string>();
+  const seenCategories = new Set<string>();
+
+  for (const product of shuffled) {
+    if (picked.length >= 3) break;
+    const mapped = toReportProduct(product, slotsMap, slotsData);
+    if (!mapped || seenIds.has(mapped.id)) continue;
+
+    const categoryKey = productCategoryKey(product, mapped.category);
+    if (categoryKey && seenCategories.has(categoryKey)) continue;
+
+    seenIds.add(mapped.id);
+    if (categoryKey) seenCategories.add(categoryKey);
+    picked.push(mapped);
+  }
+
+  // If category diversity left us short, fill with any remaining in-stock.
+  if (picked.length < 3) {
+    for (const product of shuffled) {
+      if (picked.length >= 3) break;
+      const mapped = toReportProduct(product, slotsMap, slotsData);
+      if (!mapped || seenIds.has(mapped.id)) continue;
+      seenIds.add(mapped.id);
+      picked.push(mapped);
+    }
+  }
+
+  return picked.slice(0, 3);
 }
 
 function extractVolume(product: any): string {

@@ -23,6 +23,7 @@ import {
   validatePhone,
   wouldNationalDigitsBeTooLong,
 } from "@/utils/phoneValidation";
+import { prefetchFaceLandmarkerModel } from "@/lib/mediapipe-preload";
 
 // Email validation - same as Skincare project
 const isValidateEmail = (input: string): boolean | string => {
@@ -397,7 +398,10 @@ export default function Questionnaire() {
 
       // Announce completion
       speakMessage('success');
-      
+
+      // Start model download only after form submit — not on questionnaire mount.
+      prefetchFaceLandmarkerModel();
+
       router.push(
         consultationFlow
           ? selfiePathForConsultation(preferredTime)
