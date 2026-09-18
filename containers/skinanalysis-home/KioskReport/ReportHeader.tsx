@@ -1,25 +1,23 @@
 "use client";
 
-import { Box, Typography, keyframes } from "@mui/material";
+import { Box, Button, Typography, keyframes } from "@mui/material";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { Icon } from "@iconify/react";
 import { APP_ROUTES } from "@/utils/routes";
 import { clearVisitorSession } from "@/utils/clearVisitorSession";
 import {
-  BODY_SIZE,
   HEADER_HEIGHT,
-  LOGO_HEIGHT,
-  LOGO_WIDTH,
   PAGE_PADDING_X,
   REPORT_GREEN,
+  REPORT_GREEN_DARK,
   REPORT_LIGHT_GREEN,
-  TITLE_SIZE,
 } from "./constants";
 
 const fadeSlideIn = keyframes`
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px);
   }
   to {
     opacity: 1;
@@ -56,7 +54,7 @@ const GOLD = "#C4A574";
 export default function ReportHeader() {
   const router = useRouter();
 
-  const handleLogoClick = async () => {
+  const goHome = async () => {
     clearVisitorSession();
     try {
       await signOut({ redirect: false });
@@ -70,27 +68,27 @@ export default function ReportHeader() {
     <Box
       sx={{
         flexShrink: 0,
-        minHeight: HEADER_HEIGHT,
+        minHeight: HEADER_HEIGHT - 8,
         px: `${PAGE_PADDING_X}px`,
-        pt: "12px",
-        pb: "10px",
+        pt: "10px",
+        pb: "8px",
         boxSizing: "border-box",
-        overflow: "visible",
-        animation: `${fadeSlideIn} 0.55s ease-out both`,
+        animation: `${fadeSlideIn} 0.45s ease-out both`,
       }}
     >
       <Box
         sx={{
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "auto 1fr auto",
           alignItems: "center",
-          gap: "16px",
+          columnGap: "12px",
           width: "100%",
-          px: "12px",
+          px: "14px",
           py: "10px",
-          borderRadius: "16px",
+          borderRadius: "14px",
           bgcolor: REPORT_LIGHT_GREEN,
-          border: "1px solid rgba(47, 93, 70, 0.12)",
-          boxShadow: "0 6px 18px rgba(47, 93, 70, 0.06)",
+          border: "1px solid rgba(47, 93, 70, 0.14)",
+          boxShadow: "0 4px 14px rgba(47, 93, 70, 0.06)",
           position: "relative",
           overflow: "hidden",
           "&::before": {
@@ -102,13 +100,14 @@ export default function ReportHeader() {
             backgroundSize: "200% 100%",
             animation: `${softShimmer} 3.2s ease-in-out infinite`,
             pointerEvents: "none",
+            zIndex: 0,
           },
         }}
       >
         <Box
           component="button"
           type="button"
-          onClick={handleLogoClick}
+          onClick={goHome}
           aria-label="Go to home"
           sx={{
             border: 0,
@@ -121,7 +120,7 @@ export default function ReportHeader() {
             flexShrink: 0,
             zIndex: 1,
             animation: `${logoPop} 0.65s cubic-bezier(0.22, 1, 0.36, 1) both`,
-            transition: "transform 0.2s ease",
+            transition: "transform 0.15s ease",
             "&:active": { transform: "scale(0.97)" },
           }}
         >
@@ -130,8 +129,8 @@ export default function ReportHeader() {
             src="/wending/goldlog.svg"
             alt="Leaf Water"
             sx={{
-              width: LOGO_WIDTH,
-              height: LOGO_HEIGHT,
+              width: 150,
+              height: 40,
               objectFit: "contain",
               objectPosition: "left center",
               display: "block",
@@ -142,20 +141,21 @@ export default function ReportHeader() {
 
         <Box
           sx={{
-            flex: 1,
             minWidth: 0,
             zIndex: 1,
-            animation: `${fadeSlideIn} 0.6s ease-out 0.12s both`,
+            animation: `${fadeSlideIn} 0.55s ease-out 0.1s both`,
           }}
         >
           <Typography
             sx={{
-              fontSize: TITLE_SIZE,
+              fontSize: 18,
               fontWeight: 800,
               lineHeight: 1.15,
-              letterSpacing: "0.4px",
-              color: REPORT_GREEN,
+              letterSpacing: "0.3px",
               textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
               background: `linear-gradient(90deg, ${REPORT_GREEN} 0%, #3d7a5a 45%, ${GOLD} 100%)`,
               backgroundSize: "200% auto",
               WebkitBackgroundClip: "text",
@@ -166,21 +166,50 @@ export default function ReportHeader() {
           >
             My Skincare Report
           </Typography>
-
           <Typography
             sx={{
-              mt: "6px",
-              fontSize: BODY_SIZE - 2,
+              mt: "3px",
+              fontSize: 12,
               fontWeight: 500,
-              lineHeight: 1.25,
+              lineHeight: 1.2,
               color: "#6B7280",
-              letterSpacing: "0.3px",
-              textTransform: "uppercase",
+              letterSpacing: "0.2px",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
             }}
           >
             Understand your skin at a glance
           </Typography>
         </Box>
+
+        <Button
+          type="button"
+          onClick={goHome}
+          startIcon={<Icon icon="mdi:home-outline" width={16} />}
+          sx={{
+            flexShrink: 0,
+            zIndex: 1,
+            textTransform: "none",
+            fontWeight: 700,
+            fontSize: 13,
+            lineHeight: 1,
+            height: 36,
+            px: "14px",
+            minWidth: 0,
+            borderRadius: "10px",
+            color: "#fff",
+            bgcolor: REPORT_GREEN,
+            boxShadow: "0 2px 8px rgba(47, 93, 70, 0.22)",
+            whiteSpace: "nowrap",
+            animation: `${logoPop} 0.65s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both`,
+            "& .MuiButton-startIcon": { mr: "6px" },
+            "&:hover": { bgcolor: REPORT_GREEN_DARK },
+            "&:active": { transform: "scale(0.97)" },
+          }}
+        >
+          Done
+        </Button>
       </Box>
     </Box>
   );

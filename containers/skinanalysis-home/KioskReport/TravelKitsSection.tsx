@@ -19,7 +19,11 @@ import {
   TRAVEL_KITS,
 } from "./constants";
 import { fadeUp, scaleIn, staggerDelay } from "./animations";
-import { isTravelKitPurchaseAvailable } from "./utils";
+import {
+  getTravelKitAvailability,
+  refreshTravelKitsStaffAvailable,
+  type TravelKitAvailabilityReason,
+} from "./utils";
 
 type Props = {
   selectedIds: string[];
@@ -28,13 +32,38 @@ type Props = {
 
 export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
   const [purchaseAvailable, setPurchaseAvailable] = useState(true);
+  const [unavailableReason, setUnavailableReason] =
+    useState<TravelKitAvailabilityReason>("ok");
 
   useEffect(() => {
-    const refresh = () => setPurchaseAvailable(isTravelKitPurchaseAvailable());
-    refresh();
-    const id = window.setInterval(refresh, 60_000);
+    const refresh = async () => {
+      await refreshTravelKitsStaffAvailable();
+      const next = getTravelKitAvailability();
+      setPurchaseAvailable(next.available);
+      setUnavailableReason(next.reason);
+    };
+    void refresh();
+    const id = window.setInterval(() => {
+      void refresh();
+    }, 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  const statusLabel = purchaseAvailable
+    ? "Morning 7:00 AM → Evening 7:00 PM"
+    : unavailableReason === "staff"
+      ? "Unavailable — staff away"
+      : "Opens again at 7:00 AM";
+
+  const unavailableMessage =
+    unavailableReason === "staff"
+      ? "Staff handoff unavailable right now — travel kits cannot be purchased."
+      : "Staff handoff unavailable overnight — kits unlock at 7:00 AM.";
+
+  const unavailableIcon =
+    unavailableReason === "staff"
+      ? "mdi:account-off-outline"
+      : "mdi:moon-waning-crescent";
 
   return (
     <Box
@@ -87,9 +116,7 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
               whiteSpace: "nowrap",
             }}
           >
-            {purchaseAvailable
-              ? "Morning 7:00 AM → Evening 7:00 PM"
-              : "Opens again at 7:00 AM"}
+            {statusLabel}
           </Typography>
         </Box>
 
@@ -108,7 +135,7 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
               border: "1px solid #C7D2FE",
             }}
           >
-            <Icon icon="mdi:moon-waning-crescent" width={16} color="#6366F1" />
+            <Icon icon={unavailableIcon} width={16} color="#6366F1" />
             <Typography
               sx={{
                 fontSize: 13,
@@ -117,7 +144,7 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
                 fontWeight: 500,
               }}
             >
-              Staff handoff unavailable overnight — kits unlock at 7:00 AM.
+              {unavailableMessage}
             </Typography>
           </Box>
         ) : null}

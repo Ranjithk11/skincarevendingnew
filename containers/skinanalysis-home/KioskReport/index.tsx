@@ -26,6 +26,7 @@ import {
   kitToReportProduct,
   pickRandomMachineProducts,
   pickRecommendedProducts,
+  refreshTravelKitsStaffAvailable,
 } from "./utils";
 import { TRAVEL_KITS } from "./constants";
 import type { ReportProduct } from "./types";
@@ -233,15 +234,18 @@ export default function KioskReportPage() {
     [checkoutItems]
   );
 
-  // Drop kit selections outside staff hours (7 PM → 7 AM IST).
+  // Drop kit selections when outside staff hours or staff toggle is off.
   useEffect(() => {
-    const clearIfClosed = () => {
+    const clearIfClosed = async () => {
+      await refreshTravelKitsStaffAvailable();
       if (!isTravelKitPurchaseAvailable()) {
         setSelectedKitIds((prev) => (prev.length ? [] : prev));
       }
     };
-    clearIfClosed();
-    const id = window.setInterval(clearIfClosed, 60_000);
+    void clearIfClosed();
+    const id = window.setInterval(() => {
+      void clearIfClosed();
+    }, 60_000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -259,12 +263,10 @@ export default function KioskReportPage() {
   };
 
   const fromMediapipe = mediapipeConcerns.length > 0 || Boolean(localPreview);
-  // MediaPipe path: only wait for products. Never wait on old analysis API.
-  const showLoader = !sessionReady
-    ? true
-    : fromMediapipe
-      ? !productsReady
-      : isLoading || !data || !productsReady;
+  // Never block forever on missing analysis `data` (e.g. session 500 → no userId → fetch never starts).
+  const analysisPending =
+    !fromMediapipe && Boolean(session?.user?.id) && isLoading && !data;
+  const showLoader = !sessionReady || !productsReady || analysisPending;
 
   return (
     <KioskFrame>

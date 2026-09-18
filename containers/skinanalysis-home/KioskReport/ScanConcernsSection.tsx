@@ -21,6 +21,7 @@ import {
 } from "./constants";
 import { cornerPulse, fadeUp, scaleIn, softPulse, staggerDelay } from "./animations";
 import { getConcernChipTone } from "./utils";
+import IdleCountdownBadge from "./IdleCountdownBadge";
 
 type Props = {
   imageUrl?: string;
@@ -101,18 +102,32 @@ export default function ScanConcernsSection({ imageUrl, health, concerns, skinTy
           gap: "8px",
         }}
       >
-        <Typography
+        <Box
           sx={{
-            fontSize: HEADING_SIZE,
-            fontWeight: HEADING_WEIGHT,
-            color: "#111",
-            lineHeight: 1.2,
-            textTransform: "uppercase",
-            animation: `${fadeUp} 0.45s ease-out 0.12s both`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "8px",
+            width: "100%",
           }}
         >
-          Overall Skincare Health
-        </Typography>
+          <Typography
+            sx={{
+              fontSize: HEADING_SIZE,
+              fontWeight: HEADING_WEIGHT,
+              color: "#111",
+              lineHeight: 1.2,
+              textTransform: "uppercase",
+              animation: `${fadeUp} 0.45s ease-out 0.12s both`,
+              minWidth: 0,
+            }}
+          >
+            Overall Skincare Health
+          </Typography>
+          <Box sx={{ flexShrink: 0 }}>
+            <IdleCountdownBadge />
+          </Box>
+        </Box>
 
         <Box
           sx={{

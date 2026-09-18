@@ -2,6 +2,7 @@
 
 import { Box, Checkbox, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
+import { useRouter } from "next/navigation";
 import {
   CARD_GAP,
   HEADING_SIZE,
@@ -23,6 +24,9 @@ import { formatSlotBadge } from "./utils";
 import type { ReportProduct } from "./types";
 import { capitalizeWords } from "@/utils/func";
 import { fadeUp, scaleIn, staggerDelay } from "./animations";
+import { APP_ROUTES } from "@/utils/routes";
+import { useSession } from "next-auth/react";
+import { setBrowseReturnToReport } from "@/lib/kiosk-browse-return";
 
 type Props = {
   products: ReportProduct[];
@@ -35,6 +39,15 @@ export default function RecommendedProductsSection({
   selectedIds,
   onToggle,
 }: Props) {
+  const router = useRouter();
+  const { data: session } = useSession();
+
+  const handleBrowse = () => {
+    const userId = (session?.user?.id as string) || null;
+    setBrowseReturnToReport(userId);
+    router.push(`${APP_ROUTES.PRODUCTS}?from=report`);
+  };
+
   return (
     <Box
       sx={{
@@ -53,32 +66,91 @@ export default function RecommendedProductsSection({
           boxSizing: "border-box",
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <Icon icon="mdi:shopping-outline" width={18} color={REPORT_GREEN} />
-          <Typography
+        <Box sx={{ width: "100%", mb: "10px" }}>
+          <Box
             sx={{
-              fontSize: HEADING_SIZE,
-              fontWeight: HEADING_WEIGHT,
-              color: "#111",
-              lineHeight: 1.2,
-              textTransform: "uppercase",
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              width: "100%",
             }}
           >
-            Recommended Products
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                minWidth: 0,
+                flex: "1 1 auto",
+              }}
+            >
+              <Icon icon="mdi:shopping-outline" width={18} color={REPORT_GREEN} />
+              <Typography
+                sx={{
+                  fontSize: HEADING_SIZE,
+                  fontWeight: HEADING_WEIGHT,
+                  color: "#111",
+                  lineHeight: 1.2,
+                  textTransform: "uppercase",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Recommended Products
+              </Typography>
+            </Box>
+
+            <Box
+              component="button"
+              type="button"
+              onClick={handleBrowse}
+              sx={{
+                flex: "0 0 auto",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+                height: 30,
+                px: "11px",
+                m: 0,
+                border: 0,
+                borderRadius: "999px",
+                cursor: "pointer",
+                bgcolor: REPORT_GREEN,
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: 1,
+                fontFamily: "inherit",
+                whiteSpace: "nowrap",
+                width: "auto",
+                maxWidth: "fit-content",
+                boxShadow: "0 2px 8px rgba(47, 93, 70, 0.2)",
+                transition: "transform 0.15s ease, background-color 0.15s ease",
+                "&:hover": { bgcolor: "#244A38" },
+                "&:active": { transform: "scale(0.96)" },
+              }}
+            >
+              Browse
+              <Icon icon="mdi:arrow-right" width={14} color="#fff" />
+            </Box>
+          </Box>
+
+          <Typography
+            sx={{
+              fontSize: SMALL_SIZE,
+              color: REPORT_MUTED,
+              fontWeight: 400,
+              lineHeight: 1.2,
+              mt: "6px",
+            }}
+          >
+            Tick the products you want to purchase
           </Typography>
         </Box>
-        <Typography
-          sx={{
-            fontSize: SMALL_SIZE,
-            color: REPORT_MUTED,
-            fontWeight: 400,
-            mt: "4px",
-            mb: "10px",
-            lineHeight: 1.2,
-          }}
-        >
-          Tick the products you want to purchase
-        </Typography>
 
         <Box
           sx={{
@@ -105,6 +177,8 @@ export default function RecommendedProductsSection({
               const badge = formatSlotBadge(product.slotNumbers);
               const volume = product.volumeLabel || "";
               const hasImage = Boolean(product.imageUrl);
+              const discountPct = Math.round(Number(product.discountValue) || 0);
+              const showRibbon = discountPct > 0;
 
               return (
                 <Box
@@ -131,7 +205,6 @@ export default function RecommendedProductsSection({
                     "&:active": { transform: "scale(0.97)" },
                   }}
                 >
-                  {/* Clear product image — no text overlay on the photo */}
                   <Box
                     sx={{
                       position: "relative",
@@ -142,15 +215,46 @@ export default function RecommendedProductsSection({
                       alignItems: "center",
                       justifyContent: "center",
                       borderBottom: `1px solid ${REPORT_BORDER}`,
+                      overflow: "hidden",
                     }}
                   >
+                    {showRibbon ? (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 14,
+                          left: -6,
+                          zIndex: 3,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: "#fff",
+                          lineHeight: 1.9,
+                          width: 118,
+                          pl: "10px",
+                          pr: "8px",
+                          bgcolor: "#cc333f",
+                          boxSizing: "border-box",
+                          "--f": "0.45em",
+                          "--r": "0.7em",
+                          borderBottom: "var(--f) solid #0005",
+                          borderRight: "var(--r) solid #0000",
+                          clipPath:
+                            "polygon(0 0, 0 calc(100% - var(--f)), var(--f) 100%, var(--f) calc(100% - var(--f)), 100% calc(100% - var(--f)), calc(100% - var(--r)) calc(50% - var(--f) / 2), 100% 0)",
+                          letterSpacing: "0.2px",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        {discountPct}% OFF
+                      </Box>
+                    ) : null}
+
                     <Checkbox
                       checked={checked}
                       onChange={() => onToggle(product.id)}
                       onClick={(e) => e.stopPropagation()}
                       sx={{
                         position: "absolute",
-                        top: 4,
+                        top: showRibbon ? 42 : 4,
                         left: 4,
                         zIndex: 2,
                         p: 0,
@@ -207,7 +311,6 @@ export default function RecommendedProductsSection({
                     )}
                   </Box>
 
-                  {/* Text sits below the image — no overlap */}
                   <Box
                     sx={{
                       flex: 1,
@@ -255,6 +358,19 @@ export default function RecommendedProductsSection({
                       >
                         ₹{product.payablePrice}
                       </Typography>
+                      {showRibbon && product.retailPrice > product.payablePrice ? (
+                        <Typography
+                          sx={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: REPORT_MUTED,
+                            lineHeight: 1.1,
+                            textDecoration: "line-through",
+                          }}
+                        >
+                          ₹{product.retailPrice}
+                        </Typography>
+                      ) : null}
                       {volume ? (
                         <Typography
                           sx={{

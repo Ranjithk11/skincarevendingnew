@@ -35,13 +35,49 @@ export function getIstHour(now = new Date()): number {
   return hourRaw === 24 ? 0 : hourRaw;
 }
 
-/** Travel kits require staff — available 7:00 AM–7:00 PM IST only. */
-export function isTravelKitPurchaseAvailable(now = new Date()): boolean {
+/** Cached admin "staff on duty" flag for travel kits (default: available). */
+let travelKitsStaffAvailableCache = true;
+
+export function getTravelKitsStaffAvailableCached(): boolean {
+  return travelKitsStaffAvailableCache;
+}
+
+/** Refresh staff toggle from admin setting. Safe to call often. */
+export async function refreshTravelKitsStaffAvailable(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/admin/travel-kits", { cache: "no-store" });
+    const data = await res.json();
+    if (data?.success) {
+      travelKitsStaffAvailableCache = data.staffAvailable !== false;
+    }
+  } catch {
+    // Keep last known value on network errors
+  }
+  return travelKitsStaffAvailableCache;
+}
+
+export type TravelKitAvailabilityReason = "ok" | "hours" | "staff";
+
+export function getTravelKitAvailability(now = new Date()): {
+  available: boolean;
+  reason: TravelKitAvailabilityReason;
+} {
+  if (!travelKitsStaffAvailableCache) {
+    return { available: false, reason: "staff" };
+  }
   const hour = getIstHour(now);
-  return (
+  const inHours =
     hour >= TRAVEL_KIT_AVAILABLE_FROM_HOUR_IST &&
-    hour < TRAVEL_KIT_AVAILABLE_UNTIL_HOUR_IST
-  );
+    hour < TRAVEL_KIT_AVAILABLE_UNTIL_HOUR_IST;
+  if (!inHours) {
+    return { available: false, reason: "hours" };
+  }
+  return { available: true, reason: "ok" };
+}
+
+/** Travel kits require staff — IST hours AND admin staff-available toggle. */
+export function isTravelKitPurchaseAvailable(now = new Date()): boolean {
+  return getTravelKitAvailability(now).available;
 }
 
 function isBabyProduct(product: any): boolean {

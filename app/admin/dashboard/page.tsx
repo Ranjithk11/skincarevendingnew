@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { AdminDashboard } from "@/containers/admin-dashboard";
-import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal } from "@/containers/admin-dashboard/components";
+import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal, TravelKitsStaffModal } from "@/containers/admin-dashboard/components";
 import { Snackbar, Alert } from "@mui/material";
 import { useRouter } from "next/navigation";
 import {
@@ -55,6 +55,7 @@ export default function AdminDashboardPage() {
 
   // Machine settings modal state
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [travelKitsModalOpen, setTravelKitsModalOpen] = useState(false);
 
   // Redux queries
   const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetVendingSlotsQuery();
@@ -443,6 +444,10 @@ export default function AdminDashboardPage() {
     setSettingsModalOpen(true);
   };
 
+  const handleTravelKitsClick = () => {
+    setTravelKitsModalOpen(true);
+  };
+
   const handleSyncClick = async () => {
     try {
       await syncQuantities();
@@ -792,6 +797,7 @@ export default function AdminDashboardPage() {
         onHideClick={handleHideClick}
         onLoadProductsClick={handleLoadProductsClick}
         onSettingsClick={handleSettingsClick}
+        onTravelKitsClick={handleTravelKitsClick}
         onSyncClick={handleSyncClick}
         onSlotClick={handleSlotClick}
         onProductEditClick={handleProductEditClick}
@@ -880,6 +886,11 @@ export default function AdminDashboardPage() {
       <MachineSettingsModal
         open={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
+      />
+
+      <TravelKitsStaffModal
+        open={travelKitsModalOpen}
+        onClose={() => setTravelKitsModalOpen(false)}
       />
 
       {/* Success/Error Snackbar */}

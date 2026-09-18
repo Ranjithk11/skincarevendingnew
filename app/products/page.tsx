@@ -13,12 +13,18 @@ import {
 } from "@mui/material";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { APP_ROUTES } from "@/utils/routes";
 import TopLogo from "@/containers/skinanalysis-home/Recommendations/TopLogo";
 import ProductCard from "@/containers/skinanalysis-home/Recommendations/ProductCard";
 import { useCart } from "@/containers/skinanalysis-home/Recommendations/CartContext";
 import CartProduct from "@/containers/skinanalysis-home/Recommendations/cartProduct";
 import VirtualKeyboard from "@/components/ui/VirtualKeyboard";
+import {
+  clearBrowseReturn,
+  getBrowseReturn,
+  isBrowseFromReportQuery,
+} from "@/lib/kiosk-browse-return";
 import {
   getProductQuantityFromSlots,
   getProductSlotNumbersFromSlots,
@@ -155,6 +161,7 @@ const mapProductToCardProps = (product: any, slotDiscountMap?: Record<string, nu
 
 export default function BrowseProductsPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const showBrandFilters = true;
@@ -167,6 +174,7 @@ export default function BrowseProductsPage() {
   const lastTypedKeyRef = useRef<{ key: string; ts: number } | null>(null);
   const { count: cartCount } = useCart();
   const isKiosk = false;
+  const [showBackToReport, setShowBackToReport] = useState(false);
 
   const [products, setProducts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -566,6 +574,21 @@ export default function BrowseProductsPage() {
     router.push(APP_ROUTES.HOME);
   };
 
+  useEffect(() => {
+    const userId = (session?.user?.id as string) || null;
+    const fromQuery =
+      typeof window !== "undefined"
+        ? isBrowseFromReportQuery(new URLSearchParams(window.location.search).get("from"))
+        : false;
+    const stored = getBrowseReturn(userId);
+    setShowBackToReport(fromQuery || Boolean(stored));
+  }, [session?.user?.id]);
+
+  const handleBackToReport = () => {
+    clearBrowseReturn();
+    router.push(APP_ROUTES.KIOSK_REPORT);
+  };
+
   return (
     <Box
       sx={{
@@ -584,6 +607,12 @@ export default function BrowseProductsPage() {
         isKiosk={isKiosk}
         cartCount={cartCount}
         onCartClick={() => setOpenCart(true)}
+        {...(showBackToReport
+          ? {
+              leftButtonLabel: "Back",
+              onLeftButtonClick: handleBackToReport,
+            }
+          : {})}
       />
 
       {/* Main Content */}

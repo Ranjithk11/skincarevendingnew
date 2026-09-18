@@ -31,6 +31,10 @@ interface TopLogoProps {
   pulseSecondButton?: boolean;
   /** When true, hide My cart and Spin & Win (logo only). */
   hideActions?: boolean;
+  /** Optional left-side control next to the logo (e.g. Back to report). */
+  leftButtonLabel?: string;
+  onLeftButtonClick?: () => void;
+  leftButtonIcon?: string;
 }
 
 const ACTION_ICON_SIZE = 24;
@@ -122,6 +126,9 @@ const TopLogo: React.FC<TopLogoProps> = ({
   highlightActiveReward = true,
   pulseSecondButton = false,
   hideActions = false,
+  leftButtonLabel,
+  onLeftButtonClick,
+  leftButtonIcon = "mdi:arrow-left",
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -219,11 +226,39 @@ const TopLogo: React.FC<TopLogoProps> = ({
                 flex: { xs: 1, sm: "0 1 auto" },
               }}
             >
+              {leftButtonLabel && onLeftButtonClick ? (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={onLeftButtonClick}
+                  sx={{
+                    ...baseActionButtonSx,
+                    px: 1.5,
+                    py: 1,
+                    fontSize: 18,
+                    fontWeight: 600,
+                    borderColor: "#2F5D46",
+                    color: "#2F5D46",
+                    backgroundColor: "#edf6ed",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Box component="span" sx={actionIconSx}>
+                    <Icon
+                      icon={leftButtonIcon}
+                      width={ACTION_ICON_SIZE}
+                      height={ACTION_ICON_SIZE}
+                      color="#2F5D46"
+                    />
+                  </Box>
+                  {leftButtonLabel}
+                </Button>
+              ) : null}
               <Box
                 onClick={handleLogoClick}
                 sx={{
                   position: "relative",
-                  width: 256,
+                  width: leftButtonLabel ? 200 : 256,
                   height: 64,
                   flexShrink: 1,
                   cursor: "pointer",

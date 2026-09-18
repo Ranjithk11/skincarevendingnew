@@ -1702,6 +1702,20 @@ export const sqliteDb = {
     return this.setSetting('machine_location', location, 'Machine physical location');
   },
 
+  /** When false, travel kits stay hidden regardless of IST staff hours. Default: available. */
+  getTravelKitsStaffAvailable(): boolean {
+    const raw = this.getSetting('travel_kits_staff_available', 'true');
+    return raw !== 'false' && raw !== '0';
+  },
+
+  setTravelKitsStaffAvailable(available: boolean): boolean {
+    return this.setSetting(
+      'travel_kits_staff_available',
+      available ? 'true' : 'false',
+      'Travel kits visible when staff is on duty for handoff'
+    );
+  },
+
   /**
    * Allocate a unique tax-invoice number for a payment/order.
    * Format: LW/MM/YY/NNN (monthly sequence, 3+ digits).
