@@ -651,108 +651,115 @@ function initDb() {
   // Views are inherently read-only in SQLite.
   // POSIFLY agent queries these views directly from vending.db.
   // Foreign key relationship: billNumber links all views.
+  //
+  // BEGIN IMMEDIATE serializes parallel Next.js workers during `next build`
+  // so DROP+CREATE cannot race into "view already exists".
 
-  // Migration: drop old views and old tables that conflict with spec view names.
-  // Disable FK checks so we can drop in any order, then re-enable.
-  db.exec(`PRAGMA foreign_keys = OFF`);
-  db.exec(`DROP VIEW IF EXISTS bill_details_view`);
-  db.exec(`DROP VIEW IF EXISTS item_details_view`);
-  db.exec(`DROP VIEW IF EXISTS payment_details_view`);
-  db.exec(`DROP VIEW IF EXISTS charges_details_view`);
-  for (const relation of ["bill_details", "item_details", "payment_details", "charges_details"]) {
-    dropRelationIfExists(relation);
+  const recreatePosiflyViews = db.transaction(() => {
+    db.exec(`PRAGMA foreign_keys = OFF`);
+    db.exec(`DROP VIEW IF EXISTS bill_details_view`);
+    db.exec(`DROP VIEW IF EXISTS item_details_view`);
+    db.exec(`DROP VIEW IF EXISTS payment_details_view`);
+    db.exec(`DROP VIEW IF EXISTS charges_details_view`);
+    for (const relation of ["bill_details", "item_details", "payment_details", "charges_details"]) {
+      dropRelationIfExists(relation);
+    }
+    db.exec(`PRAGMA foreign_keys = ON`);
+
+    // View: bill_details (spec C.2.1)
+    db.exec(`
+      CREATE VIEW bill_details AS
+      SELECT
+        o.id                                                    AS billNumber,
+        COALESCE(pb.outletRefId, 'LEAFWATER_001')               AS outletRefId,
+        COALESCE(pb.posTerminalId, 'VENDING_01')                AS posTerminalId,
+        COALESCE(pb.billDate, strftime('%d/%m/%Y', o.created_at)) AS billDate,
+        COALESCE(pb.billTime, strftime('%H:%M', o.created_at))  AS billTime,
+        'SALE'                                                  AS billType,
+        CAST(o.total_amount AS TEXT)                             AS billValue,
+        CAST(ROUND(o.total_amount / 1.18, 2) AS TEXT)           AS netAmount,
+        CAST(ROUND(o.total_amount - (o.total_amount / 1.18), 2) AS TEXT) AS taxAmount,
+        COALESCE(pb.billDiscountValue, 0.00)                    AS billDiscountValue,
+        COALESCE(pb.ShiftNumber, '')                             AS ShiftNumber,
+        COALESCE(pb.businessDate, strftime('%d/%m/%Y', o.created_at)) AS businessDate,
+        CASE
+          WHEN o.status = 'completed' THEN 'COMPLETED'
+          WHEN o.status = 'failed'    THEN 'CANCELED'
+          ELSE 'COMPLETED'
+        END                                                     AS billStatus,
+        COALESCE(pb.isComplementBill, 0)                        AS isComplementBill,
+        'INR'                                                   AS currency,
+        COALESCE(pb.customerName, '')                            AS customerName,
+        COALESCE(pb.customerMobile, '')                          AS customerMobile,
+        COALESCE(pb.salesPersonName, '')                         AS salesPersonName,
+        COALESCE(pb.flightNumber, '')                            AS flightNumber,
+        COALESCE(pb.PNRNumber, '')                               AS PNRNumber,
+        COALESCE(pb.journeyFrom, '')                             AS journeyFrom,
+        COALESCE(pb.journeyTo, '')                               AS journeyTo,
+        COALESCE(pb.gateNumber, '')                              AS gateNumber,
+        o.created_at
+      FROM orders o
+      LEFT JOIN _posifly_bill_data pb ON pb.billNumber = o.id
+    `);
+
+    // View: item_details (spec C.2.2)
+    db.exec(`
+      CREATE VIEW item_details AS
+      SELECT
+        oi.order_id                                             AS billNumber,
+        'LEAFWATER_001'                                         AS outletRefId,
+        oi.product_id                                           AS itemRefId,
+        oi.product_name                                         AS name,
+        ''                                                      AS brand,
+        ''                                                      AS barcode,
+        COALESCE(vs.category, 'Skincare')                       AS category,
+        ''                                                      AS subcategory,
+        ''                                                      AS hsnCode,
+        'UNIT'                                                  AS uom,
+        1                                                       AS uomValue,
+        CAST(oi.price AS REAL)                                  AS mrp,
+        CAST(oi.price AS REAL)                                  AS sp,
+        0.0                                                     AS discountValue,
+        oi.quantity                                             AS quantity,
+        json_array(
+          json_object('name', 'CGST', 'value', '9'),
+          json_object('name', 'SGST', 'value', '9')
+        )                                                       AS taxes
+      FROM order_items oi
+      LEFT JOIN vending_slots vs ON oi.slot_id = vs.slot_id
+    `);
+
+    // View: payment_details (spec C.2.3)
+    db.exec(`
+      CREATE VIEW payment_details AS
+      SELECT
+        o.id                                                    AS billNumber,
+        'LEAFWATER_001'                                         AS outletRefId,
+        json_array(
+          json_object('mode', 'UPI', 'value', CAST(o.total_amount AS REAL))
+        )                                                       AS paymentModes
+      FROM orders o
+      WHERE o.status IN ('completed', 'pending')
+    `);
+
+    // View: charges_details (spec C.2.4)
+    db.exec(`
+      CREATE VIEW charges_details AS
+      SELECT
+        o.id                                                    AS billNumber,
+        'LEAFWATER_001'                                         AS outletRefId,
+        '[]'                                                    AS charges
+      FROM orders o
+    `);
+  });
+
+  try {
+    recreatePosiflyViews.immediate();
+  } catch (viewErr: unknown) {
+    const msg = viewErr instanceof Error ? viewErr.message : String(viewErr);
+    // Parallel workers may still collide across processes; treat as OK if views exist.
+    if (!/already exists/i.test(msg)) throw viewErr;
   }
-  db.exec(`PRAGMA foreign_keys = ON`);
-
-  // View: bill_details (spec C.2.1)
-  db.exec(`DROP VIEW IF EXISTS bill_details`);
-  db.exec(`
-    CREATE VIEW bill_details AS
-    SELECT
-      o.id                                                    AS billNumber,
-      COALESCE(pb.outletRefId, 'LEAFWATER_001')               AS outletRefId,
-      COALESCE(pb.posTerminalId, 'VENDING_01')                AS posTerminalId,
-      COALESCE(pb.billDate, strftime('%d/%m/%Y', o.created_at)) AS billDate,
-      COALESCE(pb.billTime, strftime('%H:%M', o.created_at))  AS billTime,
-      'SALE'                                                  AS billType,
-      CAST(o.total_amount AS TEXT)                             AS billValue,
-      CAST(ROUND(o.total_amount / 1.18, 2) AS TEXT)           AS netAmount,
-      CAST(ROUND(o.total_amount - (o.total_amount / 1.18), 2) AS TEXT) AS taxAmount,
-      COALESCE(pb.billDiscountValue, 0.00)                    AS billDiscountValue,
-      COALESCE(pb.ShiftNumber, '')                             AS ShiftNumber,
-      COALESCE(pb.businessDate, strftime('%d/%m/%Y', o.created_at)) AS businessDate,
-      CASE
-        WHEN o.status = 'completed' THEN 'COMPLETED'
-        WHEN o.status = 'failed'    THEN 'CANCELED'
-        ELSE 'COMPLETED'
-      END                                                     AS billStatus,
-      COALESCE(pb.isComplementBill, 0)                        AS isComplementBill,
-      'INR'                                                   AS currency,
-      COALESCE(pb.customerName, '')                            AS customerName,
-      COALESCE(pb.customerMobile, '')                          AS customerMobile,
-      COALESCE(pb.salesPersonName, '')                         AS salesPersonName,
-      COALESCE(pb.flightNumber, '')                            AS flightNumber,
-      COALESCE(pb.PNRNumber, '')                               AS PNRNumber,
-      COALESCE(pb.journeyFrom, '')                             AS journeyFrom,
-      COALESCE(pb.journeyTo, '')                               AS journeyTo,
-      COALESCE(pb.gateNumber, '')                              AS gateNumber,
-      o.created_at
-    FROM orders o
-    LEFT JOIN _posifly_bill_data pb ON pb.billNumber = o.id
-  `);
-
-  // View: item_details (spec C.2.2)
-  db.exec(`DROP VIEW IF EXISTS item_details`);
-  db.exec(`
-    CREATE VIEW item_details AS
-    SELECT
-      oi.order_id                                             AS billNumber,
-      'LEAFWATER_001'                                         AS outletRefId,
-      oi.product_id                                           AS itemRefId,
-      oi.product_name                                         AS name,
-      ''                                                      AS brand,
-      ''                                                      AS barcode,
-      COALESCE(vs.category, 'Skincare')                       AS category,
-      ''                                                      AS subcategory,
-      ''                                                      AS hsnCode,
-      'UNIT'                                                  AS uom,
-      1                                                       AS uomValue,
-      CAST(oi.price AS REAL)                                  AS mrp,
-      CAST(oi.price AS REAL)                                  AS sp,
-      0.0                                                     AS discountValue,
-      oi.quantity                                             AS quantity,
-      json_array(
-        json_object('name', 'CGST', 'value', '9'),
-        json_object('name', 'SGST', 'value', '9')
-      )                                                       AS taxes
-    FROM order_items oi
-    LEFT JOIN vending_slots vs ON oi.slot_id = vs.slot_id
-  `);
-
-  // View: payment_details (spec C.2.3)
-  db.exec(`DROP VIEW IF EXISTS payment_details`);
-  db.exec(`
-    CREATE VIEW payment_details AS
-    SELECT
-      o.id                                                    AS billNumber,
-      'LEAFWATER_001'                                         AS outletRefId,
-      json_array(
-        json_object('mode', 'UPI', 'value', CAST(o.total_amount AS REAL))
-      )                                                       AS paymentModes
-    FROM orders o
-    WHERE o.status IN ('completed', 'pending')
-  `);
-
-  // View: charges_details (spec C.2.4)
-  db.exec(`DROP VIEW IF EXISTS charges_details`);
-  db.exec(`
-    CREATE VIEW charges_details AS
-    SELECT
-      o.id                                                    AS billNumber,
-      'LEAFWATER_001'                                         AS outletRefId,
-      '[]'                                                    AS charges
-    FROM orders o
-  `);
 
   // Initialize 60 vending slots if they don't exist
   const slotCount = db.prepare('SELECT COUNT(*) as count FROM vending_slots').get() as { count: number };
