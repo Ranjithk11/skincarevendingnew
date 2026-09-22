@@ -44,7 +44,27 @@ import {
 } from "@/utils/webhook";
 
 /** STM32 / network hang: fail with dispense_error instead of staying silent. */
-const DISPENSE_TIMEOUT_MS = 90_000;
+const DISPENSE_TIMEOUT_HARD_CAP_MS = 15 * 60_000; // 15 min absolute max
+const DISPENSE_TIMEOUT_PER_UNIT_MS = 90_000; // motor cycle + tray/pickup headroom
+const DISPENSE_TIMEOUT_BASE_MS = 120_000; // open serial + first command buffer
+
+/**
+ * Client abort must outlive the full STM32 sequence (RQ… + TRAY pickup).
+ * Server default/env can wait minutes per command; a fixed 90s client abort
+ * caused false "Dispense timed out" after payment while the machine still ran.
+ */
+function estimateDispenseTimeoutMs(unitCount: number): number {
+  const fromEnv = Number(process.env.NEXT_PUBLIC_DISPENSE_TIMEOUT_MS);
+  if (Number.isFinite(fromEnv) && fromEnv > 0) {
+    return Math.min(DISPENSE_TIMEOUT_HARD_CAP_MS, fromEnv);
+  }
+  const units = Math.max(1, Math.floor(unitCount) || 1);
+  // Worst case ~1 TRAY per product (finalize "each") plus base buffer.
+  return Math.min(
+    DISPENSE_TIMEOUT_HARD_CAP_MS,
+    DISPENSE_TIMEOUT_BASE_MS + units * DISPENSE_TIMEOUT_PER_UNIT_MS * 2
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -511,7 +531,16 @@ export default function FeedbackPage() {
       };
 
       const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), DISPENSE_TIMEOUT_MS);
+      const vendableUnits = vendableItems.reduce((sum, item: any) => {
+        const q = Number(item?.quantity);
+        return sum + (Number.isFinite(q) && q > 0 ? Math.floor(q) : 1);
+      }, 0);
+      let activeTimeoutMs = estimateDispenseTimeoutMs(vendableUnits);
+      const timeoutId = window.setTimeout(
+        () => controller.abort(),
+        activeTimeoutMs
+      );
+      let refinedTimeoutId: number | null = null;
 
       try {
         const productCodes: string[] = [];
@@ -586,6 +615,17 @@ export default function FeedbackPage() {
           return;
         }
 
+        // Re-arm abort with known command count (products + expected TRAY steps).
+        window.clearTimeout(timeoutId);
+        activeTimeoutMs = estimateDispenseTimeoutMs(productCodes.length);
+        refinedTimeoutId = window.setTimeout(
+          () => controller.abort(),
+          activeTimeoutMs
+        );
+        console.log(
+          `[Dispense] Waiting up to ${Math.round(activeTimeoutMs / 1000)}s for ${productCodes.length} slot(s):`,
+          productCodes
+        );
         const response = await fetch("/api/stm32/dispense", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -603,11 +643,12 @@ export default function FeedbackPage() {
       } catch (e: any) {
         const aborted = e?.name === "AbortError" || controller.signal.aborted;
         const msg = aborted
-          ? `Dispense timed out after ${Math.round(DISPENSE_TIMEOUT_MS / 1000)}s`
+          ? `Dispense timed out after ${Math.round(activeTimeoutMs / 1000)}s`
           : e?.message || "Dispense failed";
         await fireError(msg, e);
       } finally {
         window.clearTimeout(timeoutId);
+        if (refinedTimeoutId !== null) window.clearTimeout(refinedTimeoutId);
       }
     };
 
