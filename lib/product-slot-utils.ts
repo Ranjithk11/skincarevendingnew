@@ -489,14 +489,39 @@ export function mergeCatalogWithSlotProducts(
   );
 
   const byId = new Map<string, any>();
+  const setProduct = (product: any) => {
+    const rawId = product?.id ?? product?._id;
+    const keys = productIdKeys(rawId);
+    if (!keys.length) return;
+    // Ensure image_url + images[] stay in sync (same as /products cards).
+    const imageUrl =
+      product?.images?.[0]?.url ||
+      product?.image_url ||
+      product?.imageUrl ||
+      (typeof product?.images?.[0] === "string" ? product.images[0] : "") ||
+      "";
+    const normalized = {
+      ...product,
+      image_url: imageUrl || product?.image_url || "",
+      images:
+        Array.isArray(product?.images) && product.images.length > 0
+          ? product.images
+          : imageUrl
+            ? [{ url: imageUrl, tag: "" }]
+            : [],
+      discount:
+        normalizeProductDiscount(product, slotDiscountMap) ??
+        product?.discount ??
+        null,
+    };
+    keys.forEach((key) => byId.set(key, normalized));
+  };
+
   catalogProducts.forEach((product) => {
     const key = normalizeProductId(product?.id ?? product?._id);
     if (!key) return;
     if (!slotOnlyProductMatchesFilters(product, catalogFilters)) return;
-    byId.set(key, {
-      ...product,
-      discount: normalizeProductDiscount(product, slotDiscountMap) ?? product?.discount ?? null,
-    });
+    setProduct(product);
   });
 
   const slotsArray = Array.isArray(slotsData)
@@ -508,17 +533,39 @@ export function mergeCatalogWithSlotProducts(
     const key = normalizeProductId(slot.product_id);
     if (!key) return;
 
-    if (byId.has(key)) {
-      const existing = byId.get(key)!;
-      if (!normalizeProductDiscount(existing, slotDiscountMap)) {
+    const existing =
+      byId.get(key) ||
+      productIdKeys(slot.product_id).map((k) => byId.get(k)).find(Boolean);
+
+    if (existing) {
+      const slotImage = String(slot.image_url || "").trim();
+      const existingImage =
+        existing?.images?.[0]?.url ||
+        existing?.image_url ||
+        existing?.imageUrl ||
+        "";
+      let next = existing;
+      // Prefer catalog image; if missing, backfill from slot.
+      if (!existingImage && slotImage) {
+        next = {
+          ...existing,
+          image_url: slotImage,
+          images: Array.isArray(existing.images) && existing.images.length
+            ? existing.images
+            : [{ url: slotImage, tag: "" }],
+        };
+      }
+      if (!normalizeProductDiscount(next, slotDiscountMap)) {
         const slotDiscount = normalizeProductDiscount(
           { discount_value: slot.discount_value },
           slotDiscountMap
         );
         if (slotDiscount) {
-          byId.set(key, { ...existing, discount: slotDiscount });
+          next = { ...next, discount: slotDiscount };
         }
       }
+      productIdKeys(slot.product_id).forEach((k) => byId.set(k, next));
+      byId.set(key, next);
       return;
     }
 
@@ -526,12 +573,16 @@ export function mergeCatalogWithSlotProducts(
     // Do not inject unrelated in-stock slot products into those results.
     if (hasActiveCatalogFilter) return;
 
+    const slotImage = String(slot.image_url || "").trim();
     const slotProduct = {
       id: slot.product_id,
+      _id: slot.product_id,
       name: slot.product_name || "Product",
       retail_price: slot.retail_price ?? 0,
+      retailPrice: slot.retail_price ?? 0,
       category: slot.category || "",
-      image_url: slot.image_url || "",
+      image_url: slotImage,
+      images: slotImage ? [{ url: slotImage, tag: "" }] : [],
       quantity: Number(slot.quantity || 0),
       discount_value: slot.discount_value,
       discount: normalizeProductDiscount(
@@ -543,8 +594,15 @@ export function mergeCatalogWithSlotProducts(
 
     if (!slotOnlyProductMatchesFilters(slotProduct, catalogFilters)) return;
 
-    byId.set(key, slotProduct);
+    setProduct(slotProduct);
   });
 
-  return Array.from(byId.values());
+  // Dedupe by normalized id for return value.
+  const unique = new Map<string, any>();
+  byId.forEach((product, mapKey) => {
+    const id = normalizeProductId(product?.id ?? product?._id ?? mapKey);
+    if (!id || unique.has(id)) return;
+    unique.set(id, product);
+  });
+  return Array.from(unique.values());
 }

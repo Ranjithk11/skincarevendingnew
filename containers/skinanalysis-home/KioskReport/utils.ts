@@ -9,13 +9,14 @@ import {
   normalizeProductDiscount,
   normalizeProductId,
 } from "@/lib/product-slot-utils";
+import { getCatalogProductImageUrl } from "@/lib/catalog-products";
 import {
   CANONICAL_CONCERNS,
   FALLBACK_SUMMARY,
   TRAVEL_KIT_AVAILABLE_FROM_HOUR_IST,
   TRAVEL_KIT_AVAILABLE_UNTIL_HOUR_IST,
 } from "./constants";
-import type { ChipTone, ConcernItem, HealthRating, ReportProduct, SkinTypeId, TravelKit } from "./types";
+import type { ChipTone, ConcernItem, HealthRating, ReportProduct, SkinRoutine, SkinTypeId, TravelKit } from "./types";
 
 const normalizeText = (value: unknown) =>
   String(value ?? "")
@@ -581,6 +582,366 @@ export function pickRandomMachineProducts(
   return picked.slice(0, 3);
 }
 
+/** Preferred product names for curated routines (match against machine stock). */
+const MORNING_ROUTINE_PREFS = [
+  "Foxtale Let It Glow Super Glow Face Wash",
+  "Minimalist Vitamin C 10% Serum",
+  "The Derma Co 5% Vitamin C Oil-Free Daily Face Moisturizer",
+  "The Derma Co 5% Vitamin C Moisturizer",
+  "Foxtale Golden Hour Glow Sunscreen SPF 50",
+];
+
+const NIGHT_ROUTINE_PREFS = [
+  "Foxtale Let It Glow Super Glow Face Wash",
+  "The Derma Co 2% Kojic Acid Face Serum",
+  "Foxtale Eyes On You Brightening Under Eye Cream",
+  "Foxtale In The Limelight Super Glow Moisturizer",
+];
+
+const PIGMENTATION_PREFS = [
+  "The Derma Co 2% Kojic Acid Face Serum",
+  "Pilgrim 2% Kojic Acid Serum",
+  "Minimalist Vitamin C 10% Serum",
+  "Minimalist Vitamin C 16% Serum",
+  "The Derma Co 5% Niacinamide + Alpha Arbutin",
+  "The Derma Co 5% Niacinamide",
+];
+
+const UNEVEN_TONE_PREFS = [
+  "Minimalist Vitamin C 16% Serum",
+  "Pilgrim 15% Vitamin C Face Serum",
+  "Cetaphil Bright Healthy Radiance Perfecting Serum",
+  "The Derma Co 5% Vitamin C Moisturizer",
+  "Pilgrim 2% Kojic Acid Serum",
+];
+
+const DARK_CIRCLE_PREFS = [
+  "Foxtale Eyes On You Brightening Under Eye Cream",
+  "Pilgrim Squalane Roll-On Under Eye Serum",
+  "Pilgrim Squalance Roll-On Under Eye Serum",
+  "Pilgrim Retinol Under Eye Cream",
+];
+
+const ROUTINE_TEMPLATES: Array<{
+  id: string;
+  title: string;
+  subtitle: string;
+  tagline: string;
+  icon: string;
+  prefs: string[];
+}> = [
+  {
+    id: "morning-glow",
+    title: "Morning Glow",
+    subtitle: "Cleanse + Brighten",
+    tagline: "AM glow essentials.",
+    icon: "mdi:white-balance-sunny",
+    prefs: MORNING_ROUTINE_PREFS,
+  },
+  {
+    id: "night-repair",
+    title: "Night Repair",
+    subtitle: "Treat + Nourish",
+    tagline: "Overnight recovery care.",
+    icon: "mdi:moon-waning-crescent",
+    prefs: NIGHT_ROUTINE_PREFS,
+  },
+  {
+    id: "dark-circle-care",
+    title: "Dark Circle Care",
+    subtitle: "Brighten + Refresh",
+    tagline: "Target tired under-eyes.",
+    icon: "mdi:eye-outline",
+    prefs: DARK_CIRCLE_PREFS,
+  },
+];
+
+const NAME_STOP_WORDS = new Set([
+  "the",
+  "and",
+  "with",
+  "from",
+  "for",
+  "face",
+  "skin",
+  "daily",
+  "super",
+  "ml",
+  "pa",
+  "spf",
+  "oil",
+  "free",
+]);
+
+/** Score how well a machine product name matches a preferred label. */
+function scorePreferredName(productName: string, preferred: string): number {
+  const a = normalizeText(productName);
+  const b = normalizeText(preferred);
+  if (!a || !b) return 0;
+  if (a === b) return 100;
+  if (a.includes(b) || b.includes(a)) return 95;
+
+  const tokens = b
+    .split(" ")
+    .map((t) => t.replace(/[^a-z0-9%+]/g, ""))
+    .filter((t) => t.length > 1 && !NAME_STOP_WORDS.has(t));
+  if (!tokens.length) return 0;
+
+  const hits = tokens.filter((t) => a.includes(t)).length;
+  return Math.round((hits / tokens.length) * 90);
+}
+
+function extractProductImageUrl(product: any): string {
+  return normalizeImageUrl(getCatalogProductImageUrl(product));
+}
+
+/** Make Drive/share links and protocol-relative URLs usable in <img src>. */
+function normalizeImageUrl(url: string): string {
+  if (!url) return "";
+  let next = url.trim();
+  if (next.startsWith("//")) next = `https:${next}`;
+
+  // Google Drive "view" links are not direct images — convert to uc export.
+  const driveView = next.match(
+    /drive\.google\.com\/file\/d\/([^/]+)\/(?:view|preview)/i
+  );
+  if (driveView?.[1]) {
+    return `https://drive.google.com/uc?export=view&id=${driveView[1]}`;
+  }
+  const driveOpen = next.match(/drive\.google\.com\/open\?id=([^&]+)/i);
+  if (driveOpen?.[1]) {
+    return `https://drive.google.com/uc?export=view&id=${driveOpen[1]}`;
+  }
+
+  if (/^https?:\/\//i.test(next) || next.startsWith("/")) return next;
+  return "";
+}
+
+function extractBrandKey(product: any, productName = ""): string {
+  const fromField = normalizeText(
+    product?.brand?.name ||
+      product?.productBrand?.name ||
+      product?.brand_name ||
+      (typeof product?.brand === "string" ? product.brand : "") ||
+      ""
+  );
+  if (fromField) {
+    if (fromField.includes("derma co")) return "the derma co";
+    return fromField;
+  }
+
+  const name = normalizeText(productName || product?.name || "");
+  const known = [
+    "the derma co",
+    "derma co",
+    "foxtale",
+    "minimalist",
+    "pilgrim",
+    "cetaphil",
+    "sebamed",
+    "dot and key",
+    "dot & key",
+    "plum",
+    "neutrogena",
+    "ceraVe",
+    "cerave",
+    "la shield",
+    "fixderma",
+  ];
+  for (const brand of known) {
+    if (name.includes(normalizeText(brand))) {
+      if (brand.includes("derma co")) return "the derma co";
+      if (brand.includes("dot")) return "dot and key";
+      return normalizeText(brand);
+    }
+  }
+
+  const first = name.split(" ").find((t) => t.length > 2) || "";
+  return first;
+}
+
+type StockItem = {
+  product: ReportProduct;
+  brand: string;
+  raw: any;
+};
+
+function findPreferredInStock(
+  stock: StockItem[],
+  preferredNames: string[],
+  usedIds: Set<string>,
+  usedBrands: Set<string>
+): ReportProduct | null {
+  for (const pref of preferredNames) {
+    let best: StockItem | null = null;
+    let bestScore = 0;
+    for (const item of stock) {
+      if (usedIds.has(item.product.id)) continue;
+      if (item.brand && usedBrands.has(item.brand)) continue;
+      const score = scorePreferredName(item.product.name, pref);
+      // Prefer items that have images when scores are close.
+      const imageBonus = item.product.imageUrl ? 2 : 0;
+      const total = score + imageBonus;
+      if (total > bestScore) {
+        bestScore = total;
+        best = item;
+      }
+    }
+    if (best && bestScore >= 55) return best.product;
+  }
+  return null;
+}
+
+function pickAnyInStock(
+  stock: StockItem[],
+  usedIds: Set<string>,
+  usedBrands: Set<string>,
+  rand: () => number
+): ReportProduct | null {
+  const available = stock.filter(
+    (item) =>
+      !usedIds.has(item.product.id) &&
+      (!item.brand || !usedBrands.has(item.brand))
+  );
+  if (!available.length) return null;
+
+  // Prefer products with images.
+  const withImage = available.filter((item) => Boolean(item.product.imageUrl));
+  const pool = withImage.length ? withImage : available;
+  const idx = Math.floor(rand() * pool.length);
+  return pool[Math.min(idx, pool.length - 1)].product;
+}
+
+function concernPrefList(concernLabels: string[]): {
+  id: string;
+  title: string;
+  subtitle: string;
+  tagline: string;
+  icon: string;
+  prefs: string[];
+} {
+  const joined = normalizeText(concernLabels.join(" "));
+  if (
+    /pigment|melasma|dark spot|dyschromia|kojic|niacinamide|arbutin/.test(joined)
+  ) {
+    return {
+      id: "pigment-care",
+      title: "Pigment Care",
+      subtitle: "Brighten + Fade",
+      tagline: "Target dark spots.",
+      icon: "mdi:dots-hexagon",
+      prefs: PIGMENTATION_PREFS,
+    };
+  }
+  if (/uneven|tone|radiance|dull|vitamin c/.test(joined)) {
+    return {
+      id: "tone-even",
+      title: "Even Tone",
+      subtitle: "Glow + Balance",
+      tagline: "Smoother, brighter tone.",
+      icon: "mdi:dots-grid",
+      prefs: UNEVEN_TONE_PREFS,
+    };
+  }
+  return {
+    id: "dark-circle-care",
+    title: "Dark Circle Care",
+    subtitle: "Brighten + Refresh",
+    tagline: "Target tired under-eyes.",
+    icon: "mdi:eye-outline",
+    prefs: DARK_CIRCLE_PREFS,
+  };
+}
+
+/**
+ * Build up to 3 skin routines (2 products each) from curated preferences.
+ * Never repeats the same product or brand across routines.
+ * Prefers in-stock curated matches; otherwise fills from other machine stock.
+ */
+export function pickSkinRoutines(
+  catalogProducts: any[],
+  slotsData: unknown,
+  seed = String(Date.now()),
+  concernLabels: string[] = []
+): SkinRoutine[] {
+  const slotsMap = buildSlotsMap(slotsData);
+  const machineProducts = mergeCatalogWithSlotProducts(catalogProducts, slotsData);
+  const rand = mulberry32(hashSeed(`routines|${seed}`));
+
+  const stock: StockItem[] = [];
+  const seenStock = new Set<string>();
+  for (const product of machineProducts) {
+    if (isBabyProduct(product)) continue;
+    const mapped = toReportProduct(product, slotsMap, slotsData);
+    if (!mapped || seenStock.has(mapped.id)) continue;
+    seenStock.add(mapped.id);
+    stock.push({
+      product: mapped,
+      brand: extractBrandKey(product, mapped.name),
+      raw: product,
+    });
+  }
+
+  if (stock.length < 2) return [];
+
+  const brandOf = (id: string) =>
+    stock.find((s) => s.product.id === id)?.brand || "";
+
+  const templates = [
+    ROUTINE_TEMPLATES[0],
+    ROUTINE_TEMPLATES[1],
+    concernPrefList(concernLabels),
+  ];
+
+  const routines: SkinRoutine[] = [];
+  const usedIds = new Set<string>();
+  const usedBrands = new Set<string>();
+
+  for (const tpl of templates) {
+    const pair: ReportProduct[] = [];
+
+    for (let slot = 0; slot < 2; slot++) {
+      const preferred = findPreferredInStock(
+        stock,
+        tpl.prefs,
+        usedIds,
+        usedBrands
+      );
+      const chosen =
+        preferred || pickAnyInStock(stock, usedIds, usedBrands, rand);
+      if (!chosen) break;
+      usedIds.add(chosen.id);
+      const brand = brandOf(chosen.id);
+      if (brand) usedBrands.add(brand);
+      pair.push(chosen);
+    }
+
+    if (pair.length < 2) continue;
+
+    const [a, b] = pair;
+    const retailTotal = a.retailPrice + b.retailPrice;
+    const payableTotal = a.payablePrice + b.payablePrice;
+    const savePercent =
+      retailTotal > 0
+        ? Math.max(0, Math.round(((retailTotal - payableTotal) / retailTotal) * 100))
+        : 0;
+
+    routines.push({
+      id: tpl.id,
+      title: tpl.title,
+      subtitle: tpl.subtitle,
+      tagline: tpl.tagline,
+      icon: tpl.icon,
+      products: [a, b],
+      retailTotal,
+      payableTotal,
+      savePercent: savePercent > 0 ? savePercent : 10,
+    });
+  }
+
+  return routines;
+}
+
 function extractVolume(product: any): string {
   const fields = [
     product?.size,
@@ -626,11 +987,7 @@ function toReportProduct(product: any, slotsMap: ReturnType<typeof buildSlotsMap
   );
   const discount = normalizeProductDiscount(product, getSlotDiscountMap(slotsData));
   const discountValue = Number(discount?.value ?? 0);
-  const imageUrl =
-    product?.images?.[0]?.url ||
-    product?.image_url ||
-    (typeof product?.images?.[0] === "string" ? product.images[0] : "") ||
-    "";
+  const imageUrl = extractProductImageUrl(product);
 
   return {
     id,

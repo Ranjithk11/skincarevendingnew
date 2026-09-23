@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Box, Checkbox, Typography } from "@mui/material";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
@@ -23,10 +24,11 @@ import {
 import { formatSlotBadge } from "./utils";
 import type { ReportProduct } from "./types";
 import { capitalizeWords } from "@/utils/func";
-import { fadeUp, scaleIn, staggerDelay } from "./animations";
+import { fadeUp, scaleIn, infoGlow, imageReveal, shimmerSweep, PREMIUM_EASE, staggerDelay } from "./animations";
 import { APP_ROUTES } from "@/utils/routes";
 import { useSession } from "next-auth/react";
 import { setBrowseReturnToReport } from "@/lib/kiosk-browse-return";
+import NewProductCard from "@/containers/skinanalysis-home/Recommendations/NewProductCard";
 
 type Props = {
   products: ReportProduct[];
@@ -41,6 +43,7 @@ export default function RecommendedProductsSection({
 }: Props) {
   const router = useRouter();
   const { data: session } = useSession();
+  const [infoProduct, setInfoProduct] = useState<ReportProduct | null>(null);
 
   const handleBrowse = () => {
     const userId = (session?.user?.id as string) || null;
@@ -49,6 +52,7 @@ export default function RecommendedProductsSection({
   };
 
   return (
+    <>
     <Box
       sx={{
         px: `${PAGE_PADDING_X}px`,
@@ -62,11 +66,11 @@ export default function RecommendedProductsSection({
           width: "100%",
           border: `1px solid ${REPORT_BORDER}`,
           borderRadius: RADIUS_LG,
-          p: "14px",
+          p: "8px",
           boxSizing: "border-box",
         }}
       >
-        <Box sx={{ width: "100%", mb: "10px" }}>
+        <Box sx={{ width: "100%", mb: "6px" }}>
           <Box
             sx={{
               display: "flex",
@@ -145,7 +149,7 @@ export default function RecommendedProductsSection({
               color: REPORT_MUTED,
               fontWeight: 400,
               lineHeight: 1.2,
-              mt: "6px",
+              mt: "4px",
             }}
           >
             Tick the products you want to purchase
@@ -196,12 +200,13 @@ export default function RecommendedProductsSection({
                     bgcolor: "#fff",
                     display: "flex",
                     flexDirection: "column",
-                    animation: `${scaleIn} 0.4s ease-out both`,
+                    animation: `${scaleIn} 0.45s ${PREMIUM_EASE} both`,
                     animationDelay: staggerDelay(index, 80, 320),
-                    transition: "transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+                    transition: `transform 0.2s ${PREMIUM_EASE}, border-color 0.25s ${PREMIUM_EASE}, box-shadow 0.25s ${PREMIUM_EASE}`,
                     boxShadow: checked
-                      ? "0 6px 16px rgba(47, 93, 70, 0.16)"
+                      ? "0 8px 20px rgba(47, 93, 70, 0.18)"
                       : "0 1px 4px rgba(0,0,0,0.05)",
+                    transform: checked ? "translateY(-2px)" : "none",
                     "&:active": { transform: "scale(0.97)" },
                   }}
                 >
@@ -242,6 +247,10 @@ export default function RecommendedProductsSection({
                             "polygon(0 0, 0 calc(100% - var(--f)), var(--f) 100%, var(--f) calc(100% - var(--f)), 100% calc(100% - var(--f)), calc(100% - var(--r)) calc(50% - var(--f) / 2), 100% 0)",
                           letterSpacing: "0.2px",
                           pointerEvents: "none",
+                          backgroundImage:
+                            "linear-gradient(110deg, #cc333f 40%, #ff7a82 50%, #cc333f 60%)",
+                          backgroundSize: "220% 100%",
+                          animation: `${shimmerSweep} 3.5s ease-in-out ${0.5 + index * 0.12}s infinite`,
                         }}
                       >
                         {discountPct}% OFF
@@ -291,6 +300,38 @@ export default function RecommendedProductsSection({
                       </Box>
                     ) : null}
 
+                    <Box
+                      component="button"
+                      type="button"
+                      aria-label={`Product info for ${product.name}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setInfoProduct(product);
+                      }}
+                      sx={{
+                        position: "absolute",
+                        bottom: 6,
+                        right: 6,
+                        zIndex: 2,
+                        width: 26,
+                        height: 26,
+                        m: 0,
+                        p: 0,
+                        border: `1px solid ${REPORT_BORDER}`,
+                        borderRadius: "50%",
+                        bgcolor: "rgba(255,255,255,0.95)",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        animation: `${infoGlow} 3.6s ease-in-out infinite`,
+                        transition: `transform 0.15s ${PREMIUM_EASE}`,
+                        "&:active": { transform: "scale(0.9)" },
+                      }}
+                    >
+                      <Icon icon="mdi:information-outline" width={16} color={REPORT_GREEN} />
+                    </Box>
+
                     {hasImage ? (
                       <Box
                         component="img"
@@ -304,6 +345,8 @@ export default function RecommendedProductsSection({
                           display: "block",
                           p: "8px",
                           boxSizing: "border-box",
+                          animation: `${imageReveal} 0.55s ${PREMIUM_EASE} both`,
+                          animationDelay: staggerDelay(index, 80, 360),
                         }}
                       />
                     ) : (
@@ -392,5 +435,30 @@ export default function RecommendedProductsSection({
         </Box>
       </Box>
     </Box>
+
+    <NewProductCard
+      open={Boolean(infoProduct)}
+      onClose={() => setInfoProduct(null)}
+      id={infoProduct?.id}
+      name={infoProduct?.name || ""}
+      imageUrl={infoProduct?.imageUrl}
+      retailPrice={infoProduct?.retailPrice || 0}
+      discountValue={infoProduct?.discountValue}
+      slotId={infoProduct?.slotId || infoProduct?.slotNumbers?.[0]}
+      isAiRecommended
+      primaryActionLabel={
+        infoProduct && selectedIds.includes(infoProduct.id)
+          ? "SELECTED"
+          : "SELECT FOR PURCHASE"
+      }
+      onPrimaryAction={() => {
+        if (!infoProduct) return;
+        if (!selectedIds.includes(infoProduct.id)) {
+          onToggle(infoProduct.id);
+        }
+      }}
+      fitKiosk
+    />
+    </>
   );
 }

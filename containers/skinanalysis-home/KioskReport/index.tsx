@@ -12,6 +12,8 @@ import ReportHeader from "./ReportHeader";
 import ScanConcernsSection from "./ScanConcernsSection";
 import ProfessionalSummarySection from "./ProfessionalSummarySection";
 import RecommendedProductsSection from "./RecommendedProductsSection";
+import SkinRoutinesSection from "./SkinRoutinesSection";
+import TravelKitsBanner from "./TravelKitsBanner";
 import TravelKitsSection from "./TravelKitsSection";
 import ScanToPaySection from "./ScanToPaySection";
 import {
@@ -26,21 +28,25 @@ import {
   kitToReportProduct,
   pickRandomMachineProducts,
   pickRecommendedProducts,
+  pickSkinRoutines,
   refreshTravelKitsStaffAvailable,
 } from "./utils";
 import { TRAVEL_KITS } from "./constants";
-import type { ReportProduct } from "./types";
+import type { ReportProduct, SkinRoutine } from "./types";
 import {
   loadMediapipePreview,
   loadMediapipeScanResult,
   type StoredMediapipeScan,
 } from "@/lib/mediapipe-scan-session";
+import { fetchCatalogProducts } from "@/lib/catalog-products";
 
 export default function KioskReportPage() {
   const { data: session } = useSession();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedKitIds, setSelectedKitIds] = useState<string[]>([]);
+  const [showTravelKits, setShowTravelKits] = useState(false);
   const [products, setProducts] = useState<ReportProduct[]>([]);
+  const [routines, setRoutines] = useState<SkinRoutine[]>([]);
   const [productsReady, setProductsReady] = useState(false);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [mediapipeScan, setMediapipeScan] = useState<StoredMediapipeScan | null>(
@@ -121,9 +127,12 @@ export default function KioskReportPage() {
         const useRandomMachine =
           mediapipeConcerns.length > 0 || Boolean(localPreview);
 
-        // MediaPipe report: only need local slots (fast). Skip heavy catalog+override path.
+        // MediaPipe report: same catalog source as /products (images live on catalog, not slots).
         if (useRandomMachine) {
-          const slotsRes = await fetch("/api/admin/slots");
+          const [slotsRes, catalog] = await Promise.all([
+            fetch("/api/admin/slots", { cache: "no-store" }),
+            fetchCatalogProducts(),
+          ]);
           const slotsData = slotsRes.ok ? await slotsRes.json() : {};
           const seed = [
             mediapipeScan?.analyzedAt || "",
@@ -131,40 +140,54 @@ export default function KioskReportPage() {
             mediapipeScan?.concerns?.map((c) => c.code).join("-") || "",
           ].join("|");
           const picked = pickRandomMachineProducts(
-            [],
+            catalog,
             slotsData,
             seed || String(Date.now())
           );
+          const concernLabels = [
+            ...(mediapipeConcerns.map((c) => c.label) || []),
+            ...(mediapipeScan?.concerns?.map((c) => c.name || c.code) || []),
+          ].filter(Boolean) as string[];
+          const nextRoutines = pickSkinRoutines(
+            catalog,
+            slotsData,
+            seed || String(Date.now()),
+            concernLabels
+          );
           if (cancelled) return;
           setProducts(picked);
+          setRoutines(nextRoutines);
           setSelectedIds(picked.map((p) => p.id));
           return;
         }
 
-        const [slotsRes, productsRes] = await Promise.all([
-          fetch("/api/admin/slots"),
-          // lite=1 skips per-product SQLite slot lookups (huge win).
-          fetch(
-            "/api/admin/products?limit=1000&hasBrand=true&isShopifyAvailable=true&lite=1"
-          ),
+        const [slotsRes, catalog] = await Promise.all([
+          fetch("/api/admin/slots", { cache: "no-store" }),
+          fetchCatalogProducts(),
         ]);
         const slotsData = slotsRes.ok ? await slotsRes.json() : {};
-        const productsPayload = productsRes.ok ? await productsRes.json() : [];
-        const catalog = Array.isArray(productsPayload)
-          ? productsPayload
-          : productsPayload?.data?.[0]?.products || productsPayload?.data || [];
-
         const picked = pickRecommendedProducts(
           data ? getReportSource(data) : null,
           catalog,
           slotsData
         );
+        const concernLabels = mapConcerns(reportSource || data).map((c) => c.label);
+        const nextRoutines = pickSkinRoutines(
+          catalog,
+          slotsData,
+          String(session?.user?.id || Date.now()),
+          concernLabels
+        );
         if (cancelled) return;
         setProducts(picked);
+        setRoutines(nextRoutines);
         setSelectedIds(picked.map((p) => p.id));
       } catch (err) {
         console.warn("[KioskReport] Failed to load products:", err);
-        if (!cancelled) setProducts([]);
+        if (!cancelled) {
+          setProducts([]);
+          setRoutines([]);
+        }
       } finally {
         if (!cancelled) setProductsReady(true);
       }
@@ -214,14 +237,30 @@ export default function KioskReportPage() {
     dataImageInfo?.data?.url ||
     "";
 
+  const productCatalog = useMemo(() => {
+    const byId = new Map<string, ReportProduct>();
+    products.forEach((p) => byId.set(p.id, p));
+    routines.forEach((r) => {
+      r.products.forEach((p) => {
+        if (!byId.has(p.id)) byId.set(p.id, p);
+      });
+    });
+    return byId;
+  }, [products, routines]);
+
   const selectedProducts = useMemo(
-    () => products.filter((p) => selectedIds.includes(p.id)),
-    [products, selectedIds]
+    () =>
+      selectedIds
+        .map((id) => productCatalog.get(id))
+        .filter((p): p is ReportProduct => Boolean(p)),
+    [productCatalog, selectedIds]
   );
   const selectedKits = useMemo(
     () =>
       isTravelKitPurchaseAvailable()
-        ? TRAVEL_KITS.filter((kit) => selectedKitIds.includes(kit.id)).map(kitToReportProduct)
+        ? TRAVEL_KITS.filter((kit) => selectedKitIds.includes(kit.id)).map(
+            kitToReportProduct
+          )
         : [],
     [selectedKitIds]
   );
@@ -253,6 +292,19 @@ export default function KioskReportPage() {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+  };
+
+  const handleAddRoutine = (routine: SkinRoutine) => {
+    const ids = routine.products.map((p) => p.id);
+    const bothSelected = ids.every((id) => selectedIds.includes(id));
+    setSelectedIds((prev) => {
+      if (bothSelected) {
+        return prev.filter((id) => !ids.includes(id));
+      }
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
   };
 
   const handleKitToggle = (id: string) => {
@@ -311,7 +363,23 @@ export default function KioskReportPage() {
             selectedIds={selectedIds}
             onToggle={handleToggle}
           />
-          <TravelKitsSection selectedIds={selectedKitIds} onToggle={handleKitToggle} />
+          {!showTravelKits ? (
+            <SkinRoutinesSection
+              routines={routines}
+              selectedIds={selectedIds}
+              onAddRoutine={handleAddRoutine}
+              onToggleProduct={handleToggle}
+            />
+          ) : null}
+          {showTravelKits ? (
+            <TravelKitsSection
+              selectedIds={selectedKitIds}
+              onToggle={handleKitToggle}
+              onBack={() => setShowTravelKits(false)}
+            />
+          ) : (
+            <TravelKitsBanner onView={() => setShowTravelKits(true)} />
+          )}
           <ScanToPaySection products={checkoutItems} total={total} />
         </Box>
       )}

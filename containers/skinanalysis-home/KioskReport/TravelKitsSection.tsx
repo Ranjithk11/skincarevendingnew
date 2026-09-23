@@ -28,9 +28,11 @@ import {
 type Props = {
   selectedIds: string[];
   onToggle: (id: string) => void;
+  /** When set, section is the expanded “View Travel Kits” panel with a back control. */
+  onBack?: () => void;
 };
 
-export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
+export default function TravelKitsSection({ selectedIds, onToggle, onBack }: Props) {
   const [purchaseAvailable, setPurchaseAvailable] = useState(true);
   const [unavailableReason, setUnavailableReason] =
     useState<TravelKitAvailabilityReason>("ok");
@@ -78,8 +80,8 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
         sx={{
           border: `1px solid ${REPORT_BORDER}`,
           borderRadius: RADIUS_LG,
-          px: "14px",
-          py: "10px",
+          px: "10px",
+          py: "6px",
           boxSizing: "border-box",
           opacity: purchaseAvailable ? 1 : 0.92,
         }}
@@ -90,10 +92,35 @@ export default function TravelKitsSection({ selectedIds, onToggle }: Props) {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 1,
-            mb: "8px",
+            mb: "4px",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+            {onBack ? (
+              <Box
+                component="button"
+                type="button"
+                onClick={onBack}
+                aria-label="Back to report"
+                sx={{
+                  border: `1px solid ${REPORT_BORDER}`,
+                  bgcolor: "#fff",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "8px",
+                  p: 0,
+                  m: 0,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  "&:active": { transform: "scale(0.96)" },
+                }}
+              >
+                <Icon icon="mdi:arrow-left" width={18} color={REPORT_GREEN} />
+              </Box>
+            ) : null}
             <Icon icon="mdi:bag-suitcase-outline" width={18} color={REPORT_GREEN} />
             <Typography
               sx={{

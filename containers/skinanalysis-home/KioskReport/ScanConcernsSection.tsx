@@ -143,7 +143,7 @@ export default function ScanConcernsSection({ imageUrl, health, concerns, skinTy
             bgcolor: health.pillBg,
             border: `1px solid ${health.color}33`,
             boxSizing: "border-box",
-            animation: `${softPulse} 1.8s ease-in-out 0.35s 2`,
+            animation: `${softPulse} 2.2s ease-in-out 0.35s infinite`,
           }}
         >
           <Icon icon="mdi:heart-plus" width={20} color={health.color} />

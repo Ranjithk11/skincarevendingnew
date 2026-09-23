@@ -13,6 +13,19 @@ export type ReportProduct = {
   isTravelKit?: boolean;
 };
 
+/** Two-product bundle shown in Build Your Skin Routine. */
+export type SkinRoutine = {
+  id: string;
+  title: string;
+  subtitle: string;
+  tagline: string;
+  icon: string;
+  products: [ReportProduct, ReportProduct];
+  retailTotal: number;
+  payableTotal: number;
+  savePercent: number;
+};
+
 export type ConcernItem = {
   key: string;
   label: string;

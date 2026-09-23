@@ -41,6 +41,7 @@ import {
   type CatalogBrand,
   type CatalogCategory,
 } from "@/lib/catalog-metadata";
+import { fetchCatalogProducts } from "@/lib/catalog-products";
 
 /**
  * Catalog fetch via Leafwater fetch-by-filter (same as admin).
@@ -48,45 +49,6 @@ import {
  * membership must be filtered with catId / brandId on the API, not client-side.
  * `lite=1` skips per-product SQLite slot overrides (browse uses /api/admin/slots instead).
  */
-async function fetchCatalogProducts(filters?: {
-  catId?: string;
-  brandId?: string;
-}): Promise<any[]> {
-  const params = new URLSearchParams({
-    fetchAll: "1",
-    limit: "100",
-    lite: "1",
-  });
-  if (filters?.catId && filters.catId !== "all") {
-    params.set("catId", filters.catId);
-  }
-  if (filters?.brandId && filters.brandId !== "all") {
-    params.set("brandId", filters.brandId);
-  }
-
-  const res = await fetch(`/api/admin/products?${params.toString()}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    throw new Error(`Catalog fetch failed: ${res.status}`);
-  }
-
-  const json = await res.json();
-  const batch = Array.isArray(json) ? json : json?.data?.[0]?.products || [];
-  if (!Array.isArray(batch)) return [];
-
-  const seenIds = new Set<string>();
-  const allProducts: any[] = [];
-  batch.forEach((product: any) => {
-    const id = String(product?.id ?? product?._id ?? "");
-    if (!id || seenIds.has(id)) return;
-    seenIds.add(id);
-    allProducts.push(product);
-  });
-  return allProducts;
-}
 const PageBackground = ({ children }: { children: React.ReactNode }) => {
   return (
     <Box

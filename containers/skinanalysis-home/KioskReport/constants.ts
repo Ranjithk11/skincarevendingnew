@@ -45,13 +45,16 @@ export const HEALTH_BADGE_HEIGHT = 48;
 export const HEALTH_STATUS_FONT = 22;
 export const CONCERN_ICON_SIZE = 45;
 export const CONCERN_LABEL_FONT = 12;
-export const SUMMARY_MIN_HEIGHT = 78;
+export const SUMMARY_MIN_HEIGHT = 64;
 export const PRODUCT_CARD_HEIGHT = 200;
 export const PRODUCT_IMAGE_WIDTH = 110;
 export const PRODUCT_IMAGE_HEIGHT = 118;
 export const PRODUCT_CHECKBOX_SIZE = 22;
-export const TRAVEL_CARD_HEIGHT = 180;
-export const TRAVEL_GRID_GAP = 9;
+export const TRAVEL_CARD_HEIGHT = 140;
+export const TRAVEL_GRID_GAP = 8;
+/** Skin routine cards match recommended product card height. */
+export const ROUTINE_CARD_HEIGHT = PRODUCT_CARD_HEIGHT;
+export const ROUTINE_PRODUCT_IMG = 72;
 
 export const TRAVEL_KITS: TravelKit[] = [
   {
