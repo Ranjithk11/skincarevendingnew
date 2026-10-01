@@ -25,6 +25,7 @@ import {
 } from "@/utils/phoneValidation";
 import { USE_MEDIAPIPE_FACE_SCAN } from "@/lib/face-scan-mode";
 import { prefetchFaceLandmarkerModel } from "@/lib/mediapipe-preload";
+import { getJourney, restoreBrowseIfScanAbandoned, setJourneyProfile } from "@/lib/kiosk-journey";
 
 // Email validation - same as Skincare project
 const isValidateEmail = (input: string): boolean | string => {
@@ -87,6 +88,13 @@ export default function Questionnaire() {
   const totalSlides = 2;
 
   // Fetch machine name: priority is API (env var -> db) -> localStorage -> default
+  useEffect(() => {
+    const profile = getJourney()?.profile;
+    if (profile?.name) setName(profile.name);
+    if (profile?.email) setEmail(profile.email);
+    if (profile?.phone) setPhone(profile.phone);
+  }, []);
+
   useEffect(() => {
     const fetchMachineName = async () => {
       try {
@@ -394,6 +402,12 @@ export default function Questionnaire() {
         // Don't block registration if local save fails
       }
 
+      setJourneyProfile({
+        name,
+        email: finalEmail,
+        phone: formattedPhoneNumber,
+      });
+
       // Store skinType in Redux
       dispatch(setSkinType(skinTypeId));
 
@@ -426,11 +440,14 @@ export default function Questionnaire() {
   const handleBack = () => {
     if (currentSlide > 0) {
       setCurrentSlide(currentSlide - 1);
-    } else if (consultationFlow) {
-      router.push(APP_ROUTES.HOME);
-    } else {
-      router.back();
+      return;
     }
+    if (consultationFlow) {
+      router.push(APP_ROUTES.HOME);
+      return;
+    }
+    restoreBrowseIfScanAbandoned();
+    router.back();
   };
 
   return (

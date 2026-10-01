@@ -78,6 +78,15 @@ export type CheckoutInvoiceData = {
     timestamp?: string;
   };
   pdfUrl?: string;
+  journey?: {
+    journey_id?: string;
+    path?: string;
+    source?: string;
+    scan_id?: string;
+    bundle_id?: string;
+    offer?: string;
+    offer_claimed?: boolean;
+  } | null;
 };
 
 export const parseCheckoutPrice = (priceText?: string): number => {
@@ -109,6 +118,11 @@ export function buildCheckoutInvoice(params: {
     total?: number;
     discount?: number;
     payableTotal?: number;
+    journey?: CheckoutInvoiceData["journey"];
+    source?: string;
+    bundle_id?: string;
+    scan_id?: string;
+    journey_id?: string;
     payment?: {
       orderId?: string;
       paymentId?: string;
@@ -289,5 +303,6 @@ export function buildCheckoutInvoice(params: {
     },
     command,
     pdfUrl: params.pdfUrl || "",
+    journey: params.checkoutSummary.journey || null,
   };
 }

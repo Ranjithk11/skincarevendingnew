@@ -37,6 +37,12 @@ import ThubCouponSection from "./cart/ThubCouponSection";
 import SpinWheelRewardSection from "./cart/SpinWheelRewardSection";
 import CheckoutOrderReview from "./cart/CheckoutOrderReview";
 import CartToPayFooter from "./cart/CartToPayFooter";
+import {
+  getScanOfferDiscount,
+  isScanOfferClaimed,
+  SCAN_OFFER_PERCENT,
+  stampCheckoutSummary,
+} from "@/lib/kiosk-journey";
 
 type CartProductProps = {
     open: boolean;
@@ -57,6 +63,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [couponMessage, setCouponMessage] = useState("");
     /** T Hub Exclusive Extra 5% — independent of spin-wheel rewards. */
     const [thubCouponApplied, setThubCouponApplied] = useState(false);
+    const [scanOfferClaimed, setScanOfferClaimed] = useState(false);
     const { reward: spinReward, validateForCart, markRewardRedeemed } = useSpinWheel();
     const [paymentMode, setPaymentMode] = useState<"test" | "live">("live");
     const [isDispensing, setIsDispensing] = useState(false);
@@ -66,8 +73,12 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const [stockByProduct, setStockByProduct] = useState<Record<string, number>>({});
     const [limitNotice, setLimitNotice] = useState({ open: false, message: "" });
     const paymentRecordedRef = useRef<string | null>(null);
-
     const cartItemKey = (item: CartItem) => item.id || item.name;
+
+    useEffect(() => {
+        if (!open) return;
+        setScanOfferClaimed(isScanOfferClaimed());
+    }, [open]);
 
     // Fetch machine location and name from database
     useEffect(() => {
@@ -319,15 +330,19 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
       return Math.round(total * 0.05);
     }, [thubCouponApplied, total]);
 
+    const scanOfferDiscount = useMemo(() => {
+      if (!scanOfferClaimed) return 0;
+      return getScanOfferDiscount(total);
+    }, [scanOfferClaimed, total]);
+
     /**
-     * Checkout offer: EITHER T-Hub 5% OR a spin-wheel cart offer — never both.
-     * Neither is applied until the user clicks Apply.
+     * Checkout offer: best of spin-wheel, T-Hub 5%, or claimed scan-bridge 10%.
      */
     const discount = useMemo(() => {
-      if (spinDiscount > 0) return Math.min(Math.max(0, total), spinDiscount);
-      if (thubDiscount > 0) return Math.min(Math.max(0, total), thubDiscount);
+      const best = Math.max(spinDiscount, thubDiscount, scanOfferDiscount);
+      if (best > 0) return Math.min(Math.max(0, total), best);
       return 0;
-    }, [total, spinDiscount, thubDiscount]);
+    }, [total, spinDiscount, thubDiscount, scanOfferDiscount]);
 
     // Keep spin validation message in sync; never auto-apply spin or T-Hub (user must click Apply).
     useEffect(() => {
@@ -491,16 +506,19 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 try {
                     window.sessionStorage.setItem(
                         "kiosk_checkout_summary",
-                        JSON.stringify({
+                        JSON.stringify(
+                            stampCheckoutSummary({
                             items: itemsToDispense,
                             total,
                             discount,
                             payableTotal,
                             couponApplied,
+                            scanOfferClaimed,
                             spinWheelReward: spinReward,
                             createdAt: Date.now(),
                             payment: cashPayment,
-                        })
+                            })
+                        )
                     );
                 } catch {
                 }
@@ -605,12 +623,14 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                 try {
                     window.sessionStorage.setItem(
                         "kiosk_checkout_summary",
-                        JSON.stringify({
+                        JSON.stringify(
+                            stampCheckoutSummary({
                             items: itemsToDispense,
                             total,
                             discount,
                             payableTotal,
                             couponApplied,
+                            scanOfferClaimed,
                             spinWheelReward: spinReward,
                             createdAt: Date.now(),
                             payment: {
@@ -625,7 +645,8 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                 machineName,
                                 machineLocation,
                             },
-                        })
+                            })
+                        )
                     );
                 } catch {
                 }
@@ -944,14 +965,26 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                         ) : step === "checkout" ? (
                             <>
                                 <CheckoutOrderReview items={items} total={total} />
- 
-                                {/* <ThubCouponSection
-                                  applied={thubCouponApplied}
-                                  discountAmount={thubDiscount}
-                                  disabled={spinDiscount > 0}
-                                  onToggle={handleToggleThubCoupon}
-                                  onRemove={handleRemoveThubCoupon}
-                                />  */}
+
+                                {scanOfferClaimed && scanOfferDiscount > 0 && discount === scanOfferDiscount ? (
+                                  <Box
+                                    sx={{
+                                      mt: 1.5,
+                                      mx: 0,
+                                      p: 1.5,
+                                      borderRadius: 2,
+                                      bgcolor: "#ecfdf5",
+                                      border: "1px solid #bbf7d0",
+                                    }}
+                                  >
+                                    <Typography sx={{ fontWeight: 800, fontSize: 18, color: "#166534" }}>
+                                      Scan match {SCAN_OFFER_PERCENT}% off applied
+                                    </Typography>
+                                    <Typography sx={{ fontSize: 16, color: "#166534" }}>
+                                      You save Rs.{Math.round(scanOfferDiscount)}/- on this visit.
+                                    </Typography>
+                                  </Box>
+                                ) : null}
 
                                 <SpinWheelRewardSection
                                   spinReward={spinReward}

@@ -226,6 +226,17 @@ export async function POST(request: NextRequest) {
 
       // Footer
       declaration: invoice.declaration || "",
+
+      source: invoice.journey?.source || invoice.source || "",
+      slot:
+        command.slotId ??
+        command.slot_id ??
+        firstProduct?.slot_id ??
+        "",
+      id: invoice.journey?.journey_id || invoice.journeyId || "",
+      bundle_id: invoice.journey?.bundle_id || invoice.bundle_id || "",
+      scan_id: invoice.journey?.scan_id || "",
+      journey: invoice.journey || null,
     };
 
     console.log("[send-invoice-email] Sending to webhook:", webhookUrl);

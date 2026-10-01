@@ -4,6 +4,7 @@
 // The endpoint can be overridden via NEXT_PUBLIC_SCAN_COMPLETED_WEBHOOK_URL.
 
 import type { SpinWheelWebhookPayload } from "@/lib/spin-wheel/webhook";
+import { toJourneyWebhook, type KioskJourneyWebhook } from "@/lib/kiosk-journey";
 
 const DEFAULT_SCAN_COMPLETED_WEBHOOK_URL =
   "https://hook.eu1.make.com/2jsb7s7vin1sohcbdc0ttfv31p9mofhu";
@@ -64,6 +65,18 @@ export interface ScanCompletedPayload {
   skinType?: string;
   detectedAttributes?: string[];
   highRecommendation?: unknown[];
+  journey?: KioskJourneyWebhook | null;
+}
+
+function withJourneyFields(explicit?: KioskJourneyWebhook | null) {
+  const journey = explicit ?? toJourneyWebhook();
+  return {
+    source: journey?.source || "",
+    id: journey?.journey_id || "",
+    bundle_id: journey?.bundle_id || "",
+    scan_id: journey?.scan_id || "",
+    journey: journey || null,
+  };
 }
 
 /** Normalize recommend-skin-care / fetch-recommendations API shapes for webhooks. */
@@ -174,6 +187,8 @@ export async function sendScanCompletedWebhook(
 
     const scanTime = payload.scanTime || new Date().toISOString();
 
+    const journeyFields = withJourneyFields(payload.journey);
+
     const primaryBody = {
       event: "scan_completed",
       name: payload.name || "",
@@ -183,6 +198,7 @@ export async function sendScanCompletedWebhook(
       scan_time: scanTime,
       machine_name: payload.machineName || "",
       machine_location: payload.machineLocation || "",
+      ...journeyFields,
     };
 
     const detailedBody = {
@@ -198,6 +214,7 @@ export async function sendScanCompletedWebhook(
       skinType: payload.skinType || "",
       detectedAttributes: payload.detectedAttributes || [],
       highRecommendation: payload.highRecommendation || [],
+      ...journeyFields,
     };
 
     const postWebhook = (url: string, body: object) =>
@@ -456,6 +473,7 @@ export interface PaymentPayload {
   machineName?: string;
   /** Spin wheel reward / coupon details applied at checkout */
   spinWheel?: SpinWheelWebhookPayload | null;
+  journey?: KioskJourneyWebhook | null;
   /** Optional dedup key. If the same key was reported in this session, the
    *  webhook will not fire again. Defaults to a hash of orderId. */
   dedupeKey?: string;
@@ -563,6 +581,12 @@ export async function sendPaymentWebhook(
       .filter(Boolean)
       .join("|");
 
+    const journeyFields = withJourneyFields(payload.journey);
+    const slot =
+      payload.selectedSlots?.[0] ??
+      payload.products?.[0]?.slotId ??
+      "";
+
     const body = {
       event: "payment_success",
       occurred_at: new Date().toISOString(),
@@ -575,6 +599,12 @@ export async function sendPaymentWebhook(
       staff_auth_method: payload.transaction?.staffAuthMethod || "",
       amount: payload.transaction?.amount ?? null,
       selected_slots: payload.selectedSlots || [],
+      source: journeyFields.source,
+      slot,
+      id: journeyFields.id,
+      bundle_id: journeyFields.bundle_id,
+      scan_id: journeyFields.scan_id,
+      journey: journeyFields.journey,
       user: {
         user_id: payload.user?.userId || "",
         name: payload.user?.name || "",
@@ -676,6 +706,7 @@ export interface DispenseSuccessPayload {
   machineLocation?: string;
   /** Machine name where dispense occurred */
   machineName?: string;
+  journey?: KioskJourneyWebhook | null;
   /** Optional dedup key. If the same key was reported in this session, the
    *  webhook will not fire again. Defaults to paymentId + orderId. */
   dedupeKey?: string;
@@ -775,6 +806,12 @@ export async function sendDispenseSuccessWebhook(
       payload.agentName || payload.transaction?.agentName || "";
     const dedupeKey = uniqueKeys[0];
 
+    const journeyFields = withJourneyFields(payload.journey);
+    const slot =
+      payload.command?.slotId ??
+      payload.products?.[0]?.slotId ??
+      "";
+
     const body = {
       event: "dispense_success",
       occurred_at: new Date().toISOString(),
@@ -782,6 +819,12 @@ export async function sendDispenseSuccessWebhook(
       machine_name: payload.machineName || "",
       agent_name: agentName,
       amount: payload.transaction?.amount ?? null,
+      source: journeyFields.source,
+      slot,
+      id: journeyFields.id,
+      bundle_id: journeyFields.bundle_id,
+      scan_id: journeyFields.scan_id,
+      journey: journeyFields.journey,
       user: {
         user_id: payload.user?.userId || "",
         name: payload.user?.name || "",

@@ -38,6 +38,7 @@ import {
   loadMediapipeScanResult,
   type StoredMediapipeScan,
 } from "@/lib/mediapipe-scan-session";
+import { setJourneyBundleId } from "@/lib/kiosk-journey";
 import { fetchCatalogProducts } from "@/lib/catalog-products";
 
 export default function KioskReportPage() {
@@ -297,6 +298,7 @@ export default function KioskReportPage() {
   const handleAddRoutine = (routine: SkinRoutine) => {
     const ids = routine.products.map((p) => p.id);
     const bothSelected = ids.every((id) => selectedIds.includes(id));
+    setJourneyBundleId(bothSelected ? "" : routine.id);
     setSelectedIds((prev) => {
       if (bothSelected) {
         return prev.filter((id) => !ids.includes(id));

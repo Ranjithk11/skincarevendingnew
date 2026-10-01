@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { APP_ROUTES } from "@/utils/routes";
 import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
+import { beginKioskJourney } from "@/lib/kiosk-journey";
 const FALLBACK_LANDING_IMAGE = "/logo/newLanding.png";
 const MACHINE_LOCATION_KEY = "kiosk_machine_location";
 
@@ -191,15 +192,18 @@ export default function NewPromoLanding() {
   }, [speakSequence]);
 
   const handleStartScan = () => {
+    beginKioskJourney("scan", "landing_scan");
     speakMessage("questionnaireIntro");
     router.push("/questionnaire");
   };
 
   const handleBuyProducts = () => {
+    beginKioskJourney("direct", "slots");
     router.push("/slots");
   };
 
   const handleBrowseProducts = () => {
+    beginKioskJourney("direct", "catalog");
     router.push(APP_ROUTES.PRODUCTS);
   };
 

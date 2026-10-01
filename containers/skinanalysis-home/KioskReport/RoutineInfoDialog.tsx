@@ -352,11 +352,11 @@ export default function RoutineInfoDialog({
           }}
         >
           <Icon
-            icon={bothSelected ? "mdi:check" : "mdi:cart-outline"}
+            icon={bothSelected ? "mdi:close" : "mdi:cart-outline"}
             width={20}
             color={bothSelected ? REPORT_GREEN : "#fff"}
           />
-          {bothSelected ? "ADDED TO TOTAL" : `Buy Routine – ₹${routine.payableTotal}`}
+          {bothSelected ? "Remove" : `Buy Routine – ₹${routine.payableTotal}`}
         </Box>
       </Box>
     </Dialog>

@@ -42,6 +42,8 @@ import {
   sendDispenseErrorWebhook,
   sendDispenseSuccessWebhook,
 } from "@/utils/webhook";
+import PostDispenseCrossSell from "@/components/kiosk/PostDispenseCrossSell";
+import { clearKioskJourney, toJourneyWebhook } from "@/lib/kiosk-journey";
 
 /** STM32 / network hang: fail with dispense_error instead of staying silent. */
 const DISPENSE_TIMEOUT_HARD_CAP_MS = 15 * 60_000; // 15 min absolute max
@@ -180,6 +182,7 @@ export default function FeedbackPage() {
     | { status: "error"; message: string }
   >({ status: "idle" });
   const [pickupTimer, setPickupTimer] = useState<number>(0);
+  const [crossSellOpen, setCrossSellOpen] = useState(true);
 
   // Email state
   const [userEmail, setUserEmail] = useState<string>("");
@@ -259,6 +262,7 @@ export default function FeedbackPage() {
         } catch {
         }
       }
+      clearKioskJourney();
       dispatch(clearCart());
       await persistor.purge();
       clearSpinWheelSession();
@@ -278,6 +282,9 @@ export default function FeedbackPage() {
         const raw = window.sessionStorage.getItem("kiosk_checkout_summary");
         if (!raw) return;
         const parsed = JSON.parse(raw);
+        if (!parsed.journey) {
+          parsed.journey = toJourneyWebhook();
+        }
         const enriched = await enrichCheckoutPayment(parsed);
         setCheckoutSummary(enriched);
         try {
@@ -691,6 +698,7 @@ export default function FeedbackPage() {
       } catch {
       }
     }
+    clearKioskJourney();
     router.push(APP_ROUTES.HOME);
   };
 
@@ -921,6 +929,7 @@ export default function FeedbackPage() {
           user={webhookUser}
           products={checkoutItems.map(mapCheckoutItemForWebhook)}
           transaction={checkoutSummary?.payment}
+          selectedSlots={checkoutItems.map((item: any) => item?.slotId).filter(Boolean)}
           machineLocation={mergedMachine.machineLocation}
           machineName={mergedMachine.machineName || "Vending Machine"}
           spinWheel={spinWheelWebhookData}
@@ -1245,6 +1254,11 @@ export default function FeedbackPage() {
 
       {/* Help Dialog */}
       <HelpDialog open={helpDialogOpen} onClose={() => setHelpDialogOpen(false)} />
+      <PostDispenseCrossSell
+        open={dispenseState.status === "done" && crossSellOpen}
+        checkoutItems={checkoutItems}
+        onSkip={() => setCrossSellOpen(false)}
+      />
     </PageBackground>
   );
 }

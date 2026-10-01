@@ -22,6 +22,8 @@ import {
   saveMediapipePreview,
 } from "@/lib/mediapipe-scan-session";
 import { prefetchFaceLandmarkerModel } from "@/lib/mediapipe-preload";
+import { sendScanCompletedWebhook } from "@/utils/webhook";
+import { markScanCompleted } from "@/lib/kiosk-journey";
 
 /** Client-only: MediaPipe WASM breaks SSR / can crash webpack HMR if bundled eagerly. */
 const LiveSkinScanCamera = dynamic(
@@ -130,6 +132,45 @@ export default function FaceScanSelfie() {
 
     if (analysis) {
       saveMediapipeScanResult(analysis);
+      markScanCompleted({
+        scanId: `scan_${Date.now()}`,
+        concerns: (analysis.topConcerns || []).map((c) => c.name),
+      });
+      const sessUser = session?.user as any;
+      const scanWebhookPayload = {
+        name: sessUser?.name as string,
+        email: sessUser?.email as string,
+        phone: (sessUser?.mobileNumber ||
+          sessUser?.phoneNumber ||
+          sessUser?.phone) as string,
+        userId: resolvedUserId,
+        scanTime: analysis.analyzedAt,
+        detectedAttributes: (analysis.topConcerns || []).map((c) => c.name),
+      };
+      fetch("/api/admin/machine-name")
+        .then((res) => res.json())
+        .then((machineData) => {
+          void sendScanCompletedWebhook({
+            ...scanWebhookPayload,
+            machineName:
+              (machineData?.success && machineData.machineName) ||
+              process.env.NEXT_PUBLIC_MACHINE_NAME ||
+              "Vending Machine",
+            machineLocation:
+              (machineData?.success && machineData.machineLocation) ||
+              process.env.NEXT_PUBLIC_MACHINE_LOCATION ||
+              "LeafWater Vending Machine",
+          });
+        })
+        .catch(() => {
+          void sendScanCompletedWebhook({
+            ...scanWebhookPayload,
+            machineName: process.env.NEXT_PUBLIC_MACHINE_NAME || "Vending Machine",
+            machineLocation:
+              process.env.NEXT_PUBLIC_MACHINE_LOCATION ||
+              "LeafWater Vending Machine",
+          });
+        });
     }
 
     saveMediapipePreview(base64);

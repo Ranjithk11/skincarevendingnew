@@ -12,6 +12,7 @@ import { SlotProduct } from "@/components/slots/SlotAddToCartDialog";
 import ProductPrice from "@/containers/skinanalysis-home/Recommendations/components/ProductPrice";
 import ActionButton from "@/components/ui/ActionButton";
 import PageBackground from "@/components/ui/PageBackground";
+import DirectToScanBridge from "@/components/kiosk/DirectToScanBridge";
 import {
   findProductInMap,
   indexProductsById,
@@ -382,7 +383,10 @@ export default function SlotsPage() {
           minHeight: "100vh",
           width: "100%",
           position: "relative",
-          overflow: "hidden",
+          overflowX: "hidden",
+          overflowY: "auto",
+          height: "100vh",
+          WebkitOverflowScrolling: "touch",
         }}
       >
         <TopLogo
@@ -402,6 +406,7 @@ export default function SlotsPage() {
             pb: 4,
           }}
         >
+          <DirectToScanBridge compact />
           <Typography
             sx={{
               textAlign: "center",

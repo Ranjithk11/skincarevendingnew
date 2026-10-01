@@ -325,8 +325,8 @@ export function getConcernChipTone(label: string, skinType: SkinTypeId): ChipTon
   return palette[match?.index ?? 0];
 }
 
-/** Keep professional summary to ~2 on-screen lines (656px @ 12px). */
-function shortenSummary(text: string, maxSentences = 2, maxChars = 160): string {
+/** Keep the summary to a couple of complete sentences — never end on "and." */
+function shortenSummary(text: string, maxSentences = 2, maxChars = 240): string {
   const clean = String(text || "")
     .replace(/^-+\s*/gm, "")
     .replace(/>/g, "")
@@ -338,11 +338,65 @@ function shortenSummary(text: string, maxSentences = 2, maxChars = 160): string 
   let out = sentences.slice(0, maxSentences).join(" ");
 
   if (out.length > maxChars) {
-    out = out.slice(0, maxChars).replace(/\s+\S*$/, "").trim();
-    if (out && !/[.!?]$/.test(out)) out += ".";
+    const clipped = out.slice(0, maxChars).replace(/\s+\S*$/, "").trim();
+    const lastStop = Math.max(
+      clipped.lastIndexOf("."),
+      clipped.lastIndexOf("!"),
+      clipped.lastIndexOf("?")
+    );
+    if (lastStop >= 40) {
+      out = clipped.slice(0, lastStop + 1);
+    } else {
+      out = clipped
+        .replace(/\b(and|or|with|of|the|a|an|to|for|in|on)$/i, "")
+        .trim();
+      if (out && !/[.!?]$/.test(out)) out += ".";
+    }
   }
 
   return out || FALLBACK_SUMMARY;
+}
+
+/** Turn the long "following concerns" explainer into a short concern list. */
+function summaryFromConcernExplainer(text: string): string | null {
+  const token = normalizeText(text);
+  if (!token.includes("following concerns") && !token.includes("looks darkened")) {
+    return null;
+  }
+
+  const rules: Array<{ keys: string[]; label: string }> = [
+    { keys: ["below your eyes", "dark circle", "darkened than usual"], label: "dark circles" },
+    { keys: ["pigmentation", "darker than the rest", "dark spot"], label: "pigmentation" },
+    { keys: ["uneven", "complexion", "texture"], label: "uneven skin tone" },
+    { keys: ["pore", "sebum", "openings on the skin"], label: "visible pores" },
+    { keys: ["acne", "pimple", "breakout"], label: "acne" },
+    { keys: ["wrinkle", "fine line"], label: "fine lines" },
+  ];
+
+  const labels: string[] = [];
+  for (const rule of rules) {
+    if (rule.keys.some((key) => token.includes(key)) && !labels.includes(rule.label)) {
+      labels.push(rule.label);
+    }
+  }
+  if (!labels.length) return null;
+
+  return `Primary concerns are ${formatConcernList(labels)}. Brightening, hydration, and daily SPF are recommended.`;
+}
+
+function readSkinSummary(reportSource: any): string {
+  const candidates = [
+    reportSource?.skinSummary,
+    reportSource?.productRecommendation?.skinSummary,
+    reportSource?.data?.[0]?.skinSummary,
+    reportSource?.data?.[0]?.productRecommendation?.skinSummary,
+    reportSource?.data?.skinSummary,
+  ];
+  for (const value of candidates) {
+    const text = String(value || "").trim();
+    if (text) return text;
+  }
+  return "";
 }
 
 function summaryItemText(item: any): string {
@@ -367,6 +421,9 @@ function getAnalysisSummaryList(reportSource: any): any[] {
 }
 
 export function extractProfessionalSummary(reportSource: any): string {
+  const fromExplainer = summaryFromConcernExplainer(readSkinSummary(reportSource));
+  if (fromExplainer) return fromExplainer;
+
   const summary = getAnalysisSummaryList(reportSource);
 
   const professional = summary.find((item: any) =>

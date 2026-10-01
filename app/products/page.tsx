@@ -42,6 +42,7 @@ import {
   type CatalogCategory,
 } from "@/lib/catalog-metadata";
 import { fetchCatalogProducts } from "@/lib/catalog-products";
+import DirectToScanBridge from "@/components/kiosk/DirectToScanBridge";
 
 /**
  * Catalog fetch via Leafwater fetch-by-filter (same as admin).
@@ -56,7 +57,7 @@ const PageBackground = ({ children }: { children: React.ReactNode }) => {
         minHeight: "100%",
         width: "100%",
         position: "relative",
-        overflow: "hidden",
+        overflow: "visible",
         backgroundColor: "#ffffff",
       }}
     >
@@ -590,6 +591,7 @@ export default function BrowseProductsPage() {
             position: "relative",
           }}
         >
+          <DirectToScanBridge hidden={showBackToReport} />
           {/* Title */}
           <Typography
             sx={{

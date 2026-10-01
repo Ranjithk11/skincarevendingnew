@@ -23,6 +23,12 @@ import {
   TITLE_FONT,
 } from "./constants";
 import type { ReportProduct } from "./types";
+import {
+  getScanOfferDiscount,
+  isScanOfferClaimed,
+  SCAN_OFFER_PERCENT,
+  stampCheckoutSummary,
+} from "@/lib/kiosk-journey";
 
 type PayMethod = "cash" | "upi" | "card";
 
@@ -100,6 +106,7 @@ export default function ScanToPaySection({ products, total }: Props) {
   const [qrImageUrl, setQrImageUrl] = useState("");
   const [qrContent, setQrContent] = useState("");
   const [qrAmount, setQrAmount] = useState(0);
+  const [scanOfferClaimed, setScanOfferClaimed] = useState(false);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -117,6 +124,14 @@ export default function ScanToPaySection({ products, total }: Props) {
 
   productsRef.current = products;
   totalRef.current = total;
+
+  useEffect(() => {
+    setScanOfferClaimed(isScanOfferClaimed());
+  }, []);
+
+  const scanDiscount = scanOfferClaimed ? getScanOfferDiscount(total) : 0;
+  const payableTotal = Math.max(0, total - scanDiscount);
+  totalRef.current = payableTotal;
 
   useEffect(() => {
     const fetchMachineSettings = async () => {
@@ -170,10 +185,10 @@ export default function ScanToPaySection({ products, total }: Props) {
 
   useEffect(() => {
     if (!showQR) return;
-    if (Math.round(total) !== Math.round(qrAmount)) {
+    if (Math.round(payableTotal) !== Math.round(qrAmount)) {
       resetQr();
     }
-  }, [total, qrAmount, showQR, resetQr]);
+  }, [payableTotal, qrAmount, showQR, resetQr]);
 
   const backToMethods = useCallback(() => {
     resetQr();
@@ -217,12 +232,14 @@ export default function ScanToPaySection({ products, total }: Props) {
       try {
         window.sessionStorage.setItem(
           "kiosk_checkout_summary",
-          JSON.stringify({
+          JSON.stringify(
+            stampCheckoutSummary({
             items: itemsToDispense,
-            total: amount,
-            discount: 0,
+            total,
+            discount: scanDiscount,
             payableTotal: amount,
-            couponApplied: false,
+            couponApplied: scanDiscount > 0,
+            scanOfferClaimed,
             createdAt: Date.now(),
             payment: {
               orderId: payload.orderId,
@@ -242,7 +259,8 @@ export default function ScanToPaySection({ products, total }: Props) {
               machineName,
               machineLocation,
             },
-          })
+            })
+          )
         );
       } catch {
         // ignore storage errors
@@ -294,7 +312,7 @@ export default function ScanToPaySection({ products, total }: Props) {
               orderId: orderData?.order?.id || payload.paymentId || payload.orderId,
               items: pricedItems,
               totalAmount: amount,
-              discountAmount: 0,
+              discountAmount: scanDiscount,
               paymentId: payload.paymentId,
               razorpayOrderId: payload.orderId,
               paymentMode,
@@ -305,7 +323,7 @@ export default function ScanToPaySection({ products, total }: Props) {
         }
       })();
     },
-    [router]
+    [router, scanDiscount, scanOfferClaimed, total]
   );
 
   const startPolling = useCallback(
@@ -376,12 +394,12 @@ export default function ScanToPaySection({ products, total }: Props) {
 
   const generateQR = useCallback(async () => {
     if (isLoading || isCompleting) return;
-    if (!products.length || total <= 0) {
+    if (!products.length || payableTotal <= 0) {
       toast.error("Select at least one product");
       return;
     }
 
-    const amountPaise = Math.round(total * 100);
+    const amountPaise = Math.round(payableTotal * 100);
     if (!Number.isFinite(amountPaise) || amountPaise <= 0) {
       toast.error("Invalid amount");
       return;
@@ -407,7 +425,7 @@ export default function ScanToPaySection({ products, total }: Props) {
       }
       setQrImageUrl(json.data.imageUrl || "");
       setQrContent(typeof json.data.imageContent === "string" ? json.data.imageContent : "");
-      setQrAmount(total);
+      setQrAmount(payableTotal);
       setShowQR(true);
       setIdlePaused(true);
       startPolling(json.data.qrCodeId, json.data.orderId);
@@ -417,11 +435,11 @@ export default function ScanToPaySection({ products, total }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, isCompleting, products.length, total, setIdlePaused, startPolling]);
+  }, [isLoading, isCompleting, products.length, payableTotal, setIdlePaused, startPolling]);
 
   const selectMethod = useCallback(
     (method: PayMethod) => {
-      if (!products.length || total <= 0) {
+      if (!products.length || payableTotal <= 0) {
         toast.error("Select at least one product");
         return;
       }
@@ -430,7 +448,7 @@ export default function ScanToPaySection({ products, total }: Props) {
         void generateQR();
       }
     },
-    [generateQR, products.length, total]
+    [generateQR, products.length, payableTotal]
   );
 
   const handleCashConfirmed = useCallback(
@@ -482,8 +500,8 @@ export default function ScanToPaySection({ products, total }: Props) {
     [recordAndDispense]
   );
 
-  const amountPaise = Math.round(Math.max(0, total) * 100);
-  const canPay = products.length > 0 && total > 0 && !isCompleting;
+  const amountPaise = Math.round(Math.max(0, payableTotal) * 100);
+  const canPay = products.length > 0 && payableTotal > 0 && !isCompleting;
 
   // Full-screen card / cash flows (cover kiosk). Back returns to method list.
   if (paymentMethod === "card" || paymentMethod === "cash") {
@@ -513,7 +531,7 @@ export default function ScanToPaySection({ products, total }: Props) {
           />
         ) : (
           <CashAgentPayment
-            amount={total}
+            amount={payableTotal}
             onBack={backToMethods}
             onConfirmed={(auth) => void handleCashConfirmed(auth)}
           />
@@ -611,8 +629,13 @@ export default function ScanToPaySection({ products, total }: Props) {
                 lineHeight: 1.1,
               }}
             >
-              ₹{Math.round(total)}
+              ₹{Math.round(payableTotal)}
             </Typography>
+            {scanDiscount > 0 ? (
+              <Typography sx={{ fontSize: 12, color: REPORT_GREEN, fontWeight: 700 }}>
+                Scan match {SCAN_OFFER_PERCENT}% off · was ₹{Math.round(total)}
+              </Typography>
+            ) : null}
 
             {!upiActive ? (
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, mt: 0.75 }}>
