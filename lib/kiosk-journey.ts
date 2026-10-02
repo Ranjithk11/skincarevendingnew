@@ -95,8 +95,6 @@ export function beginKioskJourney(
 ): KioskJourney {
   const next: KioskJourney = {
     journeyId: newId("jny"),
-    path,
-    source,
     offerPending: false,
     offerClaimed: false,
     offerPercent: SCAN_OFFER_PERCENT,
@@ -226,11 +224,13 @@ export function stampCheckoutSummary<T extends Record<string, unknown>>(
   journey_id: string;
 } {
   const journey = toJourneyWebhook();
-  const items = Array.isArray((summary as { items?: unknown[] }).items)
-    ? ((summary as { items: Array<{ slotId?: string | number }> }).items || [])
-    : [];
+  const rawItems = (summary as unknown as { items?: unknown }).items;
+  const items = Array.isArray(rawItems) ? rawItems : [];
   const slots = items
-    .map((item) => item?.slotId)
+    .map((item) => {
+      if (!item || typeof item !== "object") return undefined;
+      return (item as { slotId?: string | number }).slotId;
+    })
     .filter((slot): slot is string | number => slot !== undefined && slot !== "");
   return {
     ...summary,
