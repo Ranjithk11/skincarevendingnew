@@ -66,8 +66,7 @@ export default function UpiQrPayment({
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     pollingRef.current = null;
     timeoutRef.current = null;
-    setIdlePaused(false);
-  }, [setIdlePaused]);
+  }, []);
 
   const reportError = useCallback(
     (message: string) => {
@@ -214,10 +213,18 @@ export default function UpiQrPayment({
     }
   }, [autoTrigger, generateQR]);
 
-  // Cleanup on unmount
+  // Keep idle logout off for the whole QR wait (do not resume in cleanup —
+  // startPolling() calls cleanup() first and that used to send the kiosk home).
   useEffect(() => {
+    setIdlePaused(isLoading || showQR || isCompleting);
+  }, [isLoading, showQR, isCompleting, setIdlePaused]);
+
   useEffect(() => {
-    return () => cleanup();
+    return () => {
+      cleanup();
+      setIdlePaused(false);
+    };
+  }, [cleanup, setIdlePaused]);
 
   const handleCancel = () => {
     cleanup();
