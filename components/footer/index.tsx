@@ -77,6 +77,8 @@ const FooterComponent = () => {
               {" "}
               SF 201, Second Floor, Road Number 55, Opp. Peddamma gudi Entrance,
               Jubilee Hills, Hyderabad - 500033
+              {/* 4RRM+G4 Morya Grand, 501, Andheri West, Mumbai, Maharashtra 400053 */}
+
             </Typography>
           </Grid>
          <Grid item xs={12}>

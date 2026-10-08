@@ -70,22 +70,46 @@ export async function POST(request: NextRequest) {
     if (machineName?.trim()) sqliteDb.setMachineName(machineName.trim());
     if (machineLocation?.trim()) sqliteDb.setMachineLocation(machineLocation.trim());
 
+    let landingImage: Awaited<
+      ReturnType<
+        typeof import("@/lib/landing-image.server").resolveLandingImageUrl
+      >
+    > | null = null;
     try {
-      const { clearLandingImageCaches } = await import(
+      const { clearLandingImageCaches, resolveLandingImageUrl } = await import(
         "@/lib/landing-image.server"
       );
       clearLandingImageCaches();
-    } catch {
-      /* non-fatal */
+      // Always pull Make for the new machine name, even if today's quota is used.
+      landingImage = await resolveLandingImageUrl({
+        force: true,
+        bypassLimit: true,
+      });
+    } catch (err) {
+      console.warn("[Machine Settings API] Landing image refresh failed:", err);
     }
+
+    const landingRefreshed = landingImage?.source === "api";
 
     return NextResponse.json({
       success: true,
       machineId: machineId.trim(),
       machineName: machineName?.trim() || "",
       machineLocation: machineLocation?.trim() || "",
-      message: "Machine settings updated successfully",
+      message: landingRefreshed
+        ? "Machine settings updated. Landing image fetched for this location."
+        : "Machine settings updated successfully",
       refreshLandingImage: true,
+      landingImageRefreshed: landingRefreshed,
+      landingImage: landingImage
+        ? {
+            imageUrl: landingImage.imageUrl,
+            location: landingImage.location,
+            source: landingImage.source,
+            makeCallsToday: landingImage.makeCallsToday,
+            makeCallsRemaining: landingImage.makeCallsRemaining,
+          }
+        : null,
     });
   } catch (error: unknown) {
     const message =

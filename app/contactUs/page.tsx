@@ -19,6 +19,7 @@ const ContactUs = () => {
             <Typography>
               SF 201, Second Floor, Road Number 55, Opp. Peddamma Gudi Entrance, Jubilee Hills,
               Hyderabad - 500033
+              {/* 4RRM+G4 Morya Grand, 501, Andheri West, Mumbai, Maharashtra 400053 */}
             </Typography>
           </Box>
 

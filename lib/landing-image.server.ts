@@ -8,7 +8,7 @@ import {
 } from "@/lib/landing-image.shared";
 
 /** Max Make.com landing-image fetches per calendar day (per machine DB). */
-const DAILY_MAKE_LIMIT = 10;
+const DAILY_MAKE_LIMIT = 50;
 
 function todayKey(): string {
   const now = new Date();
@@ -108,7 +108,10 @@ export function clearLandingImageCaches(): void {
   }
 }
 
-async function fetchLandingImageFromBackend(location: string): Promise<{
+async function fetchLandingImageFromBackend(
+  location: string,
+  opts?: { bypassLimit?: boolean }
+): Promise<{
   imageUrl: string;
   updatedAt: string;
   filename: string;
@@ -123,7 +126,8 @@ async function fetchLandingImageFromBackend(location: string): Promise<{
   const normalizedLocation = normalizeLocationCode(location);
   if (!normalizedLocation) return empty;
 
-  if (!canCallMake()) {
+  const bypassLimit = Boolean(opts?.bypassLimit);
+  if (!bypassLimit && !canCallMake()) {
     console.warn(
       "[landing-image] Daily Make limit reached (",
       DAILY_MAKE_LIMIT,
@@ -196,8 +200,10 @@ let inFlightKey = "";
 
 async function resolveLandingImageUrlInner(opts?: {
   force?: boolean;
+  bypassLimit?: boolean;
 }): Promise<ResolveResult> {
   const force = Boolean(opts?.force);
+  const bypassLimit = Boolean(opts?.bypassLimit);
   const today = todayKey();
   const makeCallsToday = () => getMakeCallCount();
   const remaining = () => Math.max(0, DAILY_MAKE_LIMIT - getMakeCallCount());
@@ -235,9 +241,9 @@ async function resolveLandingImageUrlInner(opts?: {
       };
     }
 
-    // Force or miss: call Make if under daily limit of 10.
-    if (canCallMake()) {
-      const meta = await fetchLandingImageFromBackend(location);
+    // Force or miss: call Make if under daily limit (admin location change bypasses).
+    if (bypassLimit || canCallMake()) {
+      const meta = await fetchLandingImageFromBackend(location, { bypassLimit });
       if (meta.imageUrl) {
         const ok = await isRemoteImageAccessible(meta.imageUrl);
         if (ok) {
@@ -291,13 +297,16 @@ async function resolveLandingImageUrlInner(opts?: {
 
 /**
  * Resolve landing image using admin machine name.
- * Make.com is called at most 10 times per day (force refresh uses that budget).
+ * Make.com is called at most 50 times per day (force refresh uses that budget).
+ * Admin machine-name save passes bypassLimit so a location change always fetches.
  */
 export async function resolveLandingImageUrl(opts?: {
   force?: boolean;
+  bypassLimit?: boolean;
 }): Promise<ResolveResult> {
   const force = Boolean(opts?.force);
-  const key = `${force ? "force" : "normal"}:${todayKey()}:${getAdminMachineLocationCode()}`;
+  const bypassLimit = Boolean(opts?.bypassLimit);
+  const key = `${force ? "force" : "normal"}:${bypassLimit ? "bypass" : "cap"}:${todayKey()}:${getAdminMachineLocationCode()}`;
 
   if (inFlight && inFlightKey === key) {
     return inFlight;

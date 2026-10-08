@@ -196,7 +196,6 @@ export default function UpiQrPayment({
       setQrCodeId(json.data.qrCodeId);
       setOrderId(json.data.orderId);
       setShowQR(true);
-      setIdlePaused(true);
 
       // Start polling for payment
       startPolling(json.data.qrCodeId, json.data.orderId);
@@ -205,7 +204,7 @@ export default function UpiQrPayment({
       reportError(err.message || "Failed to generate QR code");
       setIsLoading(false);
     }
-  }, [amountPaise, currency, receipt, mode, isLoading, onProcessingStart, reportError, setIdlePaused, startPolling]);
+  }, [amountPaise, currency, receipt, mode, isLoading, onProcessingStart, reportError, startPolling]);
 
   // Auto-trigger on mount if requested
   useEffect(() => {
@@ -217,8 +216,8 @@ export default function UpiQrPayment({
 
   // Cleanup on unmount
   useEffect(() => {
+  useEffect(() => {
     return () => cleanup();
-  }, [cleanup]);
 
   const handleCancel = () => {
     cleanup();

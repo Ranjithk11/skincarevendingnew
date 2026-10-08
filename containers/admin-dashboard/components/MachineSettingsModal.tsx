@@ -95,14 +95,20 @@ export default function MachineSettingsModal({
         });
         setSource("database");
         setSaveSuccess(true);
-        // Next home load must re-fetch Make landing image for the new machine.
         try {
-          localStorage.setItem("kiosk_landing_image_force", "1");
-          localStorage.removeItem("kiosk_landing_machine_fp");
+          const nameKey = machineName.trim().toUpperCase();
+          if (data.landingImageRefreshed) {
+            // Server already fetched Make for this location — home can use cache.
+            localStorage.removeItem("kiosk_landing_image_force");
+            if (nameKey) localStorage.setItem("kiosk_landing_machine_fp", nameKey);
+          } else {
+            localStorage.setItem("kiosk_landing_image_force", "1");
+            localStorage.removeItem("kiosk_landing_machine_fp");
+          }
         } catch {
           // ignore
         }
-        setTimeout(() => setSaveSuccess(false), 3000);
+        setTimeout(() => setSaveSuccess(false), 4000);
       } else {
         setError(data.error || "Failed to save machine settings");
       }
@@ -251,7 +257,7 @@ export default function MachineSettingsModal({
                 >
                   <CheckCircleIcon sx={{ color: "#2e7d32", fontSize: 24 }} />
                   <Typography sx={{ fontSize: 12, color: "#2e7d32" }}>
-                    Machine settings saved! Next sale will use these values.
+                    Settings saved. Landing image fetched for this location — go home to see it.
                   </Typography>
                 </Box>
               )}
