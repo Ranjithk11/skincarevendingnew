@@ -189,9 +189,9 @@ export default function MachineSettingsModal({
                 label="Machine Name"
                 value={machineName}
                 onChange={(e) => setMachineName(e.target.value)}
-                placeholder="e.g., STUDIO, T-HUB, GMR-AIRPORT-M4"
+                placeholder="e.g., GMR-AIRPORT-M4, T-HUB, SPLANGXBEAUTYPOD, COMMON"
                 sx={{ mb: 2 }}
-                helperText="Must match Make landing image location code (STUDIO, T-HUB, COMMON, …)"
+                helperText="Must match a Make LocationImages name: GMR-AIRPORT-M4, T-HUB, SPLANGXBEAUTYPOD, or COMMON"
                 size="medium"
                 InputLabelProps={{ sx: { fontSize: 24, fontWeight: 700 } }}
                 InputProps={{ sx: { fontSize: 24, fontWeight: 600 } }}

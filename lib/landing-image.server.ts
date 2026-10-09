@@ -4,11 +4,14 @@ import {
   extractLandingImageMeta,
   getDefaultLandingImage,
   isRemoteImageAccessible,
+  makeLocationCandidates,
   normalizeLocationCode,
 } from "@/lib/landing-image.shared";
 
 /** Max Make.com landing-image fetches per calendar day (per machine DB). */
 const DAILY_MAKE_LIMIT = 50;
+/** Re-check Make for a newer image even when today's cache exists. */
+const CACHE_REVALIDATE_MS = 10 * 60 * 1000;
 
 function todayKey(): string {
   const now = new Date();
@@ -62,7 +65,15 @@ type LandingImageCache = {
   location: string;
   updatedAt?: string;
   filename?: string;
+  fetchedAt?: string;
 };
+
+function isCacheStale(cached: LandingImageCache | null): boolean {
+  if (!cached?.fetchedAt) return true;
+  const fetchedAt = Date.parse(cached.fetchedAt);
+  if (!Number.isFinite(fetchedAt)) return true;
+  return Date.now() - fetchedAt > CACHE_REVALIDATE_MS;
+}
 
 function readCache(location: string): LandingImageCache | null {
   try {
@@ -87,6 +98,7 @@ function writeCache(
     location: normalizeLocationCode(location),
     updatedAt: meta?.updatedAt || new Date().toISOString(),
     filename: meta?.filename || "",
+    fetchedAt: new Date().toISOString(),
   };
   sqliteDb.setSetting(
     cacheSettingKey(location),
@@ -95,10 +107,10 @@ function writeCache(
   );
 }
 
-/** Clear cache for admin machine name only (+ shared COMMON fallback). */
+/** Clear cache for admin machine name, Make aliases, and COMMON. */
 export function clearLandingImageCaches(): void {
   const adminName = getAdminMachineLocationCode();
-  const keys = [adminName, "COMMON"].filter(Boolean);
+  const keys = makeLocationCandidates(adminName || "COMMON");
   for (const key of keys) {
     sqliteDb.setSetting(
       cacheSettingKey(key),
@@ -160,7 +172,28 @@ async function fetchLandingImageFromBackend(
       return empty;
     }
 
-    const json = await response.json();
+    const raw = await response.text();
+    const trimmed = raw.trim();
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+      console.warn(
+        "[landing-image] Make returned no JSON for",
+        normalizedLocation,
+        trimmed.slice(0, 80)
+      );
+      return empty;
+    }
+
+    let json: unknown;
+    try {
+      json = JSON.parse(trimmed);
+    } catch {
+      console.warn(
+        "[landing-image] Make JSON parse failed for",
+        normalizedLocation
+      );
+      return empty;
+    }
+
     const meta = extractLandingImageMeta(json);
     if (!meta.imageUrl) {
       console.warn(
@@ -208,25 +241,19 @@ async function resolveLandingImageUrlInner(opts?: {
   const makeCallsToday = () => getMakeCallCount();
   const remaining = () => Math.max(0, DAILY_MAKE_LIMIT - getMakeCallCount());
 
-  // Location = admin dashboard machine name only (any value).
+  // Location = admin dashboard machine name, plus Make aliases (GMR-HYD-LW-M4 → GMR-AIRPORT-M4).
   const primaryLocation = getAdminMachineLocationCode() || "COMMON";
-
-  const locationsToTry = Array.from(
-    new Set(
-      [primaryLocation, primaryLocation === "COMMON" ? "" : "COMMON"].filter(
-        Boolean
-      )
-    )
-  );
+  const locationsToTry = makeLocationCandidates(primaryLocation);
 
   for (const location of locationsToTry) {
     const cached = readCache(location);
     const cacheFresh = Boolean(
       cached && cached.date === today && cached.imageUrl
     );
+    const cacheStale = isCacheStale(cached);
 
-    // Serve cache unless force refresh (and Make budget remains).
-    if (!force && cacheFresh && cached) {
+    // Serve cache unless force, miss, or Make may have a newer imageUrl.
+    if (!force && cacheFresh && cached && !cacheStale) {
       const version = cached.updatedAt || cached.date;
       return {
         imageUrl: withCacheBust(cached.imageUrl, version),
@@ -235,20 +262,22 @@ async function resolveLandingImageUrlInner(opts?: {
         forced: false,
         updatedAt: cached.updatedAt || "",
         primaryLocation,
-        usedFallback: location !== primaryLocation,
+        usedFallback: location === "COMMON" && primaryLocation !== "COMMON",
         makeCallsToday: makeCallsToday(),
         makeCallsRemaining: remaining(),
       };
     }
 
-    // Force or miss: call Make if under daily limit (admin location change bypasses).
+    // Force, stale, or miss: call Make (admin machine-name save bypasses the daily cap).
     if (bypassLimit || canCallMake()) {
       const meta = await fetchLandingImageFromBackend(location, { bypassLimit });
       if (meta.imageUrl) {
         const ok = await isRemoteImageAccessible(meta.imageUrl);
         if (ok) {
           writeCache(location, meta.imageUrl, meta);
-          // Bust browser cache on every successful Make pull.
+          if (location !== primaryLocation && primaryLocation !== "COMMON") {
+            writeCache(primaryLocation, meta.imageUrl, meta);
+          }
           const version = meta.updatedAt || new Date().toISOString();
           return {
             imageUrl: withCacheBust(meta.imageUrl, version),
@@ -257,7 +286,7 @@ async function resolveLandingImageUrlInner(opts?: {
             forced: force,
             updatedAt: meta.updatedAt || "",
             primaryLocation,
-            usedFallback: location !== primaryLocation,
+            usedFallback: location === "COMMON" && primaryLocation !== "COMMON",
             makeCallsToday: makeCallsToday(),
             makeCallsRemaining: remaining(),
           };
@@ -275,7 +304,7 @@ async function resolveLandingImageUrlInner(opts?: {
         forced: force,
         updatedAt: cached.updatedAt || "",
         primaryLocation,
-        usedFallback: location !== primaryLocation,
+        usedFallback: location === "COMMON" && primaryLocation !== "COMMON",
         makeCallsToday: makeCallsToday(),
         makeCallsRemaining: remaining(),
       };

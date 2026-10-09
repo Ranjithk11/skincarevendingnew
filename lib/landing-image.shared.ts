@@ -8,12 +8,50 @@ export function getDefaultLandingImage(): string {
   return DEFAULT_LANDING_IMAGE;
 }
 
+/** Make.com LocationImages `location` values (the real machine names). */
+export const MAKE_LOCATION_NAMES = [
+  "GMR-AIRPORT-M4",
+  "SPLANGXBEAUTYPOD",
+  "T-HUB",
+  "COMMON",
+] as const;
+
 /** Normalize machine location to API location codes (e.g. t_hub -> T-HUB). */
 export function normalizeLocationCode(location: string): string {
   return String(location ?? "")
     .trim()
     .toUpperCase()
     .replace(/_/g, "-");
+}
+
+function compactLocation(location: string): string {
+  return normalizeLocationCode(location).replace(/-/g, "");
+}
+
+/** Map admin machine name to the Make LocationImages key. */
+export function resolveMakeLocationCode(machineName: string): string {
+  const exact = normalizeLocationCode(machineName);
+  if (!exact) return "COMMON";
+
+  const hydAirport = exact.match(/^GMR-HYD(?:-LW)?-M(\d+)$/);
+  if (hydAirport) return `GMR-AIRPORT-M${hydAirport[1]}`;
+
+  const known = MAKE_LOCATION_NAMES.find(
+    (name) => name === exact || compactLocation(name) === compactLocation(exact)
+  );
+  return known || exact;
+}
+
+/**
+ * Make.com location keys to try for an admin machine name.
+ * Tries the Make store name first (GMR-AIRPORT-M4, T-HUB, SPLANGXBEAUTYPOD, COMMON).
+ */
+export function makeLocationCandidates(machineName: string): string[] {
+  const exact = normalizeLocationCode(machineName);
+  if (!exact) return ["COMMON"];
+
+  const resolved = resolveMakeLocationCode(exact);
+  return Array.from(new Set([resolved, exact, "COMMON"]));
 }
 
 export function extractLandingImageUrl(payload: unknown): string {
