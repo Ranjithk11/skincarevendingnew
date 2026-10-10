@@ -69,6 +69,8 @@ export const useVoiceMessages = () => {
     questionnaireSlide2: "Select your skin type to continue.",
     selectProduct: "Please select a product",
     addToCart: "Product added to cart",
+    dispenseIssue:
+      "There is an issue with dispensing. We have another machine at Gate 11. Kindly go and buy there.",
     removeFromCart: "Product removed from cart",
     checkout: "Proceeding to checkout",
     checkoutTapCart: "Please  proceed to checkout.",

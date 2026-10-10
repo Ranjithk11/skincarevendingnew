@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { AdminDashboard } from "@/containers/admin-dashboard";
-import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal, TravelKitsStaffModal } from "@/containers/admin-dashboard/components";
+import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal, TravelKitsStaffModal, DispenseIssueModal } from "@/containers/admin-dashboard/components";
 import { Snackbar, Alert } from "@mui/material";
 import { useRouter } from "next/navigation";
 import {
@@ -56,6 +56,7 @@ export default function AdminDashboardPage() {
   // Machine settings modal state
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [travelKitsModalOpen, setTravelKitsModalOpen] = useState(false);
+  const [dispenseIssueModalOpen, setDispenseIssueModalOpen] = useState(false);
 
   // Redux queries
   const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetVendingSlotsQuery();
@@ -448,6 +449,10 @@ export default function AdminDashboardPage() {
     setTravelKitsModalOpen(true);
   };
 
+  const handleDispenseIssueClick = () => {
+    setDispenseIssueModalOpen(true);
+  };
+
   const handleSyncClick = async () => {
     try {
       await syncQuantities();
@@ -798,6 +803,7 @@ export default function AdminDashboardPage() {
         onLoadProductsClick={handleLoadProductsClick}
         onSettingsClick={handleSettingsClick}
         onTravelKitsClick={handleTravelKitsClick}
+        onDispenseIssueClick={handleDispenseIssueClick}
         onSyncClick={handleSyncClick}
         onSlotClick={handleSlotClick}
         onProductEditClick={handleProductEditClick}
@@ -891,6 +897,11 @@ export default function AdminDashboardPage() {
       <TravelKitsStaffModal
         open={travelKitsModalOpen}
         onClose={() => setTravelKitsModalOpen(false)}
+      />
+
+      <DispenseIssueModal
+        open={dispenseIssueModalOpen}
+        onClose={() => setDispenseIssueModalOpen(false)}
       />
 
       {/* Success/Error Snackbar */}

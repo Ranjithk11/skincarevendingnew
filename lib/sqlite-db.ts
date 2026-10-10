@@ -1723,6 +1723,20 @@ export const sqliteDb = {
     );
   },
 
+  /** When true, kiosk buy/checkout is blocked (dispense hardware issue). Default: off. */
+  getDispenseIssueEnabled(): boolean {
+    const raw = this.getSetting('dispense_issue_enabled', 'false');
+    return raw === 'true' || raw === '1';
+  },
+
+  setDispenseIssueEnabled(enabled: boolean): boolean {
+    return this.setSetting(
+      'dispense_issue_enabled',
+      enabled ? 'true' : 'false',
+      'Block kiosk purchases when the dispenser has an issue'
+    );
+  },
+
   /**
    * Allocate a unique tax-invoice number for a payment/order.
    * Format: LW/MM/YY/NNN (monthly sequence, 3+ digits).

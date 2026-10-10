@@ -9,3 +9,4 @@ export { default as ViewSlotsModal } from "./ViewSlotsModal";
 export { default as EditProductModal } from "./EditProductModal";
 export { default as MachineSettingsModal } from "./MachineSettingsModal";
 export { default as TravelKitsStaffModal } from "./TravelKitsStaffModal";
+export { default as DispenseIssueModal } from "./DispenseIssueModal";

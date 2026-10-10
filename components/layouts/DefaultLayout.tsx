@@ -25,6 +25,8 @@ import { clearCart } from "@/redux/reducers/cartSlice";
 import { SOCIAL_LINKS } from "@/utils/constants";
 import { AiFillFacebook, AiFillInstagram, AiFillYoutube } from "react-icons/ai";
 import IdleRedirect from "@/components/ui/IdleRedirect";
+import ClientErrorLogger from "@/components/ui/ClientErrorLogger";
+import DispenseIssueGuard from "@/components/ui/DispenseIssueGuard";
 import StartupSync from "@/components/StartupSync";
 import { clearSpinWheelSession } from "@/lib/spin-wheel/session";
 
@@ -62,6 +64,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
   return (
     <Fragment>
       <StartupSync />
+      <DispenseIssueGuard>
       {/* <AppBar color="primary" position="fixed">
         <Toolbar>
           <Grid container alignItems="center" justifyContent="space-between">
@@ -249,7 +252,9 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
         <SideMenuComponent />
       </Drawer> */}
       {/* Home is included: idle clears cart + signs out, then stays/returns to landing. */}
+      <ClientErrorLogger />
       <IdleRedirect defaultIdleMs={120_000} feedbackIdleMs={180_000} />
+      </DispenseIssueGuard>
     </Fragment>
   );
 };

@@ -29,6 +29,7 @@ import {
   SCAN_OFFER_PERCENT,
   stampCheckoutSummary,
 } from "@/lib/kiosk-journey";
+import { useDispenseIssue } from "@/components/ui/DispenseIssueGuard";
 
 type PayMethod = "cash" | "upi" | "card";
 
@@ -99,6 +100,7 @@ const methodBtnBase = {
 
 export default function ScanToPaySection({ products, total }: Props) {
   const router = useRouter();
+  const { guardBuy } = useDispenseIssue();
   const [paymentMethod, setPaymentMethod] = useState<PayMethod | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -439,6 +441,7 @@ export default function ScanToPaySection({ products, total }: Props) {
 
   const selectMethod = useCallback(
     (method: PayMethod) => {
+      if (!guardBuy()) return;
       if (!products.length || payableTotal <= 0) {
         toast.error("Select at least one product");
         return;
@@ -448,7 +451,7 @@ export default function ScanToPaySection({ products, total }: Props) {
         void generateQR();
       }
     },
-    [generateQR, products.length, payableTotal]
+    [generateQR, guardBuy, products.length, payableTotal]
   );
 
   const handleCashConfirmed = useCallback(

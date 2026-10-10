@@ -3,6 +3,7 @@
 import { Box, Typography } from "@mui/material";
 import DoorFrontOutlinedIcon from "@mui/icons-material/DoorFrontOutlined";
 import LuggageOutlinedIcon from "@mui/icons-material/LuggageOutlined";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import ActionButton from "./ActionButton";
 import Image from "next/image";
 
@@ -17,6 +18,7 @@ interface DashboardTitleProps {
   onLoadProductsClick?: () => void;
   onSettingsClick?: () => void;
   onTravelKitsClick?: () => void;
+  onDispenseIssueClick?: () => void;
 }
 
 export default function DashboardTitle({
@@ -30,6 +32,7 @@ export default function DashboardTitle({
   onLoadProductsClick,
   onSettingsClick,
   onTravelKitsClick,
+  onDispenseIssueClick,
 }: DashboardTitleProps) {
   return (
     <Box
@@ -203,6 +206,11 @@ export default function DashboardTitle({
           icon={<LuggageOutlinedIcon sx={{ fontSize: 40, color: "#323232" }} />}
           label="Travel Kits"
           onClick={onTravelKitsClick}
+        />
+        <ActionButton
+          icon={<ReportProblemOutlinedIcon sx={{ fontSize: 40, color: "#323232" }} />}
+          label="Dispense Issue"
+          onClick={onDispenseIssueClick}
         />
       </Box>
 

@@ -2,6 +2,7 @@
 const nextConfig = {
   experimental: {
     missingSuspenseWithCSRBailout: false,
+    instrumentationHook: true,
     serverComponentsExternalPackages: ["serialport", "@serialport/parser-readline", "better-sqlite3"],
   },
   // Keep MediaPipe out of SSR; do not alias the ESM bundle globally (breaks webpack factories).
@@ -11,6 +12,7 @@ const nextConfig = {
     config.resolve.fallback = {
       ...config.resolve.fallback,
       fs: false,
+      path: false,
       encoding: false,
     };
     return config;

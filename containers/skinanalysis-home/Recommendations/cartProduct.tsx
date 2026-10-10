@@ -43,6 +43,7 @@ import {
   SCAN_OFFER_PERCENT,
   stampCheckoutSummary,
 } from "@/lib/kiosk-journey";
+import { useDispenseIssue } from "@/components/ui/DispenseIssueGuard";
 
 type CartProductProps = {
     open: boolean;
@@ -55,6 +56,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
     const router = useRouter();
     const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
     const { items, setQuantity, removeItem, clear } = useCart();
+    const { guardBuy } = useDispenseIssue();
     const { speakMessage } = useVoiceMessages();
     const [showPriceDetails, setShowPriceDetails] = useState(false);
     const [step, setStep] = useState<"cart" | "checkout" | "payment">("cart");
@@ -850,6 +852,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                 <Button
                                     variant="contained"
                                     onClick={() => {
+                                        if (!guardBuy()) return;
                                         setStep("checkout");
                                         speakMessage('checkout');
                                     }}
@@ -873,6 +876,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                 <Button
                                     variant="contained"
                                     onClick={() => {
+                                        if (!guardBuy()) return;
                                         setPaymentMethod(null);
                                         setStep("payment");
                                         speakMessage('payment');
@@ -912,6 +916,7 @@ const CartProduct: React.FC<CartProductProps> = ({ open, onClose, onCheckout }) 
                                     <PaymentMethodChooser
                                         amount={discount > 0 ? payableTotal : total}
                                         onSelect={(m) => {
+                                            if (!guardBuy()) return;
                                             setPaymentMethod(m);
                                             speakMessage("payment");
                                         }}

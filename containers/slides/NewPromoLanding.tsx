@@ -226,39 +226,29 @@ export default function NewPromoLanding() {
         overflow: "hidden",
       }}
     >
-      {landingImageUrl.startsWith("http") ? (
-        <Box
-          key={landingImageUrl}
-          component="img"
-          src={landingImageUrl}
-          alt="Scan Discover Glow — AI skincare landing"
-          onError={() => {
+      <Box
+        key={landingImageUrl}
+        component="img"
+        src={landingImageUrl || FALLBACK_LANDING_IMAGE}
+        alt="Scan Discover Glow — AI skincare landing"
+        onError={() => {
+          if (landingImageUrl !== FALLBACK_LANDING_IMAGE) {
             console.warn(
-              "[NewPromoLanding] Remote landing image failed, using fallback:",
+              "[NewPromoLanding] Landing image failed, using fallback:",
               landingImageUrl
             );
             setLandingImageUrl(FALLBACK_LANDING_IMAGE);
-          }}
-          sx={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center top",
-          }}
-        />
-      ) : (
-        <Image
-          src={landingImageUrl || FALLBACK_LANDING_IMAGE}
-          alt="Scan Discover Glow — AI skincare landing"
-          fill
-          priority
-          sizes="100vw"
-          onError={() => setLandingImageUrl(FALLBACK_LANDING_IMAGE)}
-          style={{ objectFit: "cover", objectPosition: "center top" }}
-        />
-      )}
+          }
+        }}
+        sx={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          objectPosition: "center top",
+        }}
+      />
       {/* 
         Positioning adjusted to be narrower, higher up, and further to the right.
       */}

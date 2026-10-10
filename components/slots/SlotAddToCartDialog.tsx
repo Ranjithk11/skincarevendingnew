@@ -51,7 +51,7 @@ export default function SlotAddToCartDialog({ open, onClose, product }: SlotAddT
     if (!product) return;
 
     setIsAdding(true);
-    addItem({
+    const added = addItem({
       id: product.id,
       name: product.name,
       imageUrl: product.imageUrl,
@@ -61,6 +61,11 @@ export default function SlotAddToCartDialog({ open, onClose, product }: SlotAddT
       quantity,
       slotId: product.slotId,
     });
+    if (!added) {
+      setIsAdding(false);
+      onClose();
+      return;
+    }
 
     speakMessage("addToCart");
     setShowSuccess(true);

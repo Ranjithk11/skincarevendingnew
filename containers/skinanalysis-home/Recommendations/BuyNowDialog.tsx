@@ -50,7 +50,7 @@ const BuyNowDialog = ({
 
   const handleAddToCart = () => {
     setIsAdding(true);
-    addItem({
+    const added = addItem({
       id,
       name,
       imageUrl,
@@ -59,6 +59,11 @@ const BuyNowDialog = ({
       discountValue: discountValue,
       quantity,
     });
+    if (!added) {
+      setIsAdding(false);
+      onClose();
+      return;
+    }
 
     speakMessage("addToCart");
     

@@ -112,7 +112,7 @@ const NewProductCard = ({
     }
 
     setIsAdding(true);
-    addItem({
+    const added = addItem({
       id,
       name,
       imageUrl,
@@ -122,6 +122,11 @@ const NewProductCard = ({
       quantity: 1,
       slotId,
     });
+    if (!added) {
+      setIsAdding(false);
+      onClose();
+      return;
+    }
     speakMessage("addToCart");
     setShowSuccess(true);
     setTimeout(() => {

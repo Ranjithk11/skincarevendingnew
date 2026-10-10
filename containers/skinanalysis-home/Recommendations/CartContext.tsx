@@ -7,13 +7,14 @@ import {
   clearCart,
   CartItem,
 } from "@/redux/reducers/cartSlice";
+import { useDispenseIssue } from "@/components/ui/DispenseIssueGuard";
 
 export type { CartItem };
 
 type CartContextValue = {
   items: CartItem[];
   count: number;
-  addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => void;
+  addItem: (item: Omit<CartItem, "quantity"> & { quantity?: number }) => boolean;
   setQuantity: (key: { id?: string; name: string }, quantity: number) => void;
   removeItem: (key: { id?: string; name: string }) => void;
   clear: () => void;
@@ -26,12 +27,15 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 export const useCart = (): CartContextValue => {
   const dispatch = useAppDispatch();
   const items = useAppSelector((state) => state.cart.items);
+  const { guardBuy } = useDispenseIssue();
 
   const addItem = useCallback(
     (item: Omit<CartItem, "quantity"> & { quantity?: number }) => {
+      if (!guardBuy()) return false;
       dispatch(addToCart(item));
+      return true;
     },
-    [dispatch]
+    [dispatch, guardBuy]
   );
 
   const setQuantity = useCallback(
