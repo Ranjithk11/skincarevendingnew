@@ -227,11 +227,11 @@ export default function DispenseIssueGuard({
             </Box>
             <Box>
               <Typography sx={{ fontSize: 20, fontWeight: 800, color: FOREST, lineHeight: 1.3 }}>
-                We have another machine at Gate 11
+                We have another machine at Gate 20
               </Typography>
               <Typography sx={{ fontSize: 17, color: "#5c5346", mt: 0.4, lineHeight: 1.4 }}>
                 Kindly go and buy there.
-              </Typography>
+              </Typography>  
             </Box>
           </Box>
 

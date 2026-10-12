@@ -131,7 +131,7 @@ export default function DispenseIssueModal({
             <>
               <Typography sx={{ fontSize: 16, color: "#6B7280", mb: 2, lineHeight: 1.45 }}>
                 Turn this on when the dispenser has a problem. Customers who tap
-                Add to cart will see a message to buy at the Gate 11 machine or
+                Add to cart will see a message to buy at the Gate 20 machine or
                 leafwater.in. Payments stay off until you turn this off.
               </Typography>
 
