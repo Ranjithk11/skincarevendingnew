@@ -1737,6 +1737,20 @@ export const sqliteDb = {
     );
   },
 
+  /** When true, landing shop overlay (deals/bundles) is shown. Default: off. */
+  getLandingShopEnabled(): boolean {
+    const raw = this.getSetting('landing_shop_enabled', 'false');
+    return raw === 'true' || raw === '1';
+  },
+
+  setLandingShopEnabled(enabled: boolean): boolean {
+    return this.setSetting(
+      'landing_shop_enabled',
+      enabled ? 'true' : 'false',
+      'Show product deals overlay on the kiosk landing screen'
+    );
+  },
+
   /**
    * Allocate a unique tax-invoice number for a payment/order.
    * Format: LW/MM/YY/NNN (monthly sequence, 3+ digits).

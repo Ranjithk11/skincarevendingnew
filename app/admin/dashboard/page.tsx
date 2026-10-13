@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { AdminDashboard } from "@/containers/admin-dashboard";
-import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal, TravelKitsStaffModal, DispenseIssueModal } from "@/containers/admin-dashboard/components";
+import { SlotAssignmentModal, MachineStatusModal, EditProductModal, MachineSettingsModal, TravelKitsStaffModal, DispenseIssueModal, LandingShopModal } from "@/containers/admin-dashboard/components";
 import { Snackbar, Alert } from "@mui/material";
 import { useRouter } from "next/navigation";
 import {
@@ -57,6 +57,7 @@ export default function AdminDashboardPage() {
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [travelKitsModalOpen, setTravelKitsModalOpen] = useState(false);
   const [dispenseIssueModalOpen, setDispenseIssueModalOpen] = useState(false);
+  const [landingShopModalOpen, setLandingShopModalOpen] = useState(false);
 
   // Redux queries
   const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetVendingSlotsQuery();
@@ -453,6 +454,10 @@ export default function AdminDashboardPage() {
     setDispenseIssueModalOpen(true);
   };
 
+  const handleLandingShopClick = () => {
+    setLandingShopModalOpen(true);
+  };
+
   const handleSyncClick = async () => {
     try {
       await syncQuantities();
@@ -804,6 +809,7 @@ export default function AdminDashboardPage() {
         onSettingsClick={handleSettingsClick}
         onTravelKitsClick={handleTravelKitsClick}
         onDispenseIssueClick={handleDispenseIssueClick}
+        onLandingShopClick={handleLandingShopClick}
         onSyncClick={handleSyncClick}
         onSlotClick={handleSlotClick}
         onProductEditClick={handleProductEditClick}
@@ -902,6 +908,11 @@ export default function AdminDashboardPage() {
       <DispenseIssueModal
         open={dispenseIssueModalOpen}
         onClose={() => setDispenseIssueModalOpen(false)}
+      />
+
+      <LandingShopModal
+        open={landingShopModalOpen}
+        onClose={() => setLandingShopModalOpen(false)}
       />
 
       {/* Success/Error Snackbar */}

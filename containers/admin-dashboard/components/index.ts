@@ -10,3 +10,4 @@ export { default as EditProductModal } from "./EditProductModal";
 export { default as MachineSettingsModal } from "./MachineSettingsModal";
 export { default as TravelKitsStaffModal } from "./TravelKitsStaffModal";
 export { default as DispenseIssueModal } from "./DispenseIssueModal";
+export { default as LandingShopModal } from "./LandingShopModal";

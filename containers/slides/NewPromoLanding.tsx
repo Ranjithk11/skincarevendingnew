@@ -9,6 +9,7 @@ import { useVoiceMessages } from "@/contexts/VoiceContext";
 import { APP_ROUTES } from "@/utils/routes";
 import { buildSpinWheelHref } from "@/lib/spin-wheel/navigation";
 import { beginKioskJourney } from "@/lib/kiosk-journey";
+import LandingProductShowcase from "./LandingProductShowcase";
 const FALLBACK_LANDING_IMAGE = "/logo/newLanding.png";
 const MACHINE_LOCATION_KEY = "kiosk_machine_location";
 
@@ -75,6 +76,7 @@ export default function NewPromoLanding() {
   const router = useRouter();
   const { speakMessage, speakSequence } = useVoiceMessages();
   const [landingImageUrl, setLandingImageUrl] = useState(FALLBACK_LANDING_IMAGE);
+  const [landingShopEnabled, setLandingShopEnabled] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -190,6 +192,28 @@ export default function NewPromoLanding() {
 
     return () => window.clearTimeout(t);
   }, [speakSequence]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const res = await fetch("/api/admin/landing-shop", { cache: "no-store" });
+        const json = await res.json();
+        if (!cancelled) setLandingShopEnabled(Boolean(json?.shopEnabled));
+      } catch {
+        // Keep last known state.
+      }
+    };
+    void refresh();
+    const id = window.setInterval(() => void refresh(), 15_000);
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
 
   const handleStartScan = () => {
     beginKioskJourney("scan", "landing_scan");
@@ -411,6 +435,7 @@ export default function NewPromoLanding() {
       >
         Stock Hub
       </Typography>
+      {landingShopEnabled ? <LandingProductShowcase /> : null}
     </Box>
   );
 }
