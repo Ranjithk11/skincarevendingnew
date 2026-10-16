@@ -24,6 +24,7 @@ import {
 import { prefetchFaceLandmarkerModel } from "@/lib/mediapipe-preload";
 import { sendScanCompletedWebhook } from "@/utils/webhook";
 import { markScanCompleted } from "@/lib/kiosk-journey";
+import { validateScanProcessing } from "@/lib/scan-consent";
 
 /** Client-only: MediaPipe WASM breaks SSR / can crash webpack HMR if bundled eagerly. */
 const LiveSkinScanCamera = dynamic(
@@ -126,8 +127,22 @@ export default function FaceScanSelfie() {
     }
   };
 
-  const handleCaptured = (base64: string, analysis: SkinAnalysisResult | null) => {
+  const handleCaptured = async (
+    base64: string,
+    analysis: SkinAnalysisResult | null
+  ) => {
     if (routedRef.current) return;
+    const hasIdentifiableFace =
+      Boolean(analysis) && Boolean(base64) && !base64.endsWith("base64,");
+    if (!hasIdentifiableFace) {
+      speakMessage("error", "No identifiable face was found. Scan was not processed.");
+      return;
+    }
+    const check = await validateScanProcessing({ hasIdentifiableFace: true });
+    if (!check.ok) {
+      speakMessage("error", check.error);
+      return;
+    }
     routedRef.current = true;
 
     if (analysis) {

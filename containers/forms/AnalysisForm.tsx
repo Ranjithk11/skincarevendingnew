@@ -172,7 +172,7 @@ const AnalysisForm = () => {
           toast.success(
             "Your OTP has been successfully verified. You can now proceed with your request."
           );
-          router.replace(`${APP_ROUTES.SELFIE}`);
+          router.replace(`${APP_ROUTES.SCAN_CONSENT}`);
         }
       })
       .catch((error) => {

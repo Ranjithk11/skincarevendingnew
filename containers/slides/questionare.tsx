@@ -10,10 +10,8 @@ import { saveUser as saveUserApi } from "@/redux/api/authApi";
 import Slide1 from "./Slide1";
 import Slide2 from "./Slide2";
 import { PageBackground } from "@/components/ui";
-import {
-  isFreeConsultationFlow,
-  selfiePathForConsultation,
-} from "@/lib/consultationFlow";
+import { isFreeConsultationFlow } from "@/lib/consultationFlow";
+import { scanConsentPathForFlow } from "@/lib/scan-consent";
 import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { setSkinType } from "@/redux/reducers/analysisSlice";
@@ -420,9 +418,10 @@ export default function Questionnaire() {
       }
 
       router.push(
-        consultationFlow
-          ? selfiePathForConsultation(preferredTime)
-          : APP_ROUTES.SELFIE
+        scanConsentPathForFlow(
+          consultationFlow ? searchParams.get("flow") : null,
+          preferredTime
+        )
       );
     } catch (err) {
       const e: any = err;

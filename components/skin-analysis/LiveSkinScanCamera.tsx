@@ -19,6 +19,8 @@ import { drawSkinScanOverlay } from "./drawing";
 import { evaluateFacePlacement } from "./facePlacement";
 import SkinScanReportPanel from "./SkinScanReportPanel";
 import type { SkinAnalysisResult, SkinScanDisplayOptions } from "./types";
+import IdentifiableFaceNotice from "@/components/scan-consent/IdentifiableFaceNotice";
+import { hasValidScanConsent } from "@/lib/scan-consent";
 
 const FACE_HOLD_MS = 400;
 const SCAN_DURATION_MS = 5000;
@@ -164,6 +166,7 @@ export default function LiveSkinScanCamera({
   const [scanStep, setScanStep] = useState<"place" | "hold" | "scan" | "routing">(
     "place"
   );
+  const [faceBlockNotice, setFaceBlockNotice] = useState<string | null>(null);
 
   const attributesReady = Boolean(scanComplete && liveResult);
 
@@ -182,12 +185,33 @@ export default function LiveSkinScanCamera({
     if (videoRef.current) videoRef.current.srcObject = null;
   }, [stopLoop]);
 
+  const refuseCapture = useCallback((message: string) => {
+    autoContinueFiredRef.current = false;
+    isCapturingRef.current = false;
+    setScanStep("place");
+    setScanComplete(false);
+    setStatusText("Scan was not processed");
+    setSuggestion(message);
+    setFaceBlockNotice(message);
+  }, []);
+
   const captureFrame = useCallback(() => {
     if (isCapturingRef.current) return;
+    const analysis = liveResultRef.current;
+    const hasFace = Boolean(analysis && faceDetectedRef.current);
+
+    if (!hasValidScanConsent()) {
+      refuseCapture("Scan consent is required before processing.");
+      return;
+    }
+    if (!hasFace) {
+      refuseCapture("No identifiable face was found. The scan was not processed.");
+      return;
+    }
+
     isCapturingRef.current = true;
     try {
       const video = videoRef.current;
-      const analysis = liveResultRef.current;
       let base64 = "";
 
       if (video && video.videoWidth > 0 && video.videoHeight > 0) {
@@ -201,17 +225,21 @@ export default function LiveSkinScanCamera({
         }
       }
 
-      // Fallback: last analysis work canvas
       if (!base64 && workCanvasRef.current && workCanvasRef.current.width > 0) {
         base64 = workCanvasRef.current.toDataURL("image/jpeg", 0.92);
       }
 
+      if (!base64 || base64.endsWith("base64,")) {
+        refuseCapture("No identifiable face was found. The scan was not processed.");
+        return;
+      }
+
       stopCamera();
-      onCaptured(base64 || "data:image/jpeg;base64,", analysis);
+      onCaptured(base64, analysis);
     } finally {
       isCapturingRef.current = false;
     }
-  }, [onCaptured, stopCamera]);
+  }, [onCaptured, refuseCapture, stopCamera]);
 
   const captureFrameRef = useRef(captureFrame);
   captureFrameRef.current = captureFrame;
@@ -919,7 +947,11 @@ export default function LiveSkinScanCamera({
             textShadow: "0 1px 4px rgba(0,0,0,0.6)",
           }}
         >
-          Look straight at the camera · keep your head level
+          {faceBlockNotice ? (
+            <IdentifiableFaceNotice message={faceBlockNotice} />
+          ) : (
+            "Look straight at the camera · keep your head level"
+          )}
         </Box>
       ) : null}
     </Box>

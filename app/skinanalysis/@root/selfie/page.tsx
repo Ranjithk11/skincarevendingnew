@@ -1,26 +1,21 @@
 import { Suspense } from "react";
 import TakeSelfie from "@/containers/skinanalysis-home/TakeSelfie";
 import FaceScanSelfie from "@/containers/skinanalysis-home/FaceScanSelfie";
+import { ScanConsentGate } from "@/components/scan-consent";
 import { USE_MEDIAPIPE_FACE_SCAN } from "@/lib/face-scan-mode";
 
 /**
- * Questionnaire → /skinanalysis/selfie
- *
- * Default (USE_MEDIAPIPE_FACE_SCAN=false): legacy TakeSelfie + ARCamera + cloud analysis.
- * MediaPipe FaceScanSelfie stays available when the flag is flipped to true.
+ * Consent screen must pass before the camera mounts.
+ * Default (USE_MEDIAPIPE_FACE_SCAN=false): TakeSelfie + ARCamera.
  */
 export default function SelfiePage() {
-  if (USE_MEDIAPIPE_FACE_SCAN) {
-    return (
-      <Suspense fallback={null}>
-        <FaceScanSelfie />
-      </Suspense>
-    );
-  }
+  const Camera = USE_MEDIAPIPE_FACE_SCAN ? FaceScanSelfie : TakeSelfie;
 
   return (
     <Suspense fallback={null}>
-      <TakeSelfie />
+      <ScanConsentGate>
+        <Camera />
+      </ScanConsentGate>
     </Suspense>
   );
 }

@@ -81,6 +81,8 @@ export const useVoiceMessages = () => {
     dispenseCollect: "Please collect your product from the tray below.",
     thankYou: "Thank you for your purchase",
     feedbackPrompt: "Please rate your experience. Your feedback helps us improve.",
+    scanConsentIntro:
+      "Please confirm you agree to a skin scan. You can skip the scan and shop instead.",
     scanFace: "Please position your face in the frame",
     analyzing: "Analyzing your skin",
     analysisCompleteClickRecommendations: "Analysis completed successfully. Please tap Get Our Recommendations.",

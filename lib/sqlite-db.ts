@@ -438,6 +438,17 @@ function initDb() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS scan_consent_records (
+      consent_id TEXT PRIMARY KEY,
+      version TEXT NOT NULL,
+      scan_consent INTEGER NOT NULL,
+      marketing_consent INTEGER NOT NULL,
+      machine_name TEXT,
+      created_at TEXT NOT NULL
+    )
+  `);
+
   // Insert default Razorpay mode setting
   db.exec(`
     INSERT OR IGNORE INTO app_settings (setting_key, setting_value, description)
@@ -1749,6 +1760,63 @@ export const sqliteDb = {
       enabled ? 'true' : 'false',
       'Show product deals overlay on the kiosk landing screen'
     );
+  },
+
+  saveScanConsentRecord(record: {
+    consentId: string;
+    version: string;
+    scanConsent: boolean;
+    marketingConsent: boolean;
+    machineName?: string;
+    createdAt: string;
+  }): boolean {
+    db.prepare(`
+      INSERT OR REPLACE INTO scan_consent_records
+        (consent_id, version, scan_consent, marketing_consent, machine_name, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      record.consentId,
+      record.version,
+      record.scanConsent ? 1 : 0,
+      record.marketingConsent ? 1 : 0,
+      record.machineName || null,
+      record.createdAt
+    );
+    return true;
+  },
+
+  getScanConsentRecord(consentId: string): {
+    consentId: string;
+    version: string;
+    scanConsent: boolean;
+    marketingConsent: boolean;
+    machineName: string | null;
+    createdAt: string;
+  } | null {
+    const row = db
+      .prepare(
+        `SELECT consent_id, version, scan_consent, marketing_consent, machine_name, created_at
+         FROM scan_consent_records WHERE consent_id = ?`
+      )
+      .get(consentId) as
+      | {
+          consent_id: string;
+          version: string;
+          scan_consent: number;
+          marketing_consent: number;
+          machine_name: string | null;
+          created_at: string;
+        }
+      | undefined;
+    if (!row) return null;
+    return {
+      consentId: row.consent_id,
+      version: row.version,
+      scanConsent: row.scan_consent === 1,
+      marketingConsent: row.marketing_consent === 1,
+      machineName: row.machine_name,
+      createdAt: row.created_at,
+    };
   },
 
   /**

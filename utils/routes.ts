@@ -6,6 +6,7 @@ export const APP_ROUTES = {
   AUTH_MOBILE: "/auth/mobile",
   ELEVATE: "/skinanalysis/elevate",
   SELFIE: "/skinanalysis/selfie",
+  SCAN_CONSENT: "/scan-consent",
   BROCHURE: "/skinanalysis/brochure",
   RECOMMENDATIONS: "/skinanalysis/recommendations",
   KIOSK_REPORT: "/skinanalysis/report",

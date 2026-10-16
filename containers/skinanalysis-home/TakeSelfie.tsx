@@ -42,6 +42,11 @@ import {
   questionnairePathForFlow,
   getConsultationTimeLabel,
 } from "@/lib/consultationFlow";
+import {
+  consentPathFromSelfieSearch,
+  hasValidScanConsent,
+  validateScanProcessing,
+} from "@/lib/scan-consent";
 
 // MediaPipe camera kept for future (USE_MEDIAPIPE_FACE_SCAN) — not used in legacy TakeSelfie:
 // import dynamic from "next/dynamic";
@@ -804,6 +809,11 @@ const TakeSelfie = () => {
 
   const startSkinAnalysis = (fileName?: string, imageUrl?: string) => {
     const formValues = getValues();
+    if (!hasValidScanConsent()) {
+      const search = searchParams.toString();
+      router.replace(consentPathFromSelfieSearch(search ? `?${search}` : ""));
+      return;
+    }
     if (!resolvedUserId) {
       router.push("/questionnaire");
       return;
@@ -956,6 +966,10 @@ const TakeSelfie = () => {
 
   // handle captured Image
   const handleAutoCaptured = (base64String: string) => {
+    if (!base64String || base64String.endsWith("base64,")) {
+      speakMessage("error", "No identifiable face was found. Scan was not processed.");
+      return;
+    }
     setOpenCamera(false);
     setImage(base64String);
   };
@@ -966,6 +980,25 @@ const TakeSelfie = () => {
       if (autoAnalyzeTimerRef.current) {
         clearTimeout(autoAnalyzeTimerRef.current);
         autoAnalyzeTimerRef.current = null;
+      }
+
+      if (!hasValidScanConsent()) {
+        const search = searchParams.toString();
+        router.replace(consentPathFromSelfieSearch(search ? `?${search}` : ""));
+        return;
+      }
+
+      if (!base64String || base64String.endsWith("base64,")) {
+        speakMessage("error", "No identifiable face was found. Scan was not processed.");
+        setCroppedFace(null);
+        return;
+      }
+
+      const check = await validateScanProcessing({ hasIdentifiableFace: true });
+      if (!check.ok) {
+        speakMessage("error", check.error);
+        setCroppedFace(null);
+        return;
       }
 
       if (!resolvedUserId) {
