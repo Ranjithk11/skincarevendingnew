@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import { ScanConsentScreen } from "@/components/scan-consent";
 import ScanConsentRedirecting from "@/components/scan-consent/ScanConsentRedirecting";
+import ScanConsentBypass from "@/components/scan-consent/ScanConsentBypass";
 
 export default function ScanConsentPage() {
   return (
     <Suspense fallback={<ScanConsentRedirecting />}>
-      <ScanConsentScreen />
+      <ScanConsentBypass />
     </Suspense>
   );
 }

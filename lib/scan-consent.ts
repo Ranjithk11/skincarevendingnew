@@ -12,6 +12,9 @@ import {
 import { getJourney } from "@/lib/kiosk-journey";
 import { APP_ROUTES } from "@/utils/routes";
 
+/** Temporary: skip /scan-consent and go straight to the scan. */
+export const SKIP_SCAN_CONSENT_PAGE = true;
+
 function canUseStorage(): boolean {
   return typeof window !== "undefined";
 }
@@ -39,6 +42,12 @@ export function readScanConsent(): ScanConsentRecord | null {
 
 export function hasValidScanConsent(): boolean {
   return Boolean(readScanConsent()?.scanConsent);
+}
+
+export function ensureScanConsentForProceed(): ScanConsentRecord {
+  const existing = readScanConsent();
+  if (existing) return existing;
+  return saveScanConsent({ marketingConsent: false });
 }
 
 export function saveScanConsent(input: {
@@ -81,6 +90,9 @@ export function scanConsentPathForFlow(
     params.set("flow", FREE_CONSULTATION_FLOW);
     if (preferredTime) params.set("preferredTime", preferredTime);
   }
+  if (SKIP_SCAN_CONSENT_PAGE) {
+    return selfiePathFromConsentSearch(params);
+  }
   const qs = params.toString();
   return qs ? `${APP_ROUTES.SCAN_CONSENT}?${qs}` : APP_ROUTES.SCAN_CONSENT;
 }
@@ -110,6 +122,9 @@ export function consentPathFromSelfieSearch(search: string): string {
   params.set("returnTo", returnTo);
   if (isFreeConsultationFlow(params.get("flow")) && !params.get("flow")) {
     params.set("flow", FREE_CONSULTATION_FLOW);
+  }
+  if (SKIP_SCAN_CONSENT_PAGE) {
+    return returnTo;
   }
   return `${APP_ROUTES.SCAN_CONSENT}?${params.toString()}`;
 }

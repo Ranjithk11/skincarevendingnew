@@ -9,7 +9,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLazyGetQuestionsQuery } from "@/redux/api/analysisApi";
 import { saveOnboardingQuestions } from "@/redux/reducers/analysisSlice";
 import { useDispatch } from "react-redux";
-import { APP_ROUTES } from "@/utils/routes";
+import { scanConsentPathForFlow } from "@/lib/scan-consent";
 import LoadingComponent from "@/components/loaders/Loading";
 import TextInputFieldComponent from "@/components/form-felds/textInputField";
 import FormMobileInput from "@/components/form-felds/phoneInput";
@@ -172,7 +172,7 @@ const AnalysisForm = () => {
           toast.success(
             "Your OTP has been successfully verified. You can now proceed with your request."
           );
-          router.replace(`${APP_ROUTES.SCAN_CONSENT}`);
+          router.replace(scanConsentPathForFlow());
         }
       })
       .catch((error) => {

@@ -40,6 +40,16 @@ import {
 } from "@/lib/mediapipe-scan-session";
 import { setJourneyBundleId } from "@/lib/kiosk-journey";
 import { fetchCatalogProducts } from "@/lib/catalog-products";
+import {
+  isWipeVendableOnMachine,
+  mapEvergritResetWipes,
+  mergeSelectedIdsWithWipes,
+} from "@/lib/evergrit-reset-wipes";
+import {
+  EvergritWipesHighlightSlider,
+  EvergritWipesPopup,
+  useEvergritWipesPromo,
+} from "@/components/kiosk-report/evergrit-wipes";
 
 export default function KioskReportPage() {
   const { data: session } = useSession();
@@ -49,6 +59,7 @@ export default function KioskReportPage() {
   const [products, setProducts] = useState<ReportProduct[]>([]);
   const [routines, setRoutines] = useState<SkinRoutine[]>([]);
   const [productsReady, setProductsReady] = useState(false);
+  const [wipeProducts, setWipeProducts] = useState<ReportProduct[]>([]);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [mediapipeScan, setMediapipeScan] = useState<StoredMediapipeScan | null>(
     null
@@ -156,9 +167,17 @@ export default function KioskReportPage() {
             concernLabels
           );
           if (cancelled) return;
+          const wipes = mapEvergritResetWipes(catalog, slotsData);
           setProducts(picked);
           setRoutines(nextRoutines);
-          setSelectedIds(picked.map((p) => p.id));
+          setWipeProducts(wipes);
+          setSelectedIds((prev) =>
+            mergeSelectedIdsWithWipes(
+              picked.map((p) => p.id),
+              prev,
+              wipes
+            )
+          );
           return;
         }
 
@@ -180,14 +199,23 @@ export default function KioskReportPage() {
           concernLabels
         );
         if (cancelled) return;
+        const wipes = mapEvergritResetWipes(catalog, slotsData);
         setProducts(picked);
         setRoutines(nextRoutines);
-        setSelectedIds(picked.map((p) => p.id));
+        setWipeProducts(wipes);
+        setSelectedIds((prev) =>
+          mergeSelectedIdsWithWipes(
+            picked.map((p) => p.id),
+            prev,
+            wipes
+          )
+        );
       } catch (err) {
         console.warn("[KioskReport] Failed to load products:", err);
         if (!cancelled) {
           setProducts([]);
           setRoutines([]);
+          setWipeProducts([]);
         }
       } finally {
         if (!cancelled) setProductsReady(true);
@@ -246,8 +274,12 @@ export default function KioskReportPage() {
         if (!byId.has(p.id)) byId.set(p.id, p);
       });
     });
+    wipeProducts.forEach((p) => {
+      if (!isWipeVendableOnMachine(p)) return;
+      if (!byId.has(p.id)) byId.set(p.id, p);
+    });
     return byId;
-  }, [products, routines]);
+  }, [products, routines, wipeProducts]);
 
   const selectedProducts = useMemo(
     () =>
@@ -256,6 +288,15 @@ export default function KioskReportPage() {
         .filter((p): p is ReportProduct => Boolean(p)),
     [productCatalog, selectedIds]
   );
+  const recommendedDisplay = useMemo(() => {
+    const extras = wipeProducts.filter(
+      (wipe) =>
+        selectedIds.includes(wipe.id) &&
+        isWipeVendableOnMachine(wipe) &&
+        !products.some((product) => product.id === wipe.id)
+    );
+    return extras.length ? [...products, ...extras] : products;
+  }, [products, wipeProducts, selectedIds]);
   const selectedKits = useMemo(
     () =>
       isTravelKitPurchaseAvailable()
@@ -295,6 +336,12 @@ export default function KioskReportPage() {
     );
   };
 
+  const handleWipeAdd = (id: string) => {
+    const wipe = wipeProducts.find((product) => product.id === id);
+    if (!wipe || !isWipeVendableOnMachine(wipe)) return;
+    setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
   const handleAddRoutine = (routine: SkinRoutine) => {
     const ids = routine.products.map((p) => p.id);
     const bothSelected = ids.every((id) => selectedIds.includes(id));
@@ -321,6 +368,7 @@ export default function KioskReportPage() {
   const analysisPending =
     !fromMediapipe && Boolean(session?.user?.id) && isLoading && !data;
   const showLoader = !sessionReady || !productsReady || analysisPending;
+  const wipePromo = useEvergritWipesPromo(!showLoader, wipeProducts.length > 0);
 
   return (
     <KioskFrame>
@@ -361,7 +409,7 @@ export default function KioskReportPage() {
           />
           <ProfessionalSummarySection summary={summary} />
           <RecommendedProductsSection
-            products={products}
+            products={recommendedDisplay}
             selectedIds={selectedIds}
             onToggle={handleToggle}
           />
@@ -385,6 +433,23 @@ export default function KioskReportPage() {
           <ScanToPaySection products={checkoutItems} total={total} />
         </Box>
       )}
+      <EvergritWipesPopup
+        open={wipePromo.popupOpen}
+        products={wipeProducts}
+        selectedIds={selectedIds}
+        onAdd={(id) => {
+          const wipe = wipeProducts.find((product) => product.id === id);
+          if (!wipe || !isWipeVendableOnMachine(wipe)) return;
+          handleWipeAdd(id);
+          wipePromo.closePopup();
+        }}
+        onClose={wipePromo.closePopup}
+      />
+      <EvergritWipesHighlightSlider
+        visible={wipePromo.sliderVisible}
+        products={wipeProducts}
+        onOpen={wipePromo.openPopup}
+      />
     </KioskFrame>
   );
 }

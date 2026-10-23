@@ -14,9 +14,22 @@ if (!fs.existsSync(DB_DIR)) {
   fs.mkdirSync(DB_DIR, { recursive: true });
 }
 
-// Initialize database connection
-const db = new Database(DB_FILE);
-db.pragma('journal_mode = WAL'); // Better performance for concurrent reads
+type SqliteGlobal = {
+  __lwVendingDb?: Database.Database;
+  __lwVendingDbReady?: boolean;
+};
+
+const sqliteGlobal = globalThis as typeof globalThis & SqliteGlobal;
+
+// One connection per process. HMR / extra API chunks must not reopen the file
+// (that rewrites WAL and can retrigger Next.js file watching).
+if (!sqliteGlobal.__lwVendingDb) {
+  const instance = new Database(DB_FILE);
+  instance.pragma("journal_mode = WAL");
+  sqliteGlobal.__lwVendingDb = instance;
+}
+
+const db = sqliteGlobal.__lwVendingDb;
 
 function dropRelationIfExists(name: string) {
   const row = db
@@ -810,11 +823,14 @@ function initDb() {
   console.log('SQLite database initialized:', DB_FILE);
 }
 
-// Initialize on module load
-try {
-  initDb();
-} catch (err) {
-  console.error("[SQLite] Database initialization failed:", err);
+// Initialize once per process (skip on HMR re-eval of this module).
+if (!sqliteGlobal.__lwVendingDbReady) {
+  try {
+    initDb();
+    sqliteGlobal.__lwVendingDbReady = true;
+  } catch (err) {
+    console.error("[SQLite] Database initialization failed:", err);
+  }
 }
 
 // Types

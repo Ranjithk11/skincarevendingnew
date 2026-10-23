@@ -68,17 +68,20 @@ export default function SlotAssignmentModal({
 }: SlotAssignmentModalProps) {
   const KEYBOARD_HEIGHT_PX = 340;
   const [selectedProductId, setSelectedProductId] = useState<string>("");
-  const [quantity, setQuantity] = useState<number>(10);
+  const [quantity, setQuantity] = useState<number>(5);
   const [originalPrice, setOriginalPrice] = useState<number>(0);
   const [slotPrice, setSlotPrice] = useState<number>(0);
   const [quantityAdjustment, setQuantityAdjustment] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [priceDraft, setPriceDraft] = useState<string>("");
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [keyboardTarget, setKeyboardTarget] = useState<"search" | "price">("search");
   const [isProductMenuOpen, setIsProductMenuOpen] = useState(false);
 
   const keyboardContainerRef = useRef<HTMLDivElement>(null);
   const searchInputContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const priceInputRef = useRef<HTMLInputElement>(null);
 
   const hasCurrentProduct = !!currentProduct;
 
@@ -132,16 +135,20 @@ export default function SlotAssignmentModal({
     if (open) {
       setSelectedProductId(currentProduct?.id || "");
       // Use current quantity when editing an existing slot (even when it is 0).
-      // Only default to 10 for brand-new assignments (no product currently assigned).
-      setQuantity(currentProduct ? currentQuantity : 10);
+      // Only default to 5 for brand-new assignments (no product currently assigned).
+      setQuantity(currentProduct ? currentQuantity : 5);
       setQuantityAdjustment(0);
       setSearchQuery("");
       setIsKeyboardOpen(false);
+      setKeyboardTarget("search");
       setIsProductMenuOpen(false);
       if (currentProduct) {
-        setSlotPrice(parsePrice(currentProduct.price));
+        const nextPrice = parsePrice(currentProduct.price);
+        setSlotPrice(nextPrice);
+        setPriceDraft(nextPrice ? String(nextPrice) : "");
       } else {
         setSlotPrice(0);
+        setPriceDraft("");
         setOriginalPrice(0);
       }
     }
@@ -158,15 +165,18 @@ export default function SlotAssignmentModal({
     setOriginalPrice(catalogPrice);
 
     if (currentProduct?.id === selectedProductId) {
-      setSlotPrice(parsePrice(currentProduct.price));
+      const nextPrice = parsePrice(currentProduct.price);
+      setSlotPrice(nextPrice);
+      setPriceDraft(nextPrice ? String(nextPrice) : "");
       return;
     }
 
-    setSlotPrice(
+    const nextPrice =
       selectedProduct.retailPrice ??
       selectedProduct.originalPrice ??
-      parsePrice(selectedProduct.price)
-    );
+      parsePrice(selectedProduct.price);
+    setSlotPrice(nextPrice);
+    setPriceDraft(nextPrice ? String(nextPrice) : "");
   }, [selectedProductId, selectedProduct, currentProduct]);
 
 
@@ -183,9 +193,50 @@ export default function SlotAssignmentModal({
     setTimeout(() => searchInputRef.current?.focus(), 0);
   };
 
+  const openPriceKeyboard = () => {
+    setKeyboardTarget("price");
+    setIsKeyboardOpen(true);
+    setIsProductMenuOpen(false);
+    if (typeof queueMicrotask === "function") {
+      queueMicrotask(() => priceInputRef.current?.focus());
+      return;
+    }
+    setTimeout(() => priceInputRef.current?.focus(), 0);
+  };
+
+  const applyPriceKey = (key: string) => {
+    if (key === "return") {
+      setIsKeyboardOpen(false);
+      return;
+    }
+    if (["shift", "arrowleft", "arrowright", "123", "ABC", "space"].includes(key)) {
+      return;
+    }
+
+    setPriceDraft((prev) => {
+      let next = prev;
+      if (key === "backspace") {
+        next = prev.slice(0, -1);
+      } else if (/^[0-9]$/.test(key)) {
+        next = `${prev}${key}`;
+      } else if (key === "." && !prev.includes(".")) {
+        next = prev === "" ? "0." : `${prev}.`;
+      } else {
+        return prev;
+      }
+
+      const parsed = parseFloat(next);
+      setSlotPrice(next === "" || Number.isNaN(parsed) ? 0 : parsed);
+      return next;
+    });
+  };
 
   const handleKeyboardKeyPress = (key: string) => {
-    console.debug("[VirtualKeyboard] key:", key);
+    if (keyboardTarget === "price") {
+      applyPriceKey(key);
+      return;
+    }
+
     setIsProductMenuOpen(true);
     if (key === "backspace") {
       setSearchQuery((prev) => prev.slice(0, -1));
@@ -202,10 +253,9 @@ export default function SlotAssignmentModal({
       focusSearchInput();
       return;
     }
-   if (["shift", "arrowleft", "arrowright", "123", "ABC"].includes(key)) {
-  return;
-}
-
+    if (["shift", "arrowleft", "arrowright", "123", "ABC"].includes(key)) {
+      return;
+    }
 
     setSearchQuery((prev) => `${prev}${key}`);
     focusSearchInput();
@@ -593,10 +643,12 @@ export default function SlotAssignmentModal({
                     value={searchQuery}
                     onClick={(e) => {
                       e.stopPropagation();
+                      setKeyboardTarget("search");
                       setIsProductMenuOpen(true);
                       setIsKeyboardOpen(true);
                     }}
                     onFocus={() => {
+                      setKeyboardTarget("search");
                       setIsProductMenuOpen(true);
                       setIsKeyboardOpen(true);
                     }}
@@ -733,21 +785,22 @@ export default function SlotAssignmentModal({
                 Original price: ₹{originalPrice}
               </Typography>
               <TextField
-                type="number"
-                value={slotPrice}
+                type="text"
+                inputMode="decimal"
+                value={priceDraft}
+                inputRef={priceInputRef}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "") {
-                    setSlotPrice(0);
-                    return;
-                  }
-                  const parsed = parseFloat(val);
-                  if (!Number.isNaN(parsed) && parsed >= 0) {
-                    setSlotPrice(parsed);
-                  }
+                  const val = e.target.value.replace(/[^\d.]/g, "");
+                  const dotCount = (val.match(/\./g) || []).length;
+                  const next = dotCount > 1 ? val.slice(0, val.lastIndexOf(".")) : val;
+                  setPriceDraft(next);
+                  const parsed = parseFloat(next);
+                  setSlotPrice(next === "" || Number.isNaN(parsed) ? 0 : parsed);
                 }}
+                onFocus={openPriceKeyboard}
+                onClick={openPriceKeyboard}
                 fullWidth
-                inputProps={{ min: 0, step: "0.01" }}
+                inputProps={{ inputMode: "decimal", pattern: "[0-9.]*" }}
                 placeholder="Enter slot price"
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -954,8 +1007,10 @@ export default function SlotAssignmentModal({
             >
               <VirtualKeyboard
                 onKeyPress={handleKeyboardKeyPress}
-                layout="default"
+                layout={keyboardTarget === "price" ? "numeric" : "default"}
                 visible={isKeyboardOpen}
+                skipApplyToActiveElement
+                onClose={() => setIsKeyboardOpen(false)}
               />
             </Box>
           </Box>

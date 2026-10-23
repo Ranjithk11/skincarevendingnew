@@ -588,7 +588,7 @@ export default function ScanToPaySection({ products, total }: Props) {
       <Box
         sx={{
           flex: 1,
-          minHeight: 240,
+          minHeight: 0,
           display: "grid",
           gridTemplateColumns: "240px 1fr",
           gap: 1.25,
@@ -612,7 +612,8 @@ export default function ScanToPaySection({ products, total }: Props) {
             py: 1.25,
             bgcolor: "#F7FBF7",
             borderRight: `1px solid ${REPORT_BORDER}`,
-            overflow: "hidden",
+            overflowX: "hidden",
+            overflowY: "auto",
             boxSizing: "border-box",
           }}
         >
@@ -641,7 +642,15 @@ export default function ScanToPaySection({ products, total }: Props) {
             ) : null}
 
             {!upiActive ? (
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, mt: 0.75 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 0.75,
+                  mt: 0.75,
+                  flexShrink: 0,
+                }}
+              >
                 <Typography
                   sx={{
                     fontSize: 11,
@@ -798,7 +807,7 @@ export default function ScanToPaySection({ products, total }: Props) {
           sx={{
             width: "100%",
             height: "100%",
-            minHeight: 220,
+            minHeight: 0,
             bgcolor: "#fff",
             display: "flex",
             alignItems: "center",

@@ -7,7 +7,7 @@ const nextConfig = {
   },
   // Keep MediaPipe out of SSR; do not alias the ESM bundle globally (breaks webpack factories).
   transpilePackages: ["@mediapipe/tasks-vision"],
-  webpack: (config) => {
+  webpack: (config, { dev }) => {
     // face-api.js pulls Node `fs` — stub it for the browser/server bundle.
     config.resolve.fallback = {
       ...config.resolve.fallback,
@@ -15,6 +15,12 @@ const nextConfig = {
       path: false,
       encoding: false,
     };
+    if (dev) {
+      config.watchOptions = {
+        ...config.watchOptions,
+        ignored: /node_modules|\.git|\.next|[\\/]data[\\/]|\.db(-wal|-shm)?$/,
+      };
+    }
     return config;
   },
   images: {

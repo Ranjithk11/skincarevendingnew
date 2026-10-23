@@ -159,7 +159,7 @@ export default function RecommendedProductsSection({
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: `repeat(${Math.min(Math.max(products.length, 1), 3)}, 1fr)`,
+            gridTemplateColumns: `repeat(${Math.min(Math.max(products.length, 1), 4)}, 1fr)`,
             gap: `${CARD_GAP}px`,
           }}
         >

@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { consentPathFromSelfieSearch, hasValidScanConsent } from "@/lib/scan-consent";
+import {
+  consentPathFromSelfieSearch,
+  ensureScanConsentForProceed,
+  hasValidScanConsent,
+  SKIP_SCAN_CONSENT_PAGE,
+} from "@/lib/scan-consent";
 import ScanConsentRedirecting from "./ScanConsentRedirecting";
 
 type Props = {
@@ -15,6 +20,11 @@ export default function ScanConsentGate({ children }: Props) {
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
+    if (SKIP_SCAN_CONSENT_PAGE) {
+      ensureScanConsentForProceed();
+      setAllowed(true);
+      return;
+    }
     if (hasValidScanConsent()) {
       setAllowed(true);
       return;

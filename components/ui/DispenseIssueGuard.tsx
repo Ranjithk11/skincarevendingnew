@@ -14,9 +14,9 @@ import { keyframes } from "@mui/system";
 import { Icon } from "@iconify/react";
 import { pauseKioskIdle, resumeKioskIdle } from "@/utils/kioskIdleGate";
 import { useVoiceMessages } from "@/contexts/VoiceContext";
+import { useKioskAdminFlag } from "@/lib/kiosk-flag-poll";
 
 const WEBSITE_URL = "https://leafwater.in";
-const POLL_MS = 15_000;
 const FOREST = "#2F5D46";
 const GOLD = "#C4A35A";
 
@@ -50,30 +50,9 @@ export default function DispenseIssueGuard({
 }: {
   children?: React.ReactNode;
 }) {
-  const [issueEnabled, setIssueEnabled] = useState(false);
+  const issueEnabled = useKioskAdminFlag("dispenseIssue");
   const [open, setOpen] = useState(false);
   const { speakMessage } = useVoiceMessages();
-
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/dispense-issue", { cache: "no-store" });
-      const json = await res.json();
-      setIssueEnabled(Boolean(json?.issueEnabled));
-    } catch {
-      // Keep last known state.
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-    const id = window.setInterval(() => void refresh(), POLL_MS);
-    const onFocus = () => void refresh();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.clearInterval(id);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [refresh]);
 
   const guardBuy = useCallback(() => {
     if (!issueEnabled) return true;

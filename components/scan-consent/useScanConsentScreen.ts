@@ -32,24 +32,38 @@ export function useScanConsentScreen() {
     router.push(skipScanBrowsePath());
   }, [router]);
 
+  const persistAndGoToScan = useCallback(
+    async (marketingConsent: boolean) => {
+      if (busy) return;
+      setBusy(true);
+      let machineName = "";
+      try {
+        const res = await fetch("/api/admin/machine-name", { cache: "no-store" });
+        const json = await res.json();
+        if (json?.success && json.machineName) machineName = String(json.machineName);
+      } catch {
+        /* optional */
+      }
+      const record = saveScanConsent({
+        marketingConsent,
+        machineName,
+      });
+      await persistScanConsent(record);
+      router.push(selfiePathFromConsentSearch(new URLSearchParams(searchParams.toString())));
+    },
+    [busy, router, searchParams]
+  );
+
   const handleStart = useCallback(async () => {
-    if (!scanAgreed || busy) return;
-    setBusy(true);
-    let machineName = "";
-    try {
-      const res = await fetch("/api/admin/machine-name", { cache: "no-store" });
-      const json = await res.json();
-      if (json?.success && json.machineName) machineName = String(json.machineName);
-    } catch {
-      /* optional */
-    }
-    const record = saveScanConsent({
-      marketingConsent: marketingAgreed,
-      machineName,
-    });
-    await persistScanConsent(record);
-    router.push(selfiePathFromConsentSearch(new URLSearchParams(searchParams.toString())));
-  }, [busy, marketingAgreed, router, scanAgreed, searchParams]);
+    if (!scanAgreed) return;
+    await persistAndGoToScan(marketingAgreed);
+  }, [marketingAgreed, persistAndGoToScan, scanAgreed]);
+
+  const handleAcceptCookies = useCallback(async () => {
+    setScanAgreed(true);
+    setMarketingAgreed(true);
+    await persistAndGoToScan(true);
+  }, [persistAndGoToScan]);
 
   return {
     scanAgreed,
@@ -61,5 +75,6 @@ export function useScanConsentScreen() {
     handleBack,
     handleSkip,
     handleStart,
+    handleAcceptCookies,
   };
 }

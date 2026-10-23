@@ -88,6 +88,8 @@ export const useVoiceMessages = () => {
     analysisCompleteClickRecommendations: "Analysis completed successfully. Please tap Get Our Recommendations.",
     recommendations: "Here are your personalized recommendations",
     kioskReport: "Here is your skincare report. Tick the products you want, then generate the QR to pay and dispense.",
+    evergritWipesPromo:
+      "Try Evergrit Reset Wipes after your scan. Add them to your picks, or close to keep them highlighted on the side.",
     error: "An error occurred. Please try again",
     networkError: "Network error. Please check your connection",
     invalidInput: "Invalid input. Please try again",
