@@ -109,7 +109,7 @@ export default function NewPromoLanding() {
             }
           }
         } catch {
-          // landing-image still resolves from SQLite
+          // landing-image still resolves from env / Make
         }
 
         const fingerprint = machineName.toUpperCase();
@@ -123,6 +123,7 @@ export default function NewPromoLanding() {
           fingerprint !== lastFingerprint;
 
         const params = new URLSearchParams();
+        if (machineName) params.set("location", machineName);
         if (forceFromUrl || pendingForce || machineChanged) {
           params.set("force", "1");
         }

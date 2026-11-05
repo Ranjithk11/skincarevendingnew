@@ -1,35 +1,47 @@
 // SQLite database for admin functionality
 // Similar to Leafwater V1.2's database.py
 
-import Database from 'better-sqlite3';
-import * as path from 'path';
-import * as fs from 'fs';
+import type BetterSqlite3 from "better-sqlite3";
+import * as path from "path";
+import * as fs from "fs";
+
+const IS_VERCEL = process.env.VERCEL === "1";
 
 // Database file location
-const DB_DIR = path.join(process.cwd(), 'data');
-const DB_FILE = path.join(DB_DIR, 'vending.db');
-
-// Ensure data directory exists
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
-}
+const DB_DIR = path.join(process.cwd(), "data");
+const DB_FILE = path.join(DB_DIR, "vending.db");
 
 type SqliteGlobal = {
-  __lwVendingDb?: Database.Database;
+  __lwVendingDb?: BetterSqlite3.Database;
   __lwVendingDbReady?: boolean;
 };
 
 const sqliteGlobal = globalThis as typeof globalThis & SqliteGlobal;
 
+function openLocalDatabase(): BetterSqlite3.Database | undefined {
+  if (IS_VERCEL) return undefined;
+  try {
+    // Runtime require so Vercel serverless never loads the native .node binary.
+    const Database = require("better-sqlite3") as typeof import("better-sqlite3");
+    if (!fs.existsSync(DB_DIR)) {
+      fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+    const instance = new Database(DB_FILE);
+    instance.pragma("journal_mode = WAL");
+    return instance;
+  } catch (err) {
+    console.error("[SQLite] Database unavailable:", err);
+    return undefined;
+  }
+}
+
 // One connection per process. HMR / extra API chunks must not reopen the file
 // (that rewrites WAL and can retrigger Next.js file watching).
 if (!sqliteGlobal.__lwVendingDb) {
-  const instance = new Database(DB_FILE);
-  instance.pragma("journal_mode = WAL");
-  sqliteGlobal.__lwVendingDb = instance;
+  sqliteGlobal.__lwVendingDb = openLocalDatabase();
 }
 
-const db = sqliteGlobal.__lwVendingDb;
+const db = sqliteGlobal.__lwVendingDb as BetterSqlite3.Database;
 
 function dropRelationIfExists(name: string) {
   const row = db
@@ -824,7 +836,7 @@ function initDb() {
 }
 
 // Initialize once per process (skip on HMR re-eval of this module).
-if (!sqliteGlobal.__lwVendingDbReady) {
+if (!IS_VERCEL && db && !sqliteGlobal.__lwVendingDbReady) {
   try {
     initDb();
     sqliteGlobal.__lwVendingDbReady = true;
