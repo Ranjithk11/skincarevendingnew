@@ -77,31 +77,25 @@ export default function IdleVideoOverlay({
 
     try {
       v.pause();
+      v.playsInline = true;
+      v.setAttribute("playsinline", "true");
+      v.setAttribute("webkit-playsinline", "true");
       v.src = list[safeIndex];
+      // Browsers (and Vercel Chrome) block autoplay with sound. Start muted
+      // so the clip actually plays, then try to unmute on kiosk.
+      v.muted = true;
+      v.defaultMuted = true;
       v.volume = withAudio ? 1 : 0;
-      v.muted = !withAudio;
       v.load();
+      await v.play();
 
-      if (!withAudio) {
-        await v.play();
-        return;
-      }
+      if (!withAudio) return;
 
-      // Prefer unmuted playback for kiosk idle promos.
       v.muted = false;
       try {
         await v.play();
-        return;
       } catch {
-        // Browser blocked autoplay with sound — start muted, then try to unmute.
         v.muted = true;
-        await v.play();
-        v.muted = false;
-        try {
-          await v.play();
-        } catch {
-          v.muted = true;
-        }
       }
     } catch {}
   }, [withAudio]);
@@ -247,7 +241,11 @@ export default function IdleVideoOverlay({
         component="video"
         ref={videoRef}
         autoPlay
+        muted
+        loop={false}
         playsInline
+        preload="auto"
+        controls={false}
         onEnded={handleVideoEnded}
         onError={handleVideoError}
         sx={{

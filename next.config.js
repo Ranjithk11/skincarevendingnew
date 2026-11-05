@@ -66,11 +66,20 @@ const nextConfig = {
 // cached GET /api/admin/slots would show stale slots on the kiosk even after a
 // successful assignment (POST 200). Force those requests to always hit network.
 const defaultRuntimeCaching = require("next-pwa/cache");
-const runtimeCaching = defaultRuntimeCaching.map((entry) =>
-  entry?.options?.cacheName === "apis"
-    ? { ...entry, handler: "NetworkOnly", options: { cacheName: "apis" } }
-    : entry
-);
+const runtimeCaching = defaultRuntimeCaching.map((entry) => {
+  if (entry?.options?.cacheName === "apis") {
+    return { ...entry, handler: "NetworkOnly", options: { cacheName: "apis" } };
+  }
+  // Large idle MP4s fail under CacheFirst (quota + Range). Stream from network.
+  if (entry?.options?.cacheName === "static-video-assets") {
+    return {
+      urlPattern: /\.(?:mp4|webm|ogg)$/i,
+      handler: "NetworkOnly",
+      options: { cacheName: "static-video-assets" },
+    };
+  }
+  return entry;
+});
 
 const withPWA = require("next-pwa")({
   dest: "public", // Destination directory for the PWA files
