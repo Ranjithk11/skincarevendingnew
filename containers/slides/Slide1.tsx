@@ -16,6 +16,7 @@ import {
 import {
   CONSULTATION_TIME_OPTIONS,
 } from "@/lib/consultationFlow";
+import QuestionnaireCookiesConsent from "@/components/scan-consent/QuestionnaireCookiesConsent";
 
 interface Slide1Props {
   name: string;
@@ -39,6 +40,8 @@ interface Slide1Props {
   handleNext: () => void;
   currentSlide: number;
   validationError?: string;
+  cookiesAccepted: boolean;
+  onCookiesChange: (accepted: boolean) => void;
 }
 
 export default function Slide1({
@@ -63,6 +66,8 @@ export default function Slide1({
   handleNext,
   currentSlide,
   validationError,
+  cookiesAccepted,
+  onCookiesChange,
 }: Slide1Props) {
   const [phoneError, setPhoneError] = useState<string>("");
   const [showPhone, setShowPhone] = useState(false);
@@ -488,14 +493,19 @@ export default function Slide1({
           </Box>
         )}
 
+        <QuestionnaireCookiesConsent
+          accepted={cookiesAccepted}
+          onChange={onCookiesChange}
+        />
+
         {/* Next Button */}
         <Box
           sx={{
-            bgcolor: "#2d5a3d",
+            bgcolor: cookiesAccepted ? "#2d5a3d" : "#9ca3af",
             py: 3,
             width: "100%",
             textAlign: "center",
-            cursor: "pointer",
+            cursor: cookiesAccepted ? "pointer" : "not-allowed",
             flexShrink: 0,
             marginTop: "auto",
           }}
@@ -503,6 +513,10 @@ export default function Slide1({
             const error = validatePhone(phone, country, callingCode);
             if (error) {
               setPhoneError(error);
+              return;
+            }
+            if (!cookiesAccepted) {
+              setPhoneError("Please accept cookies to proceed");
               return;
             }
 

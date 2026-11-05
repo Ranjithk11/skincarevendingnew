@@ -29,14 +29,12 @@ import ClientErrorLogger from "@/components/ui/ClientErrorLogger";
 import DispenseIssueGuard from "@/components/ui/DispenseIssueGuard";
 import StartupSync from "@/components/StartupSync";
 import { clearSpinWheelSession } from "@/lib/spin-wheel/session";
+import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
 
-// Idle videos disabled — kept for easy restore
-// import IdleVideoOverlay from "@/components/ui/IdleVideoOverlay";
-// const IDLE_VIDEO_PLAYLIST = [
-//   "/videos/airport.mp4",
-//   "/videos/leafwater kavya reel .mp4",
-//   "/videos/leaf water  f 28th.mp4",
-// ];
+const IDLE_VIDEO_PLAYLIST = [
+  "/videos/drreddy2.mp4",
+  "/videos/newdrreddy.mp4",
+];
 
 interface DefaultLayoutProps {
   children?: React.ReactNode;
@@ -253,6 +251,7 @@ const DefaultLayout = ({ children }: DefaultLayoutProps) => {
       </Drawer> */}
       {/* Home is included: idle clears cart + signs out, then stays/returns to landing. */}
       <ClientErrorLogger />
+      <IdleVideoOverlay reIdleMs={120_000} sources={IDLE_VIDEO_PLAYLIST} />
       <IdleRedirect defaultIdleMs={120_000} feedbackIdleMs={180_000} />
       </DispenseIssueGuard>
     </Fragment>

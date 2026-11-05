@@ -11,7 +11,11 @@ import Slide1 from "./Slide1";
 import Slide2 from "./Slide2";
 import { PageBackground } from "@/components/ui";
 import { isFreeConsultationFlow } from "@/lib/consultationFlow";
-import { scanConsentPathForFlow } from "@/lib/scan-consent";
+import {
+  persistScanConsent,
+  saveScanConsent,
+  scanConsentPathForFlow,
+} from "@/lib/scan-consent";
 import { APP_ROUTES } from "@/utils/routes";
 import { useAppDispatch } from "@/redux/store/store";
 import { setSkinType } from "@/redux/reducers/analysisSlice";
@@ -82,6 +86,7 @@ export default function Questionnaire() {
   const [preferredTime, setPreferredTime] = useState<string>("");
   const [validationError, setValidationError] = useState<string>("");
   const [machineLocation, setMachineLocation] = useState<string>("leafterwater_vendingmachine02");
+  const [cookiesAccepted, setCookiesAccepted] = useState(true);
 
   const totalSlides = 2;
 
@@ -299,6 +304,17 @@ export default function Questionnaire() {
         setTimeout(() => setValidationError(""), 3000);
         return;
       }
+      if (!cookiesAccepted) {
+        setValidationError("Please accept cookies to proceed");
+        speakMessage("invalidInput");
+        setTimeout(() => setValidationError(""), 3000);
+        return;
+      }
+      const record = saveScanConsent({
+        marketingConsent: true,
+        machineName: machineLocation,
+      });
+      void persistScanConsent(record);
       setValidationError("");
     }
 
@@ -526,6 +542,8 @@ export default function Questionnaire() {
             handleNext={handleNext}
             currentSlide={currentSlide}
             validationError={validationError}
+            cookiesAccepted={cookiesAccepted}
+            onCookiesChange={setCookiesAccepted}
           />
           <Slide2
             currentSlide={currentSlide}

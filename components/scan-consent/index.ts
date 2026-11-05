@@ -1,5 +1,7 @@
 export { default as ScanConsentScreen } from "./ScanConsentScreen";
 export { default as ScanConsentCookiePopup } from "./ScanConsentCookiePopup";
+export { default as QuestionnaireCookiesConsent } from "./QuestionnaireCookiesConsent";
+export { default as CookiesTermsPopup } from "./CookiesTermsPopup";
 export { default as ScanConsentGate } from "./ScanConsentGate";
 export { default as ScanConsentLogo } from "./ScanConsentLogo";
 export { default as ScanConsentCopy } from "./ScanConsentCopy";

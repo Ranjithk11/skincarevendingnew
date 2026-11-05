@@ -19,7 +19,10 @@ type IdleVideoOverlayProps = {
   withAudio?: boolean;
 };
 
-const DEFAULT_IDLE_VIDEOS = ["/videos/airport.mp4"];
+const DEFAULT_IDLE_VIDEOS = [
+  "/videos/drreddy2.mp4",
+  "/videos/newdrreddy.mp4",
+];
 
 function encodeVideoPath(path: string): string {
   if (!path.startsWith("/")) return encodeURI(path);
@@ -31,7 +34,7 @@ function encodeVideoPath(path: string): string {
 
 export default function IdleVideoOverlay({
   reIdleMs = 120_000,
-  src = "/videos/airport.mp4",
+  src = "/videos/drreddy2.mp4",
   sources,
   withAudio = true,
 }: IdleVideoOverlayProps) {

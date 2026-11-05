@@ -1,16 +1,22 @@
 "use client";
 
 import { Box, Button, Typography } from "@mui/material";
-import { useScanConsentScreen } from "./useScanConsentScreen";
 
-export default function ScanConsentCookiePopup() {
-  const { busy, handleAcceptCookies } = useScanConsentScreen();
+type Props = {
+  open: boolean;
+  busy?: boolean;
+  onAccept: () => void;
+};
+
+export default function ScanConsentCookiePopup({ open, busy, onAccept }: Props) {
+  if (!open) return null;
 
   return (
     <Box
       sx={{
-        minHeight: "100dvh",
-        width: "100%",
+        position: "fixed",
+        inset: 0,
+        zIndex: 2000,
         bgcolor: "rgba(0, 0, 0, 0.35)",
         display: "flex",
         alignItems: "center",
@@ -34,7 +40,7 @@ export default function ScanConsentCookiePopup() {
           <Button
             variant="contained"
             disabled={busy}
-            onClick={() => void handleAcceptCookies()}
+            onClick={onAccept}
             sx={{
               textTransform: "none",
               minWidth: 88,
