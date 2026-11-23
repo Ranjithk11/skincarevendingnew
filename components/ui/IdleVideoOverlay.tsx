@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Box, Typography } from "@mui/material";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -32,6 +33,47 @@ function encodeVideoPath(path: string): string {
     .join("/");
 }
 
+/** Zoom past encoded letterbox bars so the picture fills a 9:16 kiosk. */
+function detectLetterboxScale(video: HTMLVideoElement): number {
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+  if (w < 16 || h < 16) return 1;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return 1;
+
+  try {
+    ctx.drawImage(video, 0, 0, w, h);
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const rowIsBlack = (y: number) => {
+      const step = Math.max(1, Math.floor(w / 32));
+      let black = 0;
+      let n = 0;
+      for (let x = 0; x < w; x += step) {
+        const i = (y * w + x) * 4;
+        n += 1;
+        if (data[i] < 16 && data[i + 1] < 16 && data[i + 2] < 16) black += 1;
+      }
+      return black / n >= 0.88;
+    };
+
+    const max = Math.floor(h * 0.4);
+    let top = 0;
+    let bot = 0;
+    while (top < max && rowIsBlack(top)) top += 1;
+    while (bot < max && rowIsBlack(h - 1 - bot)) bot += 1;
+
+    const content = h - top - bot;
+    if (content < h * 0.45) return 1;
+    return Math.min(1.55, (h / content) * 1.02);
+  } catch {
+    return 1;
+  }
+}
+
 export default function IdleVideoOverlay({
   reIdleMs = 120_000,
   src = "/videos/drreddy2.mp4",
@@ -58,6 +100,12 @@ export default function IdleVideoOverlay({
   const dismissedRef = useRef(false);
   // Track whether this is the initial page load (true) vs client-side navigation (false)
   const initialLoadRef = useRef(true);
+  const [mounted, setMounted] = useState(false);
+  const [videoScale, setVideoScale] = useState(1);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -88,6 +136,21 @@ export default function IdleVideoOverlay({
       v.volume = withAudio ? 1 : 0;
       v.load();
       await v.play();
+
+      const applyScale = () => {
+        if (videoRef.current !== v) return;
+        setVideoScale(detectLetterboxScale(v));
+      };
+      if (v.currentTime >= 0.35 && v.readyState >= 2) {
+        applyScale();
+      } else {
+        const onTimeUpdate = () => {
+          if (v.currentTime < 0.35) return;
+          v.removeEventListener("timeupdate", onTimeUpdate);
+          applyScale();
+        };
+        v.addEventListener("timeupdate", onTimeUpdate);
+      }
 
       if (!withAudio) return;
 
@@ -201,10 +264,10 @@ export default function IdleVideoOverlay({
   }, [open, withAudio]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !mounted) return;
     currentIndexRef.current = 0;
     playVideoAtIndex(0);
-  }, [open, playVideoAtIndex]);
+  }, [open, mounted, playVideoAtIndex]);
 
   // --- Interaction Handlers ---
   const handleBackgroundClick = () => {
@@ -226,15 +289,21 @@ export default function IdleVideoOverlay({
     router.push("/slots");
   };
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  const overlay = (
     <Box
       sx={{
         position: "fixed",
-        inset: 0,
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100dvh",
+        maxWidth: "100vw",
+        maxHeight: "100dvh",
         zIndex: 9999,
         bgcolor: "black",
+        overflow: "hidden",
       }}
     >
       <Box
@@ -249,9 +318,17 @@ export default function IdleVideoOverlay({
         onEnded={handleVideoEnded}
         onError={handleVideoError}
         sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
           width: "100%",
           height: "100%",
+          minWidth: "100%",
+          minHeight: "100%",
           objectFit: "cover",
+          objectPosition: "center center",
+          display: "block",
+          transform: `translate(-50%, -50%) scale(${videoScale})`,
         }}
       />
 
@@ -418,4 +495,6 @@ export default function IdleVideoOverlay({
       </Box>
     </Box>
   );
+
+  return createPortal(overlay, document.body);
 }

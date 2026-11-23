@@ -341,6 +341,31 @@ function ensureOrderIdempotencyIndexes() {
   }
 }
 
+function ensureDispenseSupportTable() {
+  if (!db) return;
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS dispense_support_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_id TEXT NOT NULL,
+      issue_label TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      email TEXT NOT NULL,
+      order_id TEXT,
+      payment_id TEXT,
+      machine_name TEXT,
+      machine_location TEXT,
+      products_json TEXT,
+      dispense_status TEXT,
+      customer_name TEXT,
+      created_at TEXT DEFAULT (datetime('now'))
+    )
+  `);
+  const cols = db.prepare("PRAGMA table_info(dispense_support_requests)").all() as { name?: string }[];
+  if (!cols.some((column) => column.name === "customer_name")) {
+    db.exec("ALTER TABLE dispense_support_requests ADD COLUMN customer_name TEXT");
+  }
+}
+
 // Initialize database tables
 function initDb() {
   // Orders table - main sales records
@@ -831,6 +856,8 @@ function initDb() {
     INSERT OR IGNORE INTO app_settings (setting_key, setting_value, description) 
     VALUES ('machine_name', 'LeafWater_Default', 'Machine name/location for backend identification')
   `).run();
+
+  ensureDispenseSupportTable();
 
   console.log('SQLite database initialized:', DB_FILE);
 }
@@ -2338,5 +2365,44 @@ export const sqliteDb = {
 
     console.log("[SQLite] Sales dedupe complete:", result);
     return result;
+  },
+
+  saveDispenseSupportRequest(entry: {
+    issueId: string;
+    issueLabel: string;
+    customerName: string;
+    phone: string;
+    email: string;
+    orderId?: string;
+    paymentId?: string;
+    machineName?: string;
+    machineLocation?: string;
+    productsJson?: string;
+    dispenseStatus?: string;
+  }): number | null {
+    if (!db) return null;
+    ensureDispenseSupportTable();
+    const result = db
+      .prepare(
+        `INSERT INTO dispense_support_requests (
+          issue_id, issue_label, customer_name, phone, email, order_id, payment_id,
+          machine_name, machine_location, products_json, dispense_status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        entry.issueId,
+        entry.issueLabel,
+        entry.customerName,
+        entry.phone,
+        entry.email,
+        entry.orderId || null,
+        entry.paymentId || null,
+        entry.machineName || null,
+        entry.machineLocation || null,
+        entry.productsJson || null,
+        entry.dispenseStatus || null,
+        new Date().toISOString()
+      );
+    return Number(result.lastInsertRowid);
   },
 };

@@ -43,6 +43,7 @@ import {
   sendDispenseSuccessWebhook,
 } from "@/utils/webhook";
 import PostDispenseCrossSell from "@/components/kiosk/PostDispenseCrossSell";
+import DispenseSupportChat from "@/components/kiosk/DispenseSupportChat";
 import { clearKioskJourney, toJourneyWebhook } from "@/lib/kiosk-journey";
 
 /** STM32 / network hang: fail with dispense_error instead of staying silent. */
@@ -161,6 +162,7 @@ export default function FeedbackPage() {
   const { speakMessage } = useVoiceMessages();
 
   const autoHomeTimerRef = useRef<number | null>(null);
+  const supportChatActiveRef = useRef(false);
   const hasCompletedRef = useRef(false);
   const hasAnnouncedFeedbackPromptRef = useRef(false);
   const textFieldRef = useRef<HTMLDivElement>(null);
@@ -183,6 +185,8 @@ export default function FeedbackPage() {
   >({ status: "idle" });
   const [pickupTimer, setPickupTimer] = useState<number>(0);
   const [crossSellOpen, setCrossSellOpen] = useState(true);
+  const [supportChatActive, setSupportChatActive] = useState(false);
+  supportChatActiveRef.current = supportChatActive;
 
   // Email state
   const [userEmail, setUserEmail] = useState<string>("");
@@ -320,9 +324,12 @@ export default function FeedbackPage() {
       autoHomeTimerRef.current = null;
     }
 
+    if (supportChatActive) return;
+
     autoHomeTimerRef.current = window.setTimeout(() => {
       if (hasCompletedRef.current) return;
       if (isSubmitting) return;
+      if (supportChatActiveRef.current) return;
       void goHome();
     }, 180_000);
 
@@ -332,7 +339,7 @@ export default function FeedbackPage() {
         autoHomeTimerRef.current = null;
       }
     };
-  }, [dispenseState.status]);
+  }, [dispenseState.status, supportChatActive]);
 
   // Pickup timer countdown after machine dispense succeeds (skip for kit-only)
   useEffect(() => {
@@ -1254,6 +1261,30 @@ export default function FeedbackPage() {
 
       {/* Help Dialog */}
       <HelpDialog open={helpDialogOpen} onClose={() => setHelpDialogOpen(false)} />
+      <DispenseSupportChat
+        onActiveChange={setSupportChatActive}
+        phoneHint={webhookUser.phone}
+        emailHint={(() => {
+          const sessionEmail = String((session?.user as { email?: string } | undefined)?.email || "").trim();
+          return sessionEmail.toLowerCase() === "kiosk.support.test@example.com" ? "" : sessionEmail;
+        })()}
+        nameHint={(() => {
+          const sessionName = String((session?.user as { name?: string } | undefined)?.name || "").trim();
+          if (!sessionName || /walk-?in/i.test(sessionName)) return "";
+          return sessionName;
+        })()}
+        orderId={String(checkoutSummary?.payment?.orderId || "")}
+        paymentId={String(checkoutSummary?.payment?.paymentId || "")}
+        machineName={mergedMachine.machineName || ""}
+        machineLocation={mergedMachine.machineLocation || ""}
+        dispenseStatus={dispenseState.status}
+        products={checkoutItems.map((item: { id?: string; name?: string; quantity?: number; slotId?: string | number }) => ({
+          id: item?.id,
+          name: item?.name,
+          quantity: item?.quantity ?? 1,
+          slotId: item?.slotId,
+        }))}
+      />
       <PostDispenseCrossSell
         open={dispenseState.status === "done" && crossSellOpen}
         checkoutItems={checkoutItems}

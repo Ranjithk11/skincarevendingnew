@@ -4,6 +4,8 @@ import {
   getSlotDiscountMap,
   getSlotInfoForProduct,
   getSlotRetailPriceForProduct,
+  getProductBrandId,
+  getProductBrandName,
   indexProductsById,
   mergeCatalogWithSlotProducts,
   normalizeProductDiscount,
@@ -590,10 +592,122 @@ function shuffleWithRng<T>(items: T[], rand: () => number): T[] {
   return arr;
 }
 
+const DR_REDDYS_BRAND_ID = "brands/78001084";
+
+function isDrReddysProduct(product: any): boolean {
+  const brandId = String(getProductBrandId(product) || "");
+  if (brandId === DR_REDDYS_BRAND_ID || brandId.endsWith("78001084")) return true;
+  const brandName = normalizeText(getProductBrandName(product)).replace(/'/g, "");
+  if (brandName.includes("dr reddy") || brandName.includes("drreddy")) return true;
+  const name = normalizeText(product?.name).replace(/'/g, "");
+  return name.includes("dr reddy") || name.includes("drreddy");
+}
+
+function listInStockDrReddys(
+  machineProducts: any[],
+  slotsMap: ReturnType<typeof buildSlotsMap>,
+  slotsData: unknown
+): ReportProduct[] {
+  const seen = new Set<string>();
+  const stock: ReportProduct[] = [];
+  for (const product of machineProducts) {
+    if (!isDrReddysProduct(product) || isBabyProduct(product)) continue;
+    const mapped = toReportProduct(product, slotsMap, slotsData);
+    if (!mapped || seen.has(mapped.id)) continue;
+    seen.add(mapped.id);
+    stock.push(mapped);
+  }
+  return stock;
+}
+
+function chooseDrReddysProduct(
+  stock: ReportProduct[],
+  picked: ReportProduct[],
+  preferred: ReportProduct | null,
+  seed?: string
+): ReportProduct {
+  if (preferred && stock.some((product) => product.id === preferred.id)) {
+    return preferred;
+  }
+  const usedCategories = new Set(
+    picked.map((product) => normalizeText(product.category)).filter(Boolean)
+  );
+  const unusedCategory = stock.filter((product) => {
+    const category = normalizeText(product.category);
+    return !category || !usedCategories.has(category);
+  });
+  const pool = unusedCategory.length ? unusedCategory : stock;
+  if (!seed || pool.length === 1) return pool[0];
+  const rand = mulberry32(hashSeed(`dr-reddys|${seed}`));
+  return pool[Math.floor(rand() * pool.length)];
+}
+
+/** Exactly one of the three cards is an in-stock Dr Reddy's product when the machine has one. */
+function ensureOneDrReddysProduct(
+  picked: ReportProduct[],
+  machineProducts: any[],
+  slotsMap: ReturnType<typeof buildSlotsMap>,
+  slotsData: unknown,
+  preferred: ReportProduct | null = null,
+  seed?: string
+): ReportProduct[] {
+  const stock = listInStockDrReddys(machineProducts, slotsMap, slotsData);
+  if (!stock.length) return picked.slice(0, 3);
+
+  const drIds = new Set(stock.map((product) => product.id));
+  const next = picked.slice(0, 3);
+  const drPicked = next.filter((product) => drIds.has(product.id));
+
+  if (drPicked.length > 1) {
+    const keepId =
+      preferred && drPicked.some((product) => product.id === preferred.id)
+        ? preferred.id
+        : drPicked[0].id;
+    const kept = next.filter((product) => !drIds.has(product.id) || product.id === keepId);
+    next.splice(0, next.length, ...kept);
+  }
+
+  if (!next.some((product) => drIds.has(product.id))) {
+    const chosen = chooseDrReddysProduct(stock, next, preferred, seed);
+    const category = normalizeText(chosen.category);
+    const sameCategoryIndex = next.findIndex(
+      (product) => category && normalizeText(product.category) === category
+    );
+    if (sameCategoryIndex >= 0) next[sameCategoryIndex] = chosen;
+    else if (next.length < 3) next.push(chosen);
+    else next[next.length - 1] = chosen;
+  }
+
+  if (next.length < 3) {
+    const seen = new Set(next.map((product) => product.id));
+    const seenCategories = new Set(
+      next.map((product) => normalizeText(product.category)).filter(Boolean)
+    );
+    const fill = (allowSameCategory: boolean) => {
+      for (const product of machineProducts) {
+        if (next.length >= 3) break;
+        if (isDrReddysProduct(product) || isBabyProduct(product)) continue;
+        const mapped = toReportProduct(product, slotsMap, slotsData);
+        if (!mapped || seen.has(mapped.id)) continue;
+        const category = normalizeText(mapped.category);
+        if (!allowSameCategory && category && seenCategories.has(category)) continue;
+        seen.add(mapped.id);
+        if (category) seenCategories.add(category);
+        next.push(mapped);
+      }
+    };
+    fill(false);
+    fill(true);
+  }
+
+  return next.slice(0, 3);
+}
+
 /**
  * Random in-stock products from this machine (excl. baby).
  * Seeded so the same scan stays stable on refresh, but each scan/user differs.
  * Prefers variety across categories when possible.
+ * One of the three is a Dr Reddy's product when that brand is in stock.
  */
 export function pickRandomMachineProducts(
   catalogProducts: any[],
@@ -636,7 +750,14 @@ export function pickRandomMachineProducts(
     }
   }
 
-  return picked.slice(0, 3);
+  return ensureOneDrReddysProduct(
+    picked,
+    machineProducts,
+    slotsMap,
+    slotsData,
+    null,
+    seed
+  );
 }
 
 /** Preferred product names for curated routines (match against machine stock). */
@@ -1155,7 +1276,27 @@ export function pickRecommendedProducts(
     }
   }
 
-  return picked.slice(0, 3);
+  let preferredDr: ReportProduct | null = null;
+  for (const bucket of high) {
+    if (preferredDr) break;
+    const products = Array.isArray(bucket?.products) ? bucket.products : [];
+    for (const apiProduct of products) {
+      const product = resolveForMachine(apiProduct);
+      if (!isDrReddysProduct(product) && !isDrReddysProduct(apiProduct)) continue;
+      const mapped = toReportProduct(product, slotsMap, slotsData);
+      if (!mapped) continue;
+      preferredDr = mapped;
+      break;
+    }
+  }
+
+  return ensureOneDrReddysProduct(
+    picked,
+    machineProducts,
+    slotsMap,
+    slotsData,
+    preferredDr
+  );
 }
 
 export function kitToReportProduct(kit: TravelKit): ReportProduct {

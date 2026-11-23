@@ -7,6 +7,7 @@
 // All work is best-effort: failures are logged and never bubble up to the
 // admin flow. On Vercel (no SQLite) everything is a no-op.
 
+import { productIdKeys } from "@/lib/product-slot-utils";
 import {
   getMorningSlotInventoryWebhookUrl,
   sendSlotUpdateWebhook,
@@ -21,13 +22,109 @@ const TOTAL_SLOTS = 60;
 const MORNING_SYNC_HOUR_IST = 9;
 const EVENING_SYNC_HOUR_IST = 18;
 
+const PLACEHOLDER_CATEGORIES = new Set([
+  "",
+  "null",
+  "undefined",
+  "uncategorized",
+  "n/a",
+  "na",
+]);
+
+function isPlaceholderCategory(value: unknown): boolean {
+  return PLACEHOLDER_CATEGORIES.has(String(value ?? "").trim().toLowerCase());
+}
+
+/** Catalog category title for a slot, ignoring stored "Uncategorized" / "null". */
+function resolveSlotCategory(
+  slot: any,
+  categories: Map<string, string>
+): string {
+  if (!slot?.product_id) return "";
+  for (const key of productIdKeys(slot.product_id)) {
+    const title = categories.get(key);
+    if (title) return title;
+  }
+  const stored = String(slot?.category ?? "").trim();
+  return isPlaceholderCategory(stored) ? "" : stored;
+}
+
+let categoryCache: { at: number; map: Map<string, string> } | null = null;
+const CATEGORY_CACHE_MS = 10 * 60 * 1000;
+
+/**
+ * Product records from fetch-by-filter do not include a category.
+ * The category list does, and each category's product pages are authoritative.
+ */
+async function loadCatalogCategories(): Promise<Map<string, string>> {
+  if (categoryCache && Date.now() - categoryCache.at < CATEGORY_CACHE_MS) {
+    return categoryCache.map;
+  }
+
+  const map = new Map<string, string>();
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  if (!API_BASE) return map;
+
+  try {
+    const { fetchLeafwater } = await import("@/lib/leafwater-fetch");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const token = process.env.NEXT_PUBLIC_DB_TOKEN;
+    if (token) headers["x-db-token"] = token;
+
+    const catRes = await fetchLeafwater(`${API_BASE}/product/get-product-categories`, {
+      cache: "no-store",
+      headers,
+    });
+    if (!catRes.ok) return map;
+    const catJson = await catRes.json();
+    const categories = Array.isArray(catJson?.data) ? catJson.data : [];
+
+    for (const category of categories) {
+      const title = String(category?.title ?? category?.name ?? "").trim();
+      const catId = String(category?._id ?? category?.id ?? "").trim();
+      if (!title || !catId || title.toLowerCase() === "all") continue;
+
+      let page = 1;
+      const limit = 100;
+      let total = Number.POSITIVE_INFINITY;
+      while ((page - 1) * limit < total && page <= 20) {
+        const res = await fetchLeafwater(
+          `${API_BASE}/product/fetch-by-filter?page=${page}&limit=${limit}&catId=${encodeURIComponent(catId)}`,
+          { cache: "no-store", headers }
+        );
+        if (!res.ok) break;
+        const json = await res.json();
+        const products = json?.data?.[0]?.products;
+        const batch = Array.isArray(products) ? products : [];
+        total = Number(json?.totalCounts ?? json?.data?.[0]?.totalCounts ?? batch.length);
+        if (!batch.length) break;
+        for (const product of batch) {
+          const rawId = product?._id ?? product?.id;
+          if (!rawId) continue;
+          for (const key of productIdKeys(rawId)) {
+            if (!map.has(key)) map.set(key, title);
+          }
+        }
+        page += 1;
+      }
+    }
+  } catch (error) {
+    console.warn("[slot-webhook] catalog category lookup failed:", error);
+    return map;
+  }
+
+  categoryCache = { at: Date.now(), map };
+  console.log(`[slot-webhook] Resolved catalog categories for ${map.size} product keys`);
+  return map;
+}
+
 /** Map a single DB slot row into the webhook slot payload shape. */
-function mapSlot(slot: any, slotId: number) {
+function mapSlot(slot: any, slotId: number, categories: Map<string, string>) {
   return {
     slot_id: slotId,
     product_id: slot?.product_id ?? null,
     product_name: slot?.product_name || "",
-    category: slot?.category || "",
+    category: resolveSlotCategory(slot, categories),
     retail_price: slot?.retail_price ?? null,
     discount_value: slot?.discount_value ?? null,
     image_url: slot?.image_url || "",
@@ -37,16 +134,20 @@ function mapSlot(slot: any, slotId: number) {
 }
 
 /** Always emit slots 1..60 so Make receives a full machine picture. */
-function mapAllSixtySlots(allSlots: Record<number, any>) {
+function mapAllSixtySlots(
+  allSlots: Record<number, any>,
+  categories: Map<string, string>
+) {
   const slots = [];
   for (let i = 1; i <= TOTAL_SLOTS; i++) {
-    slots.push(mapSlot(allSlots?.[i], i));
+    slots.push(mapSlot(allSlots?.[i], i, categories));
   }
   return slots;
 }
 
-function mapSlots(allSlots: Record<number, any>) {
-  return mapAllSixtySlots(allSlots);
+async function mapSlots(allSlots: Record<number, any>) {
+  const categories = await loadCatalogCategories();
+  return mapAllSixtySlots(allSlots, categories);
 }
 
 async function resolveMachineMeta() {
@@ -81,7 +182,7 @@ export async function sendAllSlotsUpdate(
   if (IS_VERCEL) return false;
   try {
     const { adminDb } = await import("@/lib/admin-db");
-    const slots = mapSlots(adminDb.getAllSlots());
+    const slots = await mapSlots(adminDb.getAllSlots());
     const { machineLocation, machineName, machineId } = await resolveMachineMeta();
     const webhookUrl = inventoryWebhookUrl();
 
@@ -203,7 +304,7 @@ async function sendScheduledWindow(
   }
 
   const { adminDb } = await import("@/lib/admin-db");
-  const slots = mapAllSixtySlots(adminDb.getAllSlots());
+  const slots = await mapSlots(adminDb.getAllSlots());
   const { machineLocation, machineName, machineId } = await resolveMachineMeta();
   const webhookUrl = inventoryWebhookUrl();
   const updateType =
