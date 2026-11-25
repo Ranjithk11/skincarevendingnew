@@ -46,7 +46,7 @@ function resolveSlotCategory(
     if (title) return title;
   }
   const stored = String(slot?.category ?? "").trim();
-  return isPlaceholderCategory(stored) ? "" : stored;
+  return isPlaceholderCategory(stored) ? "Others" : stored;
 }
 
 let categoryCache: { at: number; map: Map<string, string> } | null = null;
