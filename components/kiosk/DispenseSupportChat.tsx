@@ -133,7 +133,7 @@ export default function DispenseSupportChat({
   const { speak, speakQueued, cancel } = useVoice();
   const [mounted, setMounted] = useState(false);
   const [booted, setBooted] = useState(false);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [heldOpen, setHeldOpen] = useState(false);
   const [step, setStep] = useState<Step>("choose");
   const [activeField, setActiveField] = useState<DetailField>("name");
@@ -152,6 +152,7 @@ export default function DispenseSupportChat({
   const threadRef = useRef<HTMLDivElement | null>(null);
   const aliveRef = useRef(true);
   const greetedRef = useRef(false);
+  const autoOpenedRef = useRef(false);
   const stepRef = useRef<Step>("choose");
   const sendingRef = useRef(false);
   const queueRef = useRef(Promise.resolve());
@@ -217,14 +218,21 @@ export default function DispenseSupportChat({
   }, []);
 
   useEffect(() => {
-    if (!booted || greetedRef.current) return;
+    if (dispenseStatus !== "error" || autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+    setSecondsLeft(CLOSE_AFTER_SEC);
+    setOpen(true);
+  }, [dispenseStatus]);
+
+  useEffect(() => {
+    if (!booted || !open || greetedRef.current) return;
     greetedRef.current = true;
     say(
       `Hello, I'm ${ASSISTANT_NAME}. If something went wrong while your product was dispensing, tell me what happened.`,
       `Hello, I'm ${ASSISTANT_NAME}. If something went wrong while your product was dispensing, tell me what happened. ${CHOICES_SPOKEN}`,
       "queue"
     );
-  }, [booted, say]);
+  }, [booted, open, say]);
 
   useEffect(() => {
     setPhone((current) => {
