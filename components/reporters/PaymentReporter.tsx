@@ -10,6 +10,7 @@ import {
 } from "@/utils/webhook";
 import { resolvePaymentForWebhook } from "@/lib/resolveWebhookPayment";
 import type { SpinWheelWebhookPayload } from "@/lib/spin-wheel/webhook";
+import type { KioskJourneyWebhook } from "@/lib/kiosk-journey";
 
 interface PaymentReporterProps {
   active: boolean;
@@ -20,6 +21,7 @@ interface PaymentReporterProps {
   machineLocation?: string;
   machineName?: string;
   spinWheel?: SpinWheelWebhookPayload | null;
+  journey?: KioskJourneyWebhook | null;
 }
 
 export default function PaymentReporter({
@@ -31,6 +33,7 @@ export default function PaymentReporter({
   machineLocation,
   machineName,
   spinWheel,
+  journey,
 }: PaymentReporterProps) {
   const lastFiredKeyRef = useRef<string | null>(null);
 
@@ -88,6 +91,7 @@ export default function PaymentReporter({
         machineLocation,
         machineName,
         spinWheel,
+        journey,
         dedupeKey: key,
       });
     })();

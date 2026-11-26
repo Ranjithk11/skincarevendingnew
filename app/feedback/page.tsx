@@ -940,6 +940,7 @@ export default function FeedbackPage() {
           machineLocation={mergedMachine.machineLocation}
           machineName={mergedMachine.machineName || "Vending Machine"}
           spinWheel={spinWheelWebhookData}
+          journey={checkoutSummary?.journey}
         />
       )}
       <Box

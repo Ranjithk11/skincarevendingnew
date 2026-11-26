@@ -47,6 +47,7 @@ import {
   hasValidScanConsent,
   validateScanProcessing,
 } from "@/lib/scan-consent";
+import { markScanCompleted } from "@/lib/kiosk-journey";
 
 // MediaPipe camera kept for future (USE_MEDIAPIPE_FACE_SCAN) — not used in legacy TakeSelfie:
 // import dynamic from "next/dynamic";
@@ -608,6 +609,7 @@ const TakeSelfie = () => {
 
   useEffect(() => {
     if (skinAttributeStatus?.type !== "SUCCESS" || consultationFlow) return;
+    markScanCompleted();
     const timer = window.setTimeout(() => {
       router.push(APP_ROUTES.KIOSK_REPORT);
     }, 900);

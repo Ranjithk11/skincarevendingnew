@@ -33,6 +33,10 @@ const DEFAULT_DISPENSE_ERROR_WEBHOOK_URL =
 const DEFAULT_PAYMENT_WEBHOOK_URL =
   "https://hook.eu1.make.com/q38x43z4ddv0x654fedj5n661ls8pvig";
 
+/** Customer scanned, then bought. Direct purchases do not use this hook. */
+const DEFAULT_SCAN_PURCHASE_WEBHOOK_URL =
+  "https://hook.eu1.make.com/f60ew2fe3e09xsgzf8ycxs8bh4qx7uiv";
+
 const DEFAULT_DISPENSE_WEBHOOK_URL =
   "https://hook.eu1.make.com/bel61vvl1lpvleljhuzpyc5osor8fnz3";
 
@@ -648,6 +652,27 @@ export async function sendPaymentWebhook(
     });
 
     console.log("[payment webhook] sent:", dedupeKey, "→", url);
+
+    const journey = journeyFields.journey;
+    const scannedThenBought =
+      journey?.path === "scan" && Boolean(String(journey.scan_id || "").trim());
+    if (scannedThenBought) {
+      const scanPurchaseUrl =
+        process.env.NEXT_PUBLIC_SCAN_PURCHASE_WEBHOOK_URL ||
+        DEFAULT_SCAN_PURCHASE_WEBHOOK_URL;
+      await fetch(scanPurchaseUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...body,
+          event: "scan_purchase",
+        }),
+        keepalive: true,
+      }).catch((err) => {
+        console.warn("[scan purchase webhook] request failed:", scanPurchaseUrl, err);
+      });
+      console.log("[scan purchase webhook] sent:", dedupeKey, "→", scanPurchaseUrl);
+    }
   } catch (err) {
     console.warn("[payment webhook] unexpected error:", err);
   }
